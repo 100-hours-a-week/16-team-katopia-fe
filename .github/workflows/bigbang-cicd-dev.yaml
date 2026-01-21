@@ -55,10 +55,11 @@
           id: eslint
           run: npm run lint
   
-        - name: Prettier (check)
-          id: prettier_check
-          run: npx prettier --check .
-          continue-on-error: true
+        # Prettier 없음.
+        # - name: Prettier (check)
+        #   id: prettier_check
+        #   run: npx prettier --check .
+        #   continue-on-error: true
   
         - name: npm audit (high+)
           id: npm_audit
@@ -83,20 +84,21 @@
             tar --exclude=.git \
                 --exclude=.github \
                 --exclude=node_modules \
+                --exclude=.next/cache \
                 --exclude=bigbang_nextjs.tgz \
+                --warning=no-file-changed \
                 -czf bigbang_nextjs.tgz .
   
-        # 6) scp 전송 (PR이 fork에서 오면 secrets 미주입이라 스킵)
-        # - name: SCP to EC2
-        #   id: scp_to_ec2
-        #   if: github.event.pull_request.head.repo.full_name == github.repository
-        #   shell: bash
-        #   run: |
-        #     mkdir -p ~/.ssh
-        #     printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/katopia.pem
-        #     chmod 600 ~/.ssh/katopia.pem
+        # 6) scp 전송
+        - name: SCP to EC2
+          id: scp_to_ec2
+          shell: bash
+          run: |
+            mkdir -p ~/.ssh
+            printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/katopia.pem
+            chmod 600 ~/.ssh/katopia.pem
   
-        #     scp -o StrictHostKeyChecking=no \
-        #       -i ~/.ssh/katopia.pem \
-        #       bigbang_nextjs.tgz \
-        #       ec2-user@ktb-rian.com:/home/ec2-user/nextjs.tgz
+            scp -o StrictHostKeyChecking=no \
+              -i ~/.ssh/katopia.pem \
+              bigbang_nextjs.tgz \
+              ec2-user@dev.fitcheck.kr:/home/ec2-user/nextjs.tgz
