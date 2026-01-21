@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import SearchInput from "./SearchInput";
 import SearchGrid from "./SearchGrid";
 import SearchTabs from "./SearchTabs";
@@ -9,11 +10,21 @@ import SearchAccountList from "./SearchAccountList";
 import { MOCK_ACCOUNTS } from "../data/mockAccounts";
 
 export default function SearchPage() {
-  const [isSearching, setIsSearching] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-  const [query, setQuery] = useState("");
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const qParam = searchParams.get("q") ?? "";
+  const initialTab: "계정" | "게시글/해시태그" =
+    tabParam === "posts" || tabParam === "게시글/해시태그"
+      ? "게시글/해시태그"
+      : "계정";
+
+  const [isSearching, setIsSearching] = useState(
+    qParam.length > 0 || !!tabParam,
+  );
+  const [inputValue, setInputValue] = useState(qParam);
+  const [query, setQuery] = useState(qParam);
   const [activeTab, setActiveTab] = useState<"계정" | "게시글/해시태그">(
-    "계정",
+    initialTab,
   );
 
   const handleFocus = useCallback(() => {
@@ -63,7 +74,10 @@ export default function SearchPage() {
           {shouldShowAccounts && (
             <>
               {filteredAccounts.length > 0 ? (
-                <SearchAccountList accounts={filteredAccounts} />
+                <SearchAccountList
+                  accounts={filteredAccounts}
+                  searchQuery={trimmedQuery}
+                />
               ) : (
                 <SearchResultEmpty query={query} />
               )}
