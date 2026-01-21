@@ -140,25 +140,24 @@ jobs:
               sudo npm install -g pm2
             fi
 
-            # 2) 배포 디렉토리 준비 및 압축 해제
+            # 2) 기존 PM2 프로세스 중지 (디렉토리 삭제 전에!)
+            echo "기존 프로세스 중지 중..."
+            pm2 delete nextjs || true
+
+            # 3) 배포 디렉토리 준비 및 압축 해제
             cd /home/ec2-user
             rm -rf nextjs
             mkdir -p nextjs
             tar -xzf nextjs.tgz -C nextjs/
 
-            # 3) 의존성 설치
+            # 4) 의존성 설치
             cd nextjs
             export NODE_ENV=production
             export PORT=3000
             npm ci --production
 
-            # 4) PM2로 프로세스 관리
+            # 5) PM2로 프로세스 시작
             echo "서비스 시작 (포트 3000)..."
-
-            # 기존 프로세스 삭제 (있으면)
-            pm2 delete nextjs || true
-
-            # Next.js 앱 시작
             pm2 start npm --name nextjs --update-env -- start
 
             # PM2 프로세스 목록 저장
