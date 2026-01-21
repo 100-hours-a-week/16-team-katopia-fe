@@ -2,19 +2,31 @@
 
 import { memo } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Props {
   nickname: string;
   userId?: string | number;
   profileImage?: string;
+  searchQuery?: string;
 }
 
-function SearchAccountItem({ nickname, profileImage, userId }: Props) {
+function SearchAccountItem({ nickname, profileImage, userId, searchQuery }: Props) {
+  const router = useRouter();
+
+  const handleClick = () => {
+    if (!userId) return;
+    const params = new URLSearchParams();
+    params.set("tab", "account");
+    if (searchQuery) params.set("q", searchQuery);
+    router.push(`/profile/${userId}?${params.toString()}`);
+  };
+
   return (
-    <Link
-      href={userId ? `/profile/${userId}` : "#"}
-      className="flex items-center gap-4 py-3"
+    <button
+      type="button"
+      onClick={handleClick}
+      className="flex w-full items-center gap-4 py-3 text-left"
     >
       <div className="relative h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
         {profileImage ? (
@@ -36,7 +48,7 @@ function SearchAccountItem({ nickname, profileImage, userId }: Props) {
       </div>
 
       <span className="text-sm font-medium">{nickname}</span>
-    </Link>
+    </button>
   );
 }
 
