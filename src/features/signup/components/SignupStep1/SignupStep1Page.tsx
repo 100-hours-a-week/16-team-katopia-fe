@@ -14,8 +14,6 @@ import SubmitButton from "./SubmitButton";
 import { useProfileImage } from "./hooks/useProfileImage";
 import { useNicknameHandlers } from "./hooks/useNicknameHandlers";
 
-/* ================= schema ================= */
-
 const signupStep1Schema = z.object({
   nickname: z
     .string()
