@@ -1,103 +1,314 @@
-  name: CI (dev) - Next.js
-  
-  on:
-    push:
-      branches: ["dev"]
-  
-  permissions:
-    contents: read
-  
-  jobs:
-    ci:
-      name: Analyze/Test/Build + Archive + SCP
-      runs-on: ubuntu-latest
-      timeout-minutes: 30
-  
-      steps:
-        - name: Checkout
-          id: checkout
-          uses: actions/checkout@v4
-          with:
-            fetch-depth: 1
-  
-        # npm 의존성 캐시: setup-node에서 처리
-        - name: Set up Node 20 (+ npm dependency cache)
-          id: setup_node
-          uses: actions/setup-node@v4
-          with:
-            node-version: "20"
-            cache: "npm"
-            cache-dependency-path: |
-              package-lock.json
-              **/package-lock.json
-  
-        # "중간 산출물" 캐시 (Next.js 빌드 캐시)
-        - name: Cache Next.js build cache (.next/cache)
-          id: cache_next_cache
-          uses: actions/cache@v4
-          with:
-            path: .next/cache
-            key: next-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', '**/package-lock.json', 'next.config.*', 'tsconfig.json') }}
-            restore-keys: |
-              next-cache-${{ runner.os }}-
-  
-        # 의존성 설치
-        - name: Install dependencies
-          id: npm_ci
-          run: npm ci
-  
-        # 2) 코드 분석 4종: TypeScript / ESLint / Prettier / npm audit
-        - name: TypeScript typecheck
-          id: ts_typecheck
-          run: npx tsc --noEmit
-  
-        - name: ESLint
-          id: eslint
-          run: npm run lint
-  
-        # Prettier 없음.
-        # - name: Prettier (check)
-        #   id: prettier_check
-        #   run: npx prettier --check .
-        #   continue-on-error: true
-  
-        - name: npm audit (high+)
-          id: npm_audit
-          run: npm audit --audit-level=high
-  
-        # 3) 테스트 (단위), 현재 단위 테스트가 없습니다.
-        # - name: Unit tests
-        #   id: unit_tests
-        #   run: npm run test:unit
-          
-        # 4) 빌드
-        - name: Build (next build)
-          id: build_next
-          run: npm run build
-  
-        # 5) 압축 (node_modules, .git, .github 제외)
-        - name: Archive
-          id: archive
-          shell: bash
-          run: |
-            rm -f bigbang_nextjs.tgz
-            tar --exclude=.git \
-                --exclude=.github \
-                --exclude=node_modules \
-                --exclude=.next/cache \
-                --exclude=bigbang_nextjs.tgz \
-                -czf bigbang_nextjs.tgz . || [ $? -eq 1 ]
-  
-        # 6) scp 전송
-        - name: SCP to EC2
-          id: scp_to_ec2
-          shell: bash
-          run: |
-            mkdir -p ~/.ssh
-            printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/katopia.pem
-            chmod 600 ~/.ssh/katopia.pem
-  
-            scp -o StrictHostKeyChecking=no \
-              -i ~/.ssh/katopia.pem \
-              bigbang_nextjs.tgz \
-              ec2-user@dev.fitcheck.kr:/home/ec2-user/nextjs.tgz
+name: CI/CD (dev) - Next.js
+
+on:
+  push:
+    branches: ["dev"]
+
+# github.ref는 refs/heads/dev이므로 다른 브랜치와 관련 없습니다.
+concurrency:
+  group: cicd-dev-nextjs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci-and-delivery:
+    name: CI - Analyze/Test/Build + Archive + SCP
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # npm 의존성 캐시: setup-node에서 처리
+      - name: Set up Node 20 (+ npm dependency cache)
+        id: setup_node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            **/package-lock.json
+
+      # "중간 산출물" 캐시 (Next.js 빌드 캐시)
+      - name: Cache Next.js build cache (.next/cache)
+        id: cache_next_cache
+        uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: next-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', '**/package-lock.json', 'next.config.*', 'tsconfig.json') }}
+          restore-keys: |
+            next-cache-${{ runner.os }}-
+
+      # 의존성 설치
+      - name: Install dependencies
+        id: npm_ci
+        run: npm ci
+
+      # 2) 코드 분석 4종: TypeScript / ESLint / Prettier / npm audit
+      - name: TypeScript typecheck
+        id: ts_typecheck
+        run: npx tsc --noEmit
+
+      - name: ESLint
+        id: eslint
+        run: npm run lint
+
+      # Prettier 없음.
+      # - name: Prettier (check)
+      #   id: prettier_check
+      #   run: npx prettier --check .
+      #   continue-on-error: true
+
+      - name: npm audit (high+)
+        id: npm_audit
+        run: npm audit --audit-level=high
+
+      # 3) 테스트 (단위), 현재 단위 테스트가 없습니다.
+      # - name: Unit tests
+      #   id: unit_tests
+      #   run: npm run test:unit
+
+      # 4) 빌드
+      - name: Build (next build)
+        id: build_next
+        run: npm run build
+
+      # 5) 압축 (node_modules, .git, .github 제외)
+      - name: Archive
+        id: archive
+        shell: bash
+        run: |
+          rm -f bigbang_nextjs.tgz
+          tar --exclude=.git \
+              --exclude=.github \
+              --exclude=node_modules \
+              --exclude=.next/cache \
+              --exclude=bigbang_nextjs.tgz \
+              -czf bigbang_nextjs.tgz . || [ $? -eq 1 ]
+
+      # 6) scp 전송
+      - name: SCP to EC2
+        id: scp_to_ec2
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          scp -o StrictHostKeyChecking=no \
+            -i ~/.ssh/id_rsa \
+            bigbang_nextjs.tgz \
+            ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}:/home/ec2-user/nextjs.tgz
+
+  cd(deployment):
+    name: CD - Deploy to Dev Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: ci-and-delivery
+
+    steps:
+      # SSH 키 설정
+      - name: Setup SSH key
+        id: setup_ssh
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+
+      # 배포 준비(Port Switching)
+      - name: Deploy (Port Switching)
+        id: deploy
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+            set -euo pipefail
+
+            echo "=== Next.js 배포 시작 ==="
+
+            # 1) 현재 실행 중인 서비스 확인
+            if systemctl is-active --quiet nextjs-3000; then
+              CURRENT_PORT=3000
+              CURRENT_SERVICE=nextjs-3000
+              NEW_PORT=3001
+              NEW_SERVICE=nextjs-3001
+            elif systemctl is-active --quiet nextjs-3001; then
+              CURRENT_PORT=3001
+              CURRENT_SERVICE=nextjs-3001
+              NEW_PORT=3000
+              NEW_SERVICE=nextjs-3000
+            else
+              # 처음 배포하는 경우
+              CURRENT_PORT=""
+              CURRENT_SERVICE=""
+              NEW_PORT=3000
+              NEW_SERVICE=nextjs-3000
+            fi
+
+            echo "Old: ${CURRENT_PORT:-none} / New: $NEW_PORT"
+
+            # 2) 배포 디렉토리 준비 및 압축 해제
+            cd /home/ec2-user
+            mkdir -p nextjs
+            tar -xzf nextjs.tgz -C nextjs/
+
+            # 3) 의존성 설치
+            cd nextjs
+            export NODE_ENV=production
+            export PORT=$NEW_PORT
+            npm ci --production
+
+            # 4) 새 서비스 시작
+            echo "새 버전 시작 (포트 $NEW_PORT)..."
+            sudo systemctl start $NEW_SERVICE
+
+            echo "서비스 시작 대기 (10초)..."
+            sleep 10
+
+            echo "✅ 배포 준비 완료"
+          SSH
+
+      # 1) 기동/프로세스 레벨: systemd 프로세스 확인
+      - name: "Verify: 1) Process level (systemd)"
+        id: verify_process
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+            set -euo pipefail
+
+            # 새 서비스 확인
+            if systemctl is-active --quiet nextjs-3000; then
+              if systemctl is-active --quiet nextjs-3001; then
+                # 둘 다 실행 중이면 3001이 새 버전
+                NEW_SERVICE=nextjs-3001
+              else
+                # 3000만 실행 중
+                NEW_SERVICE=nextjs-3000
+              fi
+            else
+              # 3001만 실행 중
+              NEW_SERVICE=nextjs-3001
+            fi
+
+            if ! systemctl is-active --quiet $NEW_SERVICE; then
+              echo "❌ 서비스 $NEW_SERVICE가 실행 중이지 않음"
+              exit 1
+            fi
+
+            echo "✅ 프로세스 검증 통과: $NEW_SERVICE"
+          SSH
+
+      # 2) 라우팅/헬스체크: h2o 거쳐 외부에서 정상 호출되는지 검증
+      - name: "Verify: 2) Routing & healthcheck"
+        id: verify_health
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+            set -euo pipefail
+
+            # 새 포트 확인
+            if systemctl is-active --quiet nextjs-3000; then
+              if systemctl is-active --quiet nextjs-3001; then
+                NEW_PORT=3001
+              else
+                NEW_PORT=3000
+              fi
+            else
+              NEW_PORT=3001
+            fi
+
+            echo "새 포트 헬스체크: $NEW_PORT"
+
+            # 헬스체크 (최대 30초)
+            for i in {1..10}; do
+              if curl -fsS "http://localhost:${NEW_PORT}/" > /dev/null 2>&1; then
+                echo "✅ 헬스체크 통과"
+                exit 0
+              fi
+              echo "시도 $i/10..."
+              sleep 3
+            done
+
+            echo "❌ 헬스체크 실패 (30초 초과)"
+            exit 1
+          SSH
+
+      # H2O 포트 전환 및 기존 버전 종료
+      - name: Switch H2O and terminate old version
+        id: switch_port
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+            set -euo pipefail
+
+            # 1) 새 포트 확인
+            if systemctl is-active --quiet nextjs-3000; then
+              if systemctl is-active --quiet nextjs-3001; then
+                CURRENT_PORT=3000
+                CURRENT_SERVICE=nextjs-3000
+                NEW_PORT=3001
+                NEW_SERVICE=nextjs-3001
+              else
+                # 3000만 실행 중 (처음 배포)
+                CURRENT_PORT=""
+                CURRENT_SERVICE=""
+                NEW_PORT=3000
+                NEW_SERVICE=nextjs-3000
+              fi
+            else
+              CURRENT_PORT=3001
+              CURRENT_SERVICE=nextjs-3001
+              NEW_PORT=3000
+              NEW_SERVICE=nextjs-3000
+            fi
+
+            echo "포트 전환: ${CURRENT_PORT:-none} → $NEW_PORT"
+
+            # 2) H2O 설정 변경
+            if [ -n "$CURRENT_PORT" ]; then
+              sudo sed -i "s/proxy.reverse.url: \"http:\/\/127.0.0.1:${CURRENT_PORT}\"/proxy.reverse.url: \"http:\/\/127.0.0.1:${NEW_PORT}\"/" \
+                /etc/h2o/h2o.conf
+            else
+              # 처음 배포 시 초기 설정
+              sudo sed -i "s/proxy.reverse.url: \"http:\/\/127.0.0.1:[0-9]\+\"/proxy.reverse.url: \"http:\/\/127.0.0.1:${NEW_PORT}\"/" \
+                /etc/h2o/h2o.conf
+            fi
+
+            # 3) H2O graceful reload
+            sudo systemctl reload h2o
+            echo "H2O 설정 변경 완료"
+
+            # 4) 트래픽 전환 대기
+            sleep 5
+
+            # 5) 기존 버전 graceful shutdown
+            if [ -n "$CURRENT_SERVICE" ]; then
+              echo "기존 버전 종료 중: $CURRENT_SERVICE"
+              sudo systemctl stop $CURRENT_SERVICE
+
+              # 종료 대기 (최대 60초)
+              for i in {1..60}; do
+                if ! systemctl is-active --quiet $CURRENT_SERVICE; then
+                  echo "✅ 기존 버전 정상 종료 ($i초)"
+                  break
+                fi
+
+                if [ $i -eq 60 ]; then
+                  echo "⚠️ 60초 초과, 강제 종료"
+                  sudo systemctl kill -s SIGKILL $CURRENT_SERVICE
+                fi
+
+                sleep 1
+              done
+            fi
+
+            echo "✅ 포트 전환 완료"
+          SSH
