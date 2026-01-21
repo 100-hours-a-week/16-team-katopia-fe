@@ -6,7 +6,7 @@ export interface MockAccount {
 
 export const MOCK_ACCOUNTS: MockAccount[] = [
   { id: 1, nickname: "닉네임1" },
-  { id: 2, nickname: "닉네임1" },
-  { id: 3, nickname: "닉네임1" },
-  { id: 4, nickname: "닉네임1" },
+  { id: 2, nickname: "닉네임2" },
+  { id: 3, nickname: "닉네임3" },
+  { id: 4, nickname: "닉네임4" },
 ];
