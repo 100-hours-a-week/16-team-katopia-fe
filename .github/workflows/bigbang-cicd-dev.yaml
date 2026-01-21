@@ -86,7 +86,6 @@
                 --exclude=node_modules \
                 --exclude=.next/cache \
                 --exclude=bigbang_nextjs.tgz \
-                --warning=no-file-changed \
                 -czf bigbang_nextjs.tgz .
   
         # 6) scp 전송
