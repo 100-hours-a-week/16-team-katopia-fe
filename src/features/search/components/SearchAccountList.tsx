@@ -6,9 +6,10 @@ import SearchAccountItem from "./SearchAccountItem";
 
 interface Props {
   accounts: MockAccount[];
+  searchQuery: string;
 }
 
-function SearchAccountList({ accounts }: Props) {
+function SearchAccountList({ accounts, searchQuery }: Props) {
   return (
     <div className="mt-4">
       {accounts.map((account) => (
@@ -17,6 +18,7 @@ function SearchAccountList({ accounts }: Props) {
           nickname={account.nickname}
           userId={account.id}
           profileImage={account.profileImage}
+          searchQuery={searchQuery}
         />
       ))}
     </div>
