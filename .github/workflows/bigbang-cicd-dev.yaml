@@ -134,10 +134,10 @@ jobs:
 
             echo "=== Next.js 배포 시작 ==="
 
-            # 1) 기존 서비스 중지
-            if systemctl is-active --quiet nextjs-3000; then
-              echo "기존 서비스 중지 중..."
-              sudo systemctl stop nextjs-3000
+            # 1) PM2 설치 확인 및 설치
+            if ! command -v pm2 &> /dev/null; then
+              echo "PM2가 설치되어 있지 않습니다. 설치 중..."
+              sudo npm install -g pm2
             fi
 
             # 2) 배포 디렉토리 준비 및 압축 해제
@@ -152,9 +152,17 @@ jobs:
             export PORT=3000
             npm ci --production
 
-            # 4) 서비스 시작
+            # 4) PM2로 프로세스 관리
             echo "서비스 시작 (포트 3000)..."
-            sudo systemctl start nextjs-3000
+
+            # 기존 프로세스 삭제 (있으면)
+            pm2 delete nextjs || true
+
+            # Next.js 앱 시작
+            pm2 start npm --name nextjs --update-env -- start
+
+            # PM2 프로세스 목록 저장
+            pm2 save
 
             echo "서비스 시작 대기 (10초)..."
             sleep 10
@@ -162,20 +170,28 @@ jobs:
             echo "✅ 배포 완료"
           SSH
 
-      # 1) 기동/프로세스 레벨: systemd 프로세스 확인
-      - name: "Verify: 1) Process level (systemd)"
+      # 1) 기동/프로세스 레벨: PM2 프로세스 확인
+      - name: "Verify: 1) Process level (PM2)"
         id: verify_process
         shell: bash
         run: |
           ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
             set -euo pipefail
 
-            if ! systemctl is-active --quiet nextjs-3000; then
-              echo "❌ 서비스 nextjs-3000이 실행 중이지 않음"
+            # PM2 프로세스 상태 확인
+            if ! pm2 describe nextjs > /dev/null 2>&1; then
+              echo "❌ PM2 프로세스 'nextjs'가 존재하지 않음"
               exit 1
             fi
 
-            echo "✅ 프로세스 검증 통과: nextjs-3000"
+            # 프로세스가 online 상태인지 확인
+            STATUS=$(pm2 jlist | jq -r '.[] | select(.name=="nextjs") | .pm2_env.status')
+            if [ "$STATUS" != "online" ]; then
+              echo "❌ 프로세스 상태가 online이 아님: $STATUS"
+              exit 1
+            fi
+
+            echo "✅ 프로세스 검증 통과: nextjs (status: $STATUS)"
           SSH
 
       # 2) 헬스체크
