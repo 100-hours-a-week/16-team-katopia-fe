@@ -1,4 +1,3 @@
-// hooks/useGender.ts
 import { useCallback, useState } from "react";
 import type { ChangeHandler } from "react-hook-form";
 
@@ -8,7 +7,7 @@ export function useGender(onChange: ChangeHandler) {
   const handleGenderChange: ChangeHandler = useCallback(
     (e) => {
       setHasGender(!!e.target?.value);
-      onChange(e);
+      return onChange(e);
     },
     [onChange],
   );
