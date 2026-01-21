@@ -13,17 +13,17 @@ permissions:
   contents: read
 
 jobs:
-  # ci-and-delivery:
-  #   name: CI - Analyze/Test/Build + Archive + SCP
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 30
+  ci-and-delivery:
+    name: CI - Analyze/Test/Build + Archive + SCP
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
-  #   steps:
-  #     - name: Checkout
-  #       id: checkout
-  #       uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 1
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
   #     # npm 의존성 캐시: setup-node에서 처리
   #     - name: Set up Node 20 (+ npm dependency cache)
