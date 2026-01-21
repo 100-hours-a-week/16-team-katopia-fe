@@ -1,0 +1,102 @@
+  name: CI (dev) - Next.js
+  
+  on:
+    push:
+      branches: ["dev"]
+  
+  permissions:
+    contents: read
+  
+  jobs:
+    ci:
+      name: Analyze/Test/Build + Archive + SCP
+      runs-on: ubuntu-latest
+      timeout-minutes: 30
+  
+      steps:
+        - name: Checkout
+          id: checkout
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 1
+  
+        # npm 의존성 캐시: setup-node에서 처리
+        - name: Set up Node 20 (+ npm dependency cache)
+          id: setup_node
+          uses: actions/setup-node@v4
+          with:
+            node-version: "20"
+            cache: "npm"
+            cache-dependency-path: |
+              package-lock.json
+              **/package-lock.json
+  
+        # "중간 산출물" 캐시 (Next.js 빌드 캐시)
+        - name: Cache Next.js build cache (.next/cache)
+          id: cache_next_cache
+          uses: actions/cache@v4
+          with:
+            path: .next/cache
+            key: next-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', '**/package-lock.json', 'next.config.*', 'tsconfig.json') }}
+            restore-keys: |
+              next-cache-${{ runner.os }}-
+  
+        # 의존성 설치
+        - name: Install dependencies
+          id: npm_ci
+          run: npm ci
+  
+        # 2) 코드 분석 4종: TypeScript / ESLint / Prettier / npm audit
+        - name: TypeScript typecheck
+          id: ts_typecheck
+          run: npx tsc --noEmit
+  
+        - name: ESLint
+          id: eslint
+          run: npm run lint
+  
+        - name: Prettier (check)
+          id: prettier_check
+          run: npx prettier --check .
+          continue-on-error: true
+  
+        - name: npm audit (high+)
+          id: npm_audit
+          run: npm audit --audit-level=high
+  
+        # 3) 테스트 (단위), 현재 단위 테스트가 없습니다.
+        # - name: Unit tests
+        #   id: unit_tests
+        #   run: npm run test:unit
+          
+        # 4) 빌드
+        - name: Build (next build)
+          id: build_next
+          run: npm run build
+  
+        # 5) 압축 (node_modules, .git, .github 제외)
+        - name: Archive
+          id: archive
+          shell: bash
+          run: |
+            rm -f bigbang_nextjs.tgz
+            tar --exclude=.git \
+                --exclude=.github \
+                --exclude=node_modules \
+                --exclude=bigbang_nextjs.tgz \
+                -czf bigbang_nextjs.tgz .
+  
+        # 6) scp 전송 (PR이 fork에서 오면 secrets 미주입이라 스킵)
+        # - name: SCP to EC2
+        #   id: scp_to_ec2
+        #   if: github.event.pull_request.head.repo.full_name == github.repository
+        #   shell: bash
+        #   run: |
+        #     mkdir -p ~/.ssh
+        #     printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/katopia.pem
+        #     chmod 600 ~/.ssh/katopia.pem
+  
+        #     scp -o StrictHostKeyChecking=no \
+        #       -i ~/.ssh/katopia.pem \
+        #       bigbang_nextjs.tgz \
+        #       ec2-user@ktb-rian.com:/home/ec2-user/nextjs.tgz
