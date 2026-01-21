@@ -1,0 +1,429 @@
+"use client";
+
+// 여기 컴포넌트 분리해야될 것 같고
+// 버튼이 자꾸 리렌더링 되는데.. 여기도 수정 필요할 듯
+
+import {
+  type ChangeEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useRouter } from "next/navigation";
+import { useForm, type UseFormRegisterReturn } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import { Button } from "@/components/ui/button";
+import Header from "./Header";
+import ProgressBar from "./ProgressBar";
+import InfoText from "./InfoText";
+import GenderSection from "./GenderSection";
+import BodyInfoSection from "./BodyInfoSection";
+import StyleSection from "./StyleSection";
+import TermsSection from "./TermsSection";
+import PolicyModal from "./PolicyModal";
+
+const PRIVACY_POLICY_TEXT = `
+FITCHECK(이하 "회사")는 「개인정보 보호법」 등 관련 법령을 준수하며,
+이용자의 개인정보 보호를 매우 중요하게 생각합니다.
+회사는 본 개인정보 처리방침을 통해 이용자가 제공한 개인정보가
+어떠한 목적과 방식으로 이용되고 있으며,
+개인정보 보호를 위해 어떠한 조치가 이루어지고 있는지를 안내합니다.
+
+
+
+1. 개인정보의 수집 항목
+
+회사는 회원가입 및 서비스 제공을 위해 다음과 같은 개인정보를 수집합니다.
+
+① 회원가입 시
+- 필수 항목: 닉네임, 성별
+- 선택 항목: 프로필 이미지, 키, 몸무게, 선호 스타일
+
+② 간편 로그인(SNS) 이용 시
+- 카카오 계정 식별자(ID)
+- 카카오 계정 닉네임(제공되는 경우)
+
+회사는 서비스 제공에 반드시 필요한 최소한의 개인정보만을 수집하며,
+선택 항목의 경우 이용자가 입력하지 않아도 서비스 이용에는 제한이 없습니다.
+
+
+
+2. 개인정보의 수집 및 이용 목적
+
+회사는 수집한 개인정보를 다음의 목적을 위해 이용합니다.
+
+- 회원 식별 및 회원 관리
+- 서비스 이용에 따른 개인 맞춤형 콘텐츠 제공
+- 신체 정보 및 선호 스타일 기반 추천 기능 제공
+- 서비스 품질 개선 및 신규 기능 개발
+- 부정 이용 방지 및 비인가 사용 방지
+
+
+
+3. 개인정보의 보유 및 이용 기간
+
+회사는 개인정보 수집 및 이용 목적이 달성된 후에는
+해당 정보를 지체 없이 파기합니다.
+
+다만, 다음의 정보는 아래의 사유로 명시한 기간 동안 보관할 수 있습니다.
+
+- 회원 계정 정보: 회원 탈퇴 시까지
+- 서비스 이용 기록: 서비스 개선 및 통계 목적을 위해 최대 1년
+- 법령에 따라 보관이 필요한 정보: 관련 법령에서 정한 기간
+
+
+
+4. 개인정보의 제3자 제공
+
+회사는 이용자의 개인정보를 원칙적으로 외부에 제공하지 않습니다.
+
+다만, 다음의 경우에는 예외로 합니다.
+- 이용자가 사전에 동의한 경우
+- 법령에 따라 제출 의무가 발생한 경우
+
+
+
+5. 개인정보 처리의 위탁
+
+회사는 원활한 서비스 제공을 위해 개인정보 처리 업무를 외부 전문 업체에 위탁할 수 있습니다.
+
+- 위탁 대상자: 카카오
+- 위탁 업무 내용: 간편 로그인(OAuth) 인증 처리
+
+회사는 위탁 계약 시 개인정보 보호 관련 법령을 준수하도록 관리·감독합니다.
+
+
+
+6. 이용자의 권리 및 행사 방법
+
+이용자는 언제든지 다음과 같은 권리를 행사할 수 있습니다.
+
+- 개인정보 열람 요청
+- 개인정보 정정 및 삭제 요청
+- 개인정보 처리 정지 요청
+
+위 권리는 서비스 내 설정 또는 고객 문의를 통해 행사할 수 있습니다.
+
+
+
+7. 개인정보의 파기 절차 및 방법
+
+회사는 개인정보 보유 기간의 경과 또는 처리 목적 달성 시
+지체 없이 해당 개인정보를 파기합니다.
+
+- 전자적 파일 형태: 복구 불가능한 방법으로 영구 삭제
+- 종이 문서 형태: 분쇄 또는 소각
+
+
+
+8. 개인정보 보호를 위한 조치
+
+회사는 개인정보 보호를 위해 다음과 같은 조치를 취하고 있습니다.
+
+- 개인정보 접근 권한의 최소화
+- 인증 정보의 암호화 저장
+- 보안 취약점 점검 및 대응
+- 내부 개인정보 보호 교육 실시
+
+
+
+9. 개인정보 보호 책임자
+
+회사는 개인정보 보호 관련 업무를 총괄하여 책임지는 개인정보 보호 책임자를 지정하고 있습니다.
+
+- 개인정보 보호 책임자: FITCHECK 운영팀
+- 문의 이메일: privacy@fitcheck.com
+
+
+
+본 개인정보 처리방침은 서비스 정책 변경 또는 관련 법령 개정에 따라 변경될 수 있으며,
+변경 사항은 서비스 내 공지사항을 통해 안내합니다.
+
+공고일자: 2026년 1월 19일
+시행일자: 2026년 1월 19일
+`;
+
+const TERMS_OF_SERVICE_TEXT = `
+본 약관은 FITCHECK(이하 "회사")가 제공하는 서비스의 이용과 관련하여
+회사와 이용자 간의 권리, 의무 및 책임 사항을 규정함을 목적으로 합니다.
+
+
+
+1. 서비스의 제공
+
+회사는 다음과 같은 서비스를 제공합니다.
+
+- 패션 관련 콘텐츠 제공
+- 사용자 간 소통 및 커뮤니티 기능
+- 신체 정보 및 선호 스타일 기반 맞춤 추천 서비스
+
+회사는 서비스의 품질 향상을 위해
+사전 공지 후 서비스의 전부 또는 일부를 변경할 수 있습니다.
+
+
+
+2. 회원의 의무
+
+이용자는 다음 행위를 하여서는 안 됩니다.
+
+- 허위 정보의 등록
+- 타인의 개인정보 또는 계정 도용
+- 서비스 운영을 방해하는 행위
+- 법령 또는 본 약관을 위반하는 행위
+
+이용자가 위 행위를 할 경우,
+회사는 사전 통지 없이 서비스 이용을 제한할 수 있습니다.
+
+
+
+3. 서비스 이용 제한
+
+회사는 다음의 경우 서비스 이용을 제한하거나 중단할 수 있습니다.
+
+- 이용자가 본 약관을 위반한 경우
+- 서비스의 정상적인 운영을 방해한 경우
+- 법령 또는 정부 기관의 요구가 있는 경우
+
+
+
+4. 책임의 제한
+
+회사는 천재지변, 시스템 장애 등
+불가항력적인 사유로 인하여 발생한 서비스 이용 장애에 대해
+책임을 지지 않습니다.
+
+또한, 회사는 이용자가 서비스 내에서 게시한 정보에 대해
+일정한 관리 책임을 부담하지 않습니다.
+
+
+
+5. 약관의 변경
+
+회사는 필요 시 관련 법령을 위반하지 않는 범위에서
+본 약관을 변경할 수 있습니다.
+
+약관이 변경되는 경우,
+회사는 변경 사항을 서비스 내 공지사항을 통해 안내합니다.
+
+
+
+6. 분쟁 해결
+
+본 약관과 관련하여 회사와 이용자 간 발생한 분쟁에 대해서는
+대한민국 법령을 준거법으로 합니다.
+`;
+
+const signupStep2Schema = z.object({
+  gender: z.enum(["male", "female"]),
+  height: z.string().optional(),
+  weight: z.string().optional(),
+});
+
+type SignupStep2Values = z.infer<typeof signupStep2Schema>;
+type GenderRegisterProps = UseFormRegisterReturn;
+
+// ============ 메인 컴포넌트 ============
+
+export default function SignupStep2() {
+  const router = useRouter();
+  const [styles, setStyles] = useState<string[]>([]);
+  const [styleError, setStyleError] = useState<string | null>(null);
+  const [heightValue, setHeightValue] = useState("");
+  const [weightValue, setWeightValue] = useState("");
+  const weightInputRef = useRef<HTMLInputElement | null>(null);
+  const styleErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [privacyChecked, setPrivacyChecked] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [hasGender, setHasGender] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+  } = useForm<SignupStep2Values>({
+    resolver: zodResolver(signupStep2Schema),
+    defaultValues: { gender: undefined, height: "", weight: "" },
+  });
+
+  // gender register 커스터마이징
+  const genderRegister = useMemo<GenderRegisterProps>(() => {
+    const base = register("gender");
+
+    return {
+      name: base.name,
+      ref: base.ref,
+      onBlur: base.onBlur,
+      onChange: (e: ChangeEvent<HTMLInputElement>) => {
+        setHasGender(!!e.target.value);
+        base.onChange(e);
+      },
+    };
+  }, [register]);
+
+  // 숫자 입력 핸들러 - useCallback으로 메모이제이션
+  const handleNumericChange = useCallback(
+    (field: "height" | "weight", raw: string, focusNext?: () => void) => {
+      const digits = raw.replace(/\D/g, "").slice(0, 3);
+      if (!digits) {
+        setValue(field, "");
+        if (field === "height") setHeightValue("");
+        else setWeightValue("");
+        return;
+      }
+
+      const parsed = parseInt(digits, 10);
+      if (!parsed || parsed < 1) {
+        return;
+      }
+
+      const normalized = String(parsed);
+      setValue(field, normalized, { shouldDirty: true, shouldValidate: true });
+      if (field === "height") setHeightValue(normalized);
+      else setWeightValue(normalized);
+
+      if (normalized.length === 3 && focusNext) {
+        focusNext();
+      }
+    },
+    [setValue],
+  );
+
+  const handleHeightChange = useCallback(
+    (value: string) => {
+      handleNumericChange("height", value, () =>
+        weightInputRef.current?.focus(),
+      );
+    },
+    [handleNumericChange],
+  );
+
+  const handleWeightChange = useCallback(
+    (value: string) => {
+      handleNumericChange("weight", value);
+    },
+    [handleNumericChange],
+  );
+
+  // 스타일 토글 핸들러
+  const toggleStyle = useCallback((style: string) => {
+    setStyles((prev) => {
+      if (prev.includes(style)) {
+        setStyleError(null);
+        return prev.filter((s) => s !== style);
+      }
+      if (prev.length >= 2) {
+        if (styleErrorTimeoutRef.current) {
+          clearTimeout(styleErrorTimeoutRef.current);
+        }
+        setStyleError("스타일은 최대 2개까지 선택 가능합니다.");
+        styleErrorTimeoutRef.current = setTimeout(() => {
+          setStyleError(null);
+        }, 2000);
+        return prev;
+      }
+      setStyleError(null);
+      return [...prev, style];
+    });
+  }, []);
+
+  // 모달 핸들러들
+  const handleShowPrivacy = useCallback(() => setShowPrivacyModal(true), []);
+  const handleShowTerms = useCallback(() => setShowTermsModal(true), []);
+  const handleCloseModal = useCallback(() => {
+    setShowPrivacyModal(false);
+    setShowTermsModal(false);
+  }, []);
+
+  const handleBack = useCallback(() => router.back(), [router]);
+
+  const onSubmit = useCallback(
+    (data: SignupStep2Values) => {
+      console.log("Step2 data:", { ...data, styles });
+      router.push("/home");
+    },
+    [router, styles],
+  );
+
+  // submit 버튼 disabled 상태
+  const isSubmitDisabled = useMemo(
+    () => !hasGender || !privacyChecked || !termsChecked,
+    [hasGender, privacyChecked, termsChecked],
+  );
+
+  // cleanup
+  useEffect(
+    () => () => {
+      if (styleErrorTimeoutRef.current) {
+        clearTimeout(styleErrorTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="min-h-screen px-6 py-8">
+      <Header onBack={handleBack} />
+      <ProgressBar />
+      <InfoText />
+
+      <GenderSection
+        register={genderRegister}
+        error={errors.gender?.message}
+      />
+
+      <BodyInfoSection
+        heightValue={heightValue}
+        weightValue={weightValue}
+        onHeightChange={handleHeightChange}
+        onWeightChange={handleWeightChange}
+        weightInputRef={weightInputRef}
+      />
+
+      <StyleSection styles={styles} onToggle={toggleStyle} error={styleError} />
+
+      <TermsSection
+        privacyChecked={privacyChecked}
+        termsChecked={termsChecked}
+        onPrivacyChange={setPrivacyChecked}
+        onTermsChange={setTermsChecked}
+        onShowPrivacy={handleShowPrivacy}
+        onShowTerms={handleShowTerms}
+      />
+
+      {showPrivacyModal && (
+        <PolicyModal
+          title="개인정보 처리방침"
+          content={PRIVACY_POLICY_TEXT}
+          onClose={handleCloseModal}
+        />
+      )}
+
+      {showTermsModal && (
+        <PolicyModal
+          title="서비스 이용 약관"
+          content={TERMS_OF_SERVICE_TEXT}
+          onClose={handleCloseModal}
+        />
+      )}
+
+      <Button
+        type="submit"
+        disabled={isSubmitDisabled}
+        className={`mt-12 h-14 w-full text-base font-semibold ${
+          isSubmitDisabled
+            ? "bg-gray-200 text-gray-500 hover:bg-gray-200"
+            : "bg-black text-white hover:bg-black"
+        }`}
+      >
+        완료
+      </Button>
+    </form>
+  );
+}
