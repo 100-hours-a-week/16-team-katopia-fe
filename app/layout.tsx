@@ -1,6 +1,6 @@
 // app/layout.tsx
 import "./globals.css";
-import BottomNav from "@/src/shared/components/layout/BottomNav";
+import LayoutShell from "@/src/shared/components/layout/LayoutShell";
 
 export default function RootLayout({
   children,
@@ -10,10 +10,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="bg-neutral-700 min-h-screen">
-        <div className="mx-auto min-h-screen w-full max-w-[390px] bg-white">
-          {children}
-        </div>
-        <BottomNav />
+        <LayoutShell>{children}</LayoutShell>
       </body>
     </html>
   );
