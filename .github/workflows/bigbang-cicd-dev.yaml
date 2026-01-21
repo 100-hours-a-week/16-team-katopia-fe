@@ -86,7 +86,7 @@
                 --exclude=node_modules \
                 --exclude=.next/cache \
                 --exclude=bigbang_nextjs.tgz \
-                -czf bigbang_nextjs.tgz .
+                -czf bigbang_nextjs.tgz . || [ $? -eq 1 ]
   
         # 6) scp 전송
         - name: SCP to EC2
