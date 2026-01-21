@@ -124,8 +124,8 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
 
-      # 배포 준비(Port Switching)
-      - name: Deploy (Port Switching)
+      # 배포
+      - name: Deploy to port 3000
         id: deploy
         shell: bash
         run: |
@@ -134,46 +134,32 @@ jobs:
 
             echo "=== Next.js 배포 시작 ==="
 
-            # 1) 현재 실행 중인 서비스 확인
+            # 1) 기존 서비스 중지
             if systemctl is-active --quiet nextjs-3000; then
-              CURRENT_PORT=3000
-              CURRENT_SERVICE=nextjs-3000
-              NEW_PORT=3001
-              NEW_SERVICE=nextjs-3001
-            elif systemctl is-active --quiet nextjs-3001; then
-              CURRENT_PORT=3001
-              CURRENT_SERVICE=nextjs-3001
-              NEW_PORT=3000
-              NEW_SERVICE=nextjs-3000
-            else
-              # 처음 배포하는 경우
-              CURRENT_PORT=""
-              CURRENT_SERVICE=""
-              NEW_PORT=3000
-              NEW_SERVICE=nextjs-3000
+              echo "기존 서비스 중지 중..."
+              sudo systemctl stop nextjs-3000
             fi
-
-            echo "Old: ${CURRENT_PORT:-none} / New: $NEW_PORT"
 
             # 2) 배포 디렉토리 준비 및 압축 해제
             cd /home/ec2-user
+            rm -rf nextjs
             mkdir -p nextjs
             tar -xzf nextjs.tgz -C nextjs/
 
             # 3) 의존성 설치
             cd nextjs
             export NODE_ENV=production
-            export PORT=$NEW_PORT
+            export PORT=3000
             npm ci --production
 
-            # 4) 새 서비스 시작
-            echo "새 버전 시작 (포트 $NEW_PORT)..."
-            sudo systemctl start $NEW_SERVICE
+            # 4) 서비스 시작
+            echo "서비스 시작 (포트 3000)..."
+            sudo systemctl start nextjs-3000
 
             echo "서비스 시작 대기 (10초)..."
             sleep 10
 
-            echo "✅ 배포 준비 완료"
+            echo "✅ 배포 완료"
           SSH
 
       # 1) 기동/프로세스 레벨: systemd 프로세스 확인
@@ -184,52 +170,27 @@ jobs:
           ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
             set -euo pipefail
 
-            # 새 서비스 확인
-            if systemctl is-active --quiet nextjs-3000; then
-              if systemctl is-active --quiet nextjs-3001; then
-                # 둘 다 실행 중이면 3001이 새 버전
-                NEW_SERVICE=nextjs-3001
-              else
-                # 3000만 실행 중
-                NEW_SERVICE=nextjs-3000
-              fi
-            else
-              # 3001만 실행 중
-              NEW_SERVICE=nextjs-3001
-            fi
-
-            if ! systemctl is-active --quiet $NEW_SERVICE; then
-              echo "❌ 서비스 $NEW_SERVICE가 실행 중이지 않음"
+            if ! systemctl is-active --quiet nextjs-3000; then
+              echo "❌ 서비스 nextjs-3000이 실행 중이지 않음"
               exit 1
             fi
 
-            echo "✅ 프로세스 검증 통과: $NEW_SERVICE"
+            echo "✅ 프로세스 검증 통과: nextjs-3000"
           SSH
 
-      # 2) 라우팅/헬스체크: h2o 거쳐 외부에서 정상 호출되는지 검증
-      - name: "Verify: 2) Routing & healthcheck"
+      # 2) 헬스체크
+      - name: "Verify: 2) Healthcheck"
         id: verify_health
         shell: bash
         run: |
           ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
             set -euo pipefail
 
-            # 새 포트 확인
-            if systemctl is-active --quiet nextjs-3000; then
-              if systemctl is-active --quiet nextjs-3001; then
-                NEW_PORT=3001
-              else
-                NEW_PORT=3000
-              fi
-            else
-              NEW_PORT=3001
-            fi
-
-            echo "새 포트 헬스체크: $NEW_PORT"
+            echo "포트 3000 헬스체크..."
 
             # 헬스체크 (최대 30초)
             for i in {1..10}; do
-              if curl -fsS "http://localhost:${NEW_PORT}/" > /dev/null 2>&1; then
+              if curl -fsS "http://localhost:3000/" > /dev/null 2>&1; then
                 echo "✅ 헬스체크 통과"
                 exit 0
               fi
@@ -239,76 +200,4 @@ jobs:
 
             echo "❌ 헬스체크 실패 (30초 초과)"
             exit 1
-          SSH
-
-      # H2O 포트 전환 및 기존 버전 종료
-      - name: Switch H2O and terminate old version
-        id: switch_port
-        shell: bash
-        run: |
-          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
-            set -euo pipefail
-
-            # 1) 새 포트 확인
-            if systemctl is-active --quiet nextjs-3000; then
-              if systemctl is-active --quiet nextjs-3001; then
-                CURRENT_PORT=3000
-                CURRENT_SERVICE=nextjs-3000
-                NEW_PORT=3001
-                NEW_SERVICE=nextjs-3001
-              else
-                # 3000만 실행 중 (처음 배포)
-                CURRENT_PORT=""
-                CURRENT_SERVICE=""
-                NEW_PORT=3000
-                NEW_SERVICE=nextjs-3000
-              fi
-            else
-              CURRENT_PORT=3001
-              CURRENT_SERVICE=nextjs-3001
-              NEW_PORT=3000
-              NEW_SERVICE=nextjs-3000
-            fi
-
-            echo "포트 전환: ${CURRENT_PORT:-none} → $NEW_PORT"
-
-            # 2) H2O 설정 변경
-            if [ -n "$CURRENT_PORT" ]; then
-              sudo sed -i "s/proxy.reverse.url: \"http:\/\/127.0.0.1:${CURRENT_PORT}\"/proxy.reverse.url: \"http:\/\/127.0.0.1:${NEW_PORT}\"/" \
-                /etc/h2o/h2o.conf
-            else
-              # 처음 배포 시 초기 설정
-              sudo sed -i "s/proxy.reverse.url: \"http:\/\/127.0.0.1:[0-9]\+\"/proxy.reverse.url: \"http:\/\/127.0.0.1:${NEW_PORT}\"/" \
-                /etc/h2o/h2o.conf
-            fi
-
-            # 3) H2O graceful reload
-            sudo systemctl reload h2o
-            echo "H2O 설정 변경 완료"
-
-            # 4) 트래픽 전환 대기
-            sleep 5
-
-            # 5) 기존 버전 graceful shutdown
-            if [ -n "$CURRENT_SERVICE" ]; then
-              echo "기존 버전 종료 중: $CURRENT_SERVICE"
-              sudo systemctl stop $CURRENT_SERVICE
-
-              # 종료 대기 (최대 60초)
-              for i in {1..60}; do
-                if ! systemctl is-active --quiet $CURRENT_SERVICE; then
-                  echo "✅ 기존 버전 정상 종료 ($i초)"
-                  break
-                fi
-
-                if [ $i -eq 60 ]; then
-                  echo "⚠️ 60초 초과, 강제 종료"
-                  sudo systemctl kill -s SIGKILL $CURRENT_SERVICE
-                fi
-
-                sleep 1
-              done
-            fi
-
-            echo "✅ 포트 전환 완료"
           SSH
