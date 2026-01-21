@@ -107,7 +107,7 @@ jobs:
             bigbang_nextjs.tgz \
             ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}:/home/ec2-user/nextjs.tgz
 
-  cd(deployment):
+  cd:
     name: CD - Deploy to Dev Server
     runs-on: ubuntu-latest
     timeout-minutes: 30
