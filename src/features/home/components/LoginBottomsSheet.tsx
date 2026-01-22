@@ -4,12 +4,13 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { KAKAO_OAUTH_URL } from "@/src/config/api";
 
 export default function LoginBottomSheet() {
   const router = useRouter();
 
   const handleKakaoLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_BASE_URL}/oauth/kakao`;
+    window.location.href = KAKAO_OAUTH_URL;
   };
 
   // 🔧 임시 프로필 설정 버튼 (개발용)
@@ -27,6 +28,7 @@ export default function LoginBottomSheet() {
           w-full max-w-[390px] mx-auto
           min-h-[40vh]
           flex flex-col justify-center
+          bg-[#fefefe]
         "
       >
         <div className="space-y-4 text-center">
@@ -55,20 +57,6 @@ export default function LoginBottomSheet() {
           >
             <Image src="/icons/chat.svg" alt="카카오" width={20} height={20} />
             카카오로 시작하기
-          </Button>
-          {/* 🔧 임시 버튼 (개발용) */}
-          <Button
-            variant="outline"
-            onClick={handleTempProfileSetup}
-            className="
-              w-full
-              h-12
-              text-sm
-              text-muted-foreground
-              border-dashed
-            "
-          >
-            (임시) 프로필 설정 화면 미리보기
           </Button>
         </div>
       </SheetContent>
