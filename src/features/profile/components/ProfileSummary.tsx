@@ -1,0 +1,57 @@
+import Image from "next/image";
+
+type Profile = {
+  nickname: string;
+  profileImageUrl: string | null;
+  gender: "male" | "female" | null;
+  height: number | null;
+  weight: number | null;
+};
+
+export default function ProfileSummary({
+  profile,
+  loading,
+}: {
+  profile: Profile | null;
+  loading: boolean;
+}) {
+  if (loading || !profile) return null;
+
+  const { nickname, profileImageUrl, gender, height, weight } = profile;
+
+  const hasBodyInfo = height !== null || weight !== null;
+
+  return (
+    <section className="flex flex-col items-center py-16">
+      {/* Avatar */}
+      <div className="mb-4 h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+        <Image
+          src={profileImageUrl ?? "/icons/user.svg"}
+          alt="profile"
+          width={45}
+          height={45}
+          className="object-cover"
+        />
+      </div>
+
+      {/* Nickname */}
+      <p className="mb-1 text-sm font-semibold">
+        {nickname}
+        {gender && (
+          <span className="ml-1 text-gray-500">
+            ({gender === "female" ? "WOMAN" : "MAN"})
+          </span>
+        )}
+      </p>
+
+      {/* Body Info */}
+      {hasBodyInfo && (
+        <p className="text-xs text-gray-600">
+          {height !== null && <span>{height}cm</span>}
+          {height !== null && weight !== null && <span> · </span>}
+          {weight !== null && <span>{weight}kg</span>}
+        </p>
+      )}
+    </section>
+  );
+}

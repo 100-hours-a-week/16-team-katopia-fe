@@ -5,28 +5,24 @@ import { Button } from "@/components/ui/button";
 
 type Props = {
   register: UseFormRegisterReturn;
-  nickname: string;
   onChangeCapture?: React.FormEventHandler<HTMLInputElement>;
   error?: string;
   duplicateError: string | null;
   duplicateSuccess: string | null;
-  onDuplicateCheck: (nickname: string) => void;
+  onDuplicateCheck: () => void;
 };
 
-const NicknameField = memo(
+const NicknameInput = memo(
   ({
     register,
-    nickname,
     onChangeCapture,
     error,
     duplicateError,
     duplicateSuccess,
     onDuplicateCheck,
   }: Props) => (
-    <div className="mt-15">
-      <label className="mb-1 block text-sm font-medium">
-        닉네임<span className="text-red-500">*</span>
-      </label>
+    <div className="mt-10">
+      <label className="mb-1 block text-sm font-medium">닉네임</label>
 
       <p className="mb-2 text-xs text-muted-foreground">
         2자 이상 20자 이하, 특수문자(._)만 사용 가능
@@ -39,13 +35,7 @@ const NicknameField = memo(
           placeholder="닉네임을 입력해주세요."
           className="placeholder:text-[12px] text-[12px]"
         />
-
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onDuplicateCheck(nickname)} // 🔥 핵심
-          disabled={!nickname}
-        >
+        <Button type="button" variant="outline" onClick={onDuplicateCheck}>
           중복 확인
         </Button>
       </div>
@@ -61,5 +51,5 @@ const NicknameField = memo(
   ),
 );
 
-NicknameField.displayName = "NicknameField";
-export default NicknameField;
+NicknameInput.displayName = "NicknameInput";
+export default NicknameInput;

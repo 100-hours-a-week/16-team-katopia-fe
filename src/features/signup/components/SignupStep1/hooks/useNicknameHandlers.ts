@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import type { UseFormTrigger } from "react-hook-form";
+import { API_BASE_URL } from "@/src/config/api";
 
-/** 🔥 SignupStep1 폼 값 타입 */
+/** SignupStep1 폼 값 타입 */
 type SignupStep1Values = {
   nickname: string;
 };
@@ -16,6 +17,7 @@ export function useNicknameHandlers(
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [duplicateSuccess, setDuplicateSuccess] = useState<string | null>(null);
 
+  /** 닉네임 입력 시 */
   const handleNicknameChangeCapture = useCallback(
     (e: React.FormEvent<HTMLInputElement>) => {
       const value = (e.target as HTMLInputElement).value;
@@ -31,30 +33,62 @@ export function useNicknameHandlers(
     [],
   );
 
-  const handleDuplicateCheck = useCallback(async () => {
-    setDuplicateError(null);
-    setDuplicateSuccess(null);
+  /** 닉네임 중복 검사 */
+  const handleDuplicateCheck = useCallback(
+    async (nickname: string) => {
+      setDuplicateError(null);
+      setDuplicateSuccess(null);
 
-    /** ✅ 이제 타입 안전 */
-    const isValid = await trigger("nickname");
-    if (!isValid) {
-      setIsNicknameVerified(false);
-      setDuplicateError("닉네임 형식을 확인해주세요.");
-      return;
-    }
+      /** 1️⃣ Zod validation */
+      const isValid = await trigger("nickname");
+      if (!isValid) {
+        setIsNicknameVerified(false);
+        setDuplicateError("닉네임 형식을 확인해주세요.");
+        return;
+      }
 
-    const input = document.querySelector(
-      'input[name="nickname"]',
-    ) as HTMLInputElement | null;
+      lastVerifiedNicknameRef.current = nickname;
 
-    if (input) {
-      lastVerifiedNicknameRef.current = input.value;
-    }
+      console.log(encodeURIComponent(nickname));
 
-    // TODO: API 연동
-    setIsNicknameVerified(true);
-    setDuplicateSuccess("사용 가능한 닉네임입니다.");
-  }, [trigger]);
+      console.log(API_BASE_URL);
+
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/api/members/check?nickname=${encodeURIComponent(
+            nickname,
+          )}`,
+          {
+            method: "GET",
+            credentials: "include",
+          },
+        );
+
+        if (!res.ok) {
+          throw new Error(`닉네임 확인 실패 (${res.status})`);
+        }
+
+        const payload = (await res.json()) as {
+          data?: { isDuplicated?: boolean };
+        };
+
+        const isDuplicated = payload.data?.isDuplicated ?? true;
+
+        if (isDuplicated) {
+          setIsNicknameVerified(false);
+          setDuplicateError("이미 사용 중인 닉네임입니다.");
+          return;
+        }
+
+        setIsNicknameVerified(true);
+        setDuplicateSuccess("사용 가능한 닉네임입니다.");
+      } catch {
+        setIsNicknameVerified(false);
+        setDuplicateError("닉네임 중복 검사에 실패했습니다.");
+      }
+    },
+    [trigger],
+  );
 
   return {
     isNicknameVerified,

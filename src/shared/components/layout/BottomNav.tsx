@@ -23,7 +23,7 @@ const NAV_ITEMS = [
   },
   {
     href: "/vote",
-    icon: "/icons/vote.svg",
+    icon: "/icons/votee.svg",
     label: "투표",
   },
   {
@@ -51,15 +51,22 @@ export default function BottomNav() {
               >
                 <Link
                   href={item.href}
-                  className="flex h-14 w-14 items-center justify-center rounded-full border bg-white shadow"
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-full shadow",
+                    isActive ? "bg-black" : "border bg-white",
+                  )}
                 >
                   <Image
                     src={item.icon!}
                     alt={item.label}
-                    width={28}
-                    height={28}
+                    width={55}
+                    height={55}
+                    className={cn(isActive && "invert")}
                   />
                 </Link>
+                <span className="text-[11px] text-neutral-600">
+                  {item.label}
+                </span>
                 {isActive && <span className="h-1 w-1 rounded-full bg-black" />}
               </li>
             );
@@ -78,6 +85,14 @@ export default function BottomNav() {
                   height={22}
                   className={cn("opacity-60", isActive && "opacity-100")}
                 />
+                <span
+                  className={cn(
+                    "text-[11px] text-neutral-500",
+                    isActive && "text-neutral-900",
+                  )}
+                >
+                  {item.label}
+                </span>
                 {isActive && <span className="h-1 w-1 rounded-full bg-black" />}
               </Link>
             </li>

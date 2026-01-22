@@ -20,6 +20,10 @@ import {
   TERMS_OF_SERVICE_TEXT,
 } from "../constants/policies";
 
+/* =========================
+   Schema & Types
+========================= */
+
 const signupStep2Schema = z.object({
   gender: z.enum(["male", "female"]),
   height: z.string().optional(),
@@ -27,9 +31,11 @@ const signupStep2Schema = z.object({
 });
 
 type SignupStep2Values = z.infer<typeof signupStep2Schema>;
-
-// ✅ "gender" 전용 register return 타입으로 고정(선택)
 type GenderRegisterProps = UseFormRegisterReturn<"gender">;
+
+/* =========================
+   Component
+========================= */
 
 export default function SignupStep2() {
   const router = useRouter();
@@ -61,15 +67,14 @@ export default function SignupStep2() {
     defaultValues: { gender: undefined, height: "", weight: "" },
   });
 
-  // ✅ gender register 커스터마이징 (타입 에러 해결 버전)
+  /* -------------------------
+     Gender Register
+  ------------------------- */
   const genderRegister = useMemo<GenderRegisterProps>(() => {
     const base = register("gender");
 
     return {
       ...base,
-
-      // ✅ 핵심 1) 파라미터 타입을 RHF onChange와 동일하게 맞춤
-      // ✅ 핵심 2) base.onChange(e)를 return 해서 Promise 타입까지 대응
       onChange: ((e) => {
         const value = (e.target as HTMLInputElement | undefined)?.value;
         setHasGender(!!value);
@@ -78,14 +83,16 @@ export default function SignupStep2() {
     };
   }, [register]);
 
+  /* -------------------------
+     Height / Weight
+  ------------------------- */
   const handleNumericChange = useCallback(
     (field: "height" | "weight", raw: string, focusNext?: () => void) => {
       const digits = raw.replace(/\D/g, "").slice(0, 3);
 
       if (!digits) {
         setValue(field, "");
-        if (field === "height") setHeightValue("");
-        else setWeightValue("");
+        field === "height" ? setHeightValue("") : setWeightValue("");
         return;
       }
 
@@ -95,8 +102,9 @@ export default function SignupStep2() {
       const normalized = String(parsed);
       setValue(field, normalized, { shouldDirty: true, shouldValidate: true });
 
-      if (field === "height") setHeightValue(normalized);
-      else setWeightValue(normalized);
+      field === "height"
+        ? setHeightValue(normalized)
+        : setWeightValue(normalized);
 
       if (normalized.length === 3 && focusNext) focusNext();
     },
@@ -104,61 +112,50 @@ export default function SignupStep2() {
   );
 
   const handleHeightChange = useCallback(
-    (value: string) => {
+    (value: string) =>
       handleNumericChange("height", value, () =>
         weightInputRef.current?.focus(),
-      );
-    },
+      ),
     [handleNumericChange],
   );
 
   const handleWeightChange = useCallback(
-    (value: string) => {
-      handleNumericChange("weight", value);
-    },
+    (value: string) => handleNumericChange("weight", value),
     [handleNumericChange],
   );
 
+  /* -------------------------
+     Style
+  ------------------------- */
   const toggleStyle = useCallback((style: string) => {
     setStyles((prev) => {
-      if (prev.includes(style)) {
-        setStyleError(null);
-        return prev.filter((s) => s !== style);
-      }
+      if (prev.includes(style)) return prev.filter((s) => s !== style);
 
       if (prev.length >= 2) {
-        if (styleErrorTimeoutRef.current) {
-          clearTimeout(styleErrorTimeoutRef.current);
-        }
-
         setStyleError("스타일은 최대 2개까지 선택 가능합니다.");
-        styleErrorTimeoutRef.current = setTimeout(() => {
-          setStyleError(null);
-        }, 2000);
-
+        styleErrorTimeoutRef.current = setTimeout(
+          () => setStyleError(null),
+          2000,
+        );
         return prev;
       }
 
-      setStyleError(null);
       return [...prev, style];
     });
   }, []);
 
-  const handleShowPrivacy = useCallback(() => setShowPrivacyModal(true), []);
-  const handleShowTerms = useCallback(() => setShowTermsModal(true), []);
-  const handleCloseModal = useCallback(() => {
-    setShowPrivacyModal(false);
-    setShowTermsModal(false);
-  }, []);
-
-  const handleBack = useCallback(() => router.back(), [router]);
-
+  /* -------------------------
+     Submit (중요!)
+  ------------------------- */
   const onSubmit = useCallback(
-    (data: SignupStep2Values) => {
-      console.log("Step2 data:", { ...data, styles });
-      router.push("/home");
+    async (_data: SignupStep2Values) => {
+      /**
+       * ✅ Step2에서는 회원가입 API 호출 ❌
+       * ✅ (추후 프로필 저장 API 생기면 여기서 호출)
+       */
+      router.replace("/home");
     },
-    [router, styles],
+    [router],
   );
 
   const isSubmitDisabled = useMemo(
@@ -174,9 +171,12 @@ export default function SignupStep2() {
     };
   }, []);
 
+  /* -------------------------
+     Render
+  ------------------------- */
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="min-h-screen px-6 py-8">
-      <Header onBack={handleBack} />
+      <Header onBack={() => router.back()} />
       <ProgressBar />
       <InfoText />
 
@@ -197,15 +197,15 @@ export default function SignupStep2() {
         termsChecked={termsChecked}
         onPrivacyChange={setPrivacyChecked}
         onTermsChange={setTermsChecked}
-        onShowPrivacy={handleShowPrivacy}
-        onShowTerms={handleShowTerms}
+        onShowPrivacy={() => setShowPrivacyModal(true)}
+        onShowTerms={() => setShowTermsModal(true)}
       />
 
       {showPrivacyModal && (
         <PolicyModal
           title="개인정보 처리방침"
           content={PRIVACY_POLICY_TEXT}
-          onClose={handleCloseModal}
+          onClose={() => setShowPrivacyModal(false)}
         />
       )}
 
@@ -213,7 +213,7 @@ export default function SignupStep2() {
         <PolicyModal
           title="서비스 이용 약관"
           content={TERMS_OF_SERVICE_TEXT}
-          onClose={handleCloseModal}
+          onClose={() => setShowTermsModal(false)}
         />
       )}
 
@@ -221,9 +221,7 @@ export default function SignupStep2() {
         type="submit"
         disabled={isSubmitDisabled}
         className={`mt-12 h-14 w-full text-base font-semibold ${
-          isSubmitDisabled
-            ? "bg-gray-200 text-gray-500 hover:bg-gray-200"
-            : "bg-black text-white hover:bg-black"
+          isSubmitDisabled ? "bg-gray-200 text-gray-500" : "bg-black text-white"
         }`}
       >
         완료
