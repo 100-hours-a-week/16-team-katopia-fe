@@ -13,9 +13,9 @@ import SubmitButton from "./SubmitButton";
 
 import { useProfileImage } from "./hooks/useProfileImage";
 import { useNicknameHandlers } from "./hooks/useNicknameHandlers";
-import { setAccessToken } from "@/src/lib/auth";
 import { API_BASE_URL } from "@/src/config/api";
 import { issueAccessToken } from "@/src/lib/auth";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 /* =========================
    Schema & Types
@@ -43,24 +43,21 @@ export default function SignupStep1() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasHandledOAuth = useRef(false);
+  const { setAuthenticated } = useAuth(); // 🔥 전역 인증 상태
 
   /* -------------------------
-     OAuth 콜백 처리
+     OAuth 콜백 처리 (status 분기만)
   ------------------------- */
   useEffect(() => {
     if (hasHandledOAuth.current) return;
 
     const status = searchParams.get("status");
-    const accessToken = searchParams.get("accessToken");
-
-    if (!status || !accessToken) return;
+    if (!status) return;
 
     hasHandledOAuth.current = true;
-    setAccessToken(accessToken);
 
     if (status === "ACTIVE") {
       router.replace("/home");
-      return;
     }
 
     if (status === "PENDING") {
@@ -106,18 +103,18 @@ export default function SignupStep1() {
   } = useNicknameHandlers(trigger);
 
   /* -------------------------
-     Submit (회원가입 API)
+     Submit (회원가입 → 즉시 로그인)
   ------------------------- */
   const onSubmit = useCallback(
     async (data: SignupStep1Values) => {
       try {
-        // ✅ Registration Token 쿠키로 회원가입
+        // 1️⃣ 회원가입 (Registration Token → RT 발급)
         const res = await fetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          credentials: "include", // 🔥 registration_token 쿠키 자동 포함
+          credentials: "include", // 🔥 registration_token 쿠키 포함
           body: JSON.stringify({
             nickname: data.nickname,
           }),
@@ -129,14 +126,20 @@ export default function SignupStep1() {
           throw new Error(`회원가입 실패 (${res.status})`);
         }
 
-        // ✅ 회원가입 성공 → Step2 이동
-        router.push("/signup/step2");
+        // 2️⃣ RT → AT 발급 (🔥 핵심)
+        await issueAccessToken();
+
+        // 3️⃣ 전역 로그인 상태 ON
+        setAuthenticated(true);
+
+        // 4️⃣ 다음 단계로 이동
+        router.replace("/signup/step2"); // 또는 바로 /home
       } catch (err) {
         console.error(err);
         alert("회원가입 중 오류가 발생했습니다.");
       }
     },
-    [router],
+    [router, setAuthenticated],
   );
 
   /* -------------------------
