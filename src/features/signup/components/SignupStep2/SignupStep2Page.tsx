@@ -92,6 +92,7 @@ export default function SignupStep2() {
 
       if (!digits) {
         setValue(field, "");
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
         field === "height" ? setHeightValue("") : setWeightValue("");
         return;
       }
@@ -102,6 +103,7 @@ export default function SignupStep2() {
       const normalized = String(parsed);
       setValue(field, normalized, { shouldDirty: true, shouldValidate: true });
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       field === "height"
         ? setHeightValue(normalized)
         : setWeightValue(normalized);
@@ -148,6 +150,7 @@ export default function SignupStep2() {
      Submit (중요!)
   ------------------------- */
   const onSubmit = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async (_data: SignupStep2Values) => {
       /**
        * ✅ Step2에서는 회원가입 API 호출 ❌

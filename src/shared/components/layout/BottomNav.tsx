@@ -37,7 +37,7 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-[390px] -translate-x-1/2 border-t bg-white">
+    <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-97.5 -translate-x-1/2 border-t bg-white">
       <ul className="relative flex h-16 items-center justify-between px-6">
         {NAV_ITEMS.map((item, idx) => {
           const isActive = pathname === item.href;
