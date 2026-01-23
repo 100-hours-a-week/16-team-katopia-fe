@@ -8,8 +8,12 @@ export function getAccessToken() {
   return accessToken;
 }
 
+export function clearAccessToken() {
+  accessToken = null;
+}
+
 export async function issueAccessToken() {
-  const res = await fetch("http://localhost:8080/api/auth/tokens", {
+  const res = await fetch("https://dev.fitcheck.kr/api/auth/tokens", {
     method: "POST",
     credentials: "include", // 🔥 Refresh Token 쿠키 포함
   });

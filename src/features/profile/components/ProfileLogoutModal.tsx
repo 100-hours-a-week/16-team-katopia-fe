@@ -2,21 +2,31 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { logout } from "@/src/features/auth/api/logout";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  onConfirm: () => void;
 };
 
-export default function ProfileLogoutModal({
-  open,
-  onClose,
-  onConfirm,
-}: Props) {
+export default function ProfileLogoutModal({ open, onClose }: Props) {
   const router = useRouter();
+  const { setAuthenticated } = useAuth();
 
   if (!open) return null;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAuthenticated(false);
+      onClose();
+      router.replace("/home");
+    }
+  };
 
   return (
     <div
@@ -46,10 +56,7 @@ export default function ProfileLogoutModal({
             취소
           </button>
           <button
-            onClick={() => {
-              onConfirm();
-              router.push("/home");
-            }}
+            onClick={handleLogout}
             className="flex-1 rounded-full border-2 border-black py-3 text-sm font-semibold"
           >
             확인

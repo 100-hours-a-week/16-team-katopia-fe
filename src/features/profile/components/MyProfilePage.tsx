@@ -43,7 +43,10 @@ export default function MyProfilePage() {
           credentials: "include",
         });
 
+        console.log(res);
+
         if (!res.ok) {
+          console.log((await res.json()).code);
           throw new Error("내 정보 조회 실패");
         }
 
@@ -91,13 +94,7 @@ export default function MyProfilePage() {
         }}
       />
 
-      <ProfileLogoutModal
-        open={logoutOpen}
-        onClose={handleCloseLogout}
-        onConfirm={() => {
-          handleCloseLogout();
-        }}
-      />
+      <ProfileLogoutModal open={logoutOpen} onClose={handleCloseLogout} />
     </>
   );
 }

@@ -3,19 +3,11 @@
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { KAKAO_OAUTH_URL } from "@/src/config/api";
 
 export default function LoginBottomSheet() {
-  const router = useRouter();
-
   const handleKakaoLogin = () => {
     window.location.href = KAKAO_OAUTH_URL;
-  };
-
-  // 🔧 임시 프로필 설정 버튼 (개발용)
-  const handleTempProfileSetup = () => {
-    router.push("/signup/step1");
   };
 
   return (
@@ -63,7 +55,3 @@ export default function LoginBottomSheet() {
     </Sheet>
   );
 }
-
-// 1. 로그인 성공 시 BottomSheet 닫기, 실패 시 Toast 메세지 알림
-// 2. Zustand Auth 연결
-// 3. 카카오 OAuth 버튼 실제 동작 연결3. 카카오 OAuth 버튼 실제 동작 연결

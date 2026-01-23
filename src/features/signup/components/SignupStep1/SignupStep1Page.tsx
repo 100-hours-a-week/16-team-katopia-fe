@@ -15,6 +15,7 @@ import { useProfileImage } from "./hooks/useProfileImage";
 import { useNicknameHandlers } from "./hooks/useNicknameHandlers";
 import { setAccessToken } from "@/src/lib/auth";
 import { API_BASE_URL } from "@/src/config/api";
+import { issueAccessToken } from "@/src/lib/auth";
 
 /* =========================
    Schema & Types
@@ -110,22 +111,27 @@ export default function SignupStep1() {
   const onSubmit = useCallback(
     async (data: SignupStep1Values) => {
       try {
+        // 🔥 1. AT 발급 (RT → AT)
+        const accessToken = await issueAccessToken();
+
+        // 🔥 2. 회원가입 API 호출 (AT 포함)
         const res = await fetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
-          credentials: "include", // Refresh Token 쿠키 자동 포함
+          credentials: "include",
           body: JSON.stringify({
             nickname: data.nickname,
           }),
         });
 
         if (!res.ok) {
+          console.log((await res.json()).code);
           throw new Error(`회원가입 실패 (${res.status})`);
         }
 
-        // ✅ 회원가입 성공 → Step2 이동
         router.push("/signup/step2");
       } catch (err) {
         console.error(err);
