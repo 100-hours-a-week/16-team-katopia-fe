@@ -17,6 +17,8 @@ jobs:
     name: CI - Analyze/Test/Build + Archive + SCP
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      artifact_name: ${{ steps.prep_artifact.outputs.artifact_name }}
 
     steps:
       - name: Checkout
@@ -118,122 +120,117 @@ jobs:
       - name: SCP to EC2
         run: |
           mkdir -p ~/.ssh
-          # 서버의 호스트 키를 미리 등록 (검증 과정을 미리 통과시키는 작업)
+          # 서버의 호스트 키를 미리 등록
           ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
           
           printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          # 이제 -o 옵션 없이도 ssh, scp 모두 잘 작동합니다.
           ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }} "mkdir -p /home/ec2-user/nextjs"
           
           scp -i ~/.ssh/id_rsa "${{ steps.prep_artifact.outputs.artifact_name }}" \
           ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}:/home/ec2-user/nextjs/
 
-  # cd:
-  #   name: CD - Deploy to Dev Server
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 30
-  #   needs: ci-and-delivery
+  cd:
+    name: CD - Deploy to Dev Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: ci-and-delivery
 
-  #   steps:
-  #     # SSH 키 설정
-  #     - name: Setup SSH key
-  #       id: setup_ssh
-  #       shell: bash
-  #       run: |
-  #         mkdir -p ~/.ssh
-  #         printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-  #         chmod 600 ~/.ssh/id_rsa
-  #         ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+    steps:
+      # SSH 키 설정
+      - name: Setup SSH key
+        id: setup_ssh
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
 
-  #     # 배포
-  #     - name: Deploy to port 3000
-  #       id: deploy
-  #       shell: bash
-  #       run: |
-  #         ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
-  #           set -euo pipefail
+      - name: Deploy to port 3000
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+            set -euo pipefail
 
-  #           echo "=== Next.js 배포 시작 ==="
+            NEXTJS_ROOT="/home/ec2-user/nextjs"
+            CURRENT_LINK="$NEXTJS_ROOT/current"
+            
+            # [수정] needs를 통해 이전 Job의 output을 가져옵니다.
+            ARTIFACT_NAME="${{ needs.ci-and-delivery.outputs.artifact_name }}"
+            RELEASE_NAME="${ARTIFACT_NAME%.tgz}"
+            RELEASE_PATH="$NEXTJS_ROOT/$RELEASE_NAME"
 
-  #           # 1) PM2 설치 확인 및 설치
-  #           if ! command -v pm2 &> /dev/null; then
-  #             echo "PM2가 설치되어 있지 않습니다. 설치 중..."
-  #             sudo npm install -g pm2
-  #           fi
+            echo "=== 배포 시작 (Flat 구조) ==="
 
-  #           # 2) 배포 디렉토리 준비 및 압축 해제
-  #           cd /home/ec2-user
-  #           rm -rf nextjs
-  #           mkdir -p nextjs
-  #           tar -xzf nextjs.tgz -C nextjs/
+            mkdir -p "$RELEASE_PATH"
+            tar -xzf "$NEXTJS_ROOT/$ARTIFACT_NAME" -C "$RELEASE_PATH"
 
-  #           # 3) 의존성 설치
-  #           cd nextjs
-  #           export NODE_ENV=production
-  #           export PORT=3000
-  #           npm ci --production
+            cd "$RELEASE_PATH"
+            npm ci --production
 
-  #           # 4) PM2로 프로세스 시작. &&는 전자가 성공해야 후자를 실행합니다. ||는 전자가 실패해야 후자를 실행합니다.
-  #           echo "서비스 시작 (포트 3000)..."
-  #           pm2 describe nextjs > /dev/null 2>&1 \
-  #             && pm2 reload nextjs --update-env \
-  #             || pm2 start npm --name nextjs -- start
+            # 기존 nextjs가 디렉토리일 경우를 대비해 삭제 후 링크 생성
+            rm -rf "$CURRENT_LINK"
+            ln -sfn "$RELEASE_PATH" "$CURRENT_LINK"
 
-  #           # PM2 프로세스 목록 저장. 이후 pm2가 재실행 되면 dump 파일을 참고하여 이전 버전의 프로세스를 재실행합니다.
-  #           pm2 save
+            pm2 describe nextjs > /dev/null 2>&1 \
+              && pm2 reload nextjs --update-env \
+              || pm2 start npm --name nextjs --cwd "$CURRENT_LINK" -- start
+            
+            pm2 save
 
-  #           echo "서비스 시작 대기 (10초)..."
-  #           sleep 10
+            echo "🧹 오래된 버전 정리 (최신 5개 유지)..."
+            cd "$NEXTJS_ROOT"
+            ls -1dt 20*/ | grep -v "current" | tail -n +6 | xargs -r rm -rf
+            rm -f "$NEXTJS_ROOT/$ARTIFACT_NAME"
+            
+            echo "✅ 배포 완료"
+          SSH
 
-  #           echo "✅ 배포 완료"
-  #         SSH
+      # 1) 기동/프로세스 레벨: PM2 프로세스 확인
+      - name: "Verify: 1) Process level (PM2)"
+        id: verify_process
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+            set -euo pipefail
 
-  #     # 1) 기동/프로세스 레벨: PM2 프로세스 확인
-  #     - name: "Verify: 1) Process level (PM2)"
-  #       id: verify_process
-  #       shell: bash
-  #       run: |
-  #         ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
-  #           set -euo pipefail
+            # PM2 프로세스 상태 확인
+            if ! pm2 describe nextjs > /dev/null 2>&1; then
+              echo "❌ PM2 프로세스 'nextjs'가 존재하지 않음"
+              exit 1
+            fi
 
-  #           # PM2 프로세스 상태 확인
-  #           if ! pm2 describe nextjs > /dev/null 2>&1; then
-  #             echo "❌ PM2 프로세스 'nextjs'가 존재하지 않음"
-  #             exit 1
-  #           fi
+            # 프로세스가 online 상태인지 확인
+            STATUS=$(pm2 jlist | jq -r '.[] | select(.name=="nextjs") | .pm2_env.status')
+            if [ "$STATUS" != "online" ]; then
+              echo "❌ 프로세스 상태가 online이 아님: $STATUS"
+              exit 1
+            fi
 
-  #           # 프로세스가 online 상태인지 확인
-  #           STATUS=$(pm2 jlist | jq -r '.[] | select(.name=="nextjs") | .pm2_env.status')
-  #           if [ "$STATUS" != "online" ]; then
-  #             echo "❌ 프로세스 상태가 online이 아님: $STATUS"
-  #             exit 1
-  #           fi
+            echo "✅ 프로세스 검증 통과: nextjs (status: $STATUS)"
+          SSH
 
-  #           echo "✅ 프로세스 검증 통과: nextjs (status: $STATUS)"
-  #         SSH
+      # 2) 헬스체크
+      - name: "Verify: 2) Healthcheck"
+        id: verify_health
+        shell: bash
+        run: |
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+            set -euo pipefail
 
-  #     # 2) 헬스체크
-  #     - name: "Verify: 2) Healthcheck"
-  #       id: verify_health
-  #       shell: bash
-  #       run: |
-  #         ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
-  #           set -euo pipefail
+            echo "포트 3000 헬스체크..."
 
-  #           echo "포트 3000 헬스체크..."
+            # 헬스체크 (최대 30초)
+            for i in {1..10}; do
+              if curl -fsS "http://localhost:3000/" > /dev/null 2>&1; then
+                echo "✅ 헬스체크 통과"
+                exit 0
+              fi
+              echo "시도 $i/10..."
+              sleep 3
+            done
 
-  #           # 헬스체크 (최대 30초)
-  #           for i in {1..10}; do
-  #             if curl -fsS "http://localhost:3000/" > /dev/null 2>&1; then
-  #               echo "✅ 헬스체크 통과"
-  #               exit 0
-  #             fi
-  #             echo "시도 $i/10..."
-  #             sleep 3
-  #           done
-
-  #           echo "❌ 헬스체크 실패 (30초 초과)"
-  #           exit 1
-  #         SSH
+            echo "❌ 헬스체크 실패 (30초 초과)"
+            exit 1
+          SSH
