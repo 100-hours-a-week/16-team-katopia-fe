@@ -17,7 +17,7 @@ export default function PostFormHeader({
 }: Props) {
   return (
     <header className="fixed top-0 left-0 right-0 z-10 flex h-14 items-center justify-center  bg-white">
-      <div className="flex w-full max-w-[380px] items-center justify-between px-4">
+      <div className="flex w-full max-w-95 items-center justify-between px-4">
         {/* 뒤로가기 */}
         <button type="button" onClick={onBack} aria-label="뒤로가기">
           <Image src="/icons/back.svg" alt="" width={24} height={24} />

@@ -92,12 +92,12 @@ export default function PostImageUploader() {
             }}
           />
 
-          <div className="mt-[10px] overflow-x-auto">
+          <div className="mt-2.5 overflow-x-auto">
             <div className="flex gap-3 snap-x snap-mandatory">
               {previews.map((item, index) => (
                 <div
                   key={item.id}
-                  className="relative h-[60vh] w-[355px] flex-shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden"
+                  className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -143,7 +143,7 @@ export default function PostImageUploader() {
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
-                  className="h-[60vh] w-[355px] flex-shrink-0 snap-start rounded-xl bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
+                  className="h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
                   aria-label="사진 추가"
                 >
                   <Image

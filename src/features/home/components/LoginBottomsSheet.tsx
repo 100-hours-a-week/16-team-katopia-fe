@@ -17,7 +17,7 @@ export default function LoginBottomSheet() {
         className="
           rounded-t-2xl
           px-6 pb-10
-          w-full max-w-[390px] mx-auto
+          w-full max-w-97.5 mx-auto
           min-h-[40vh]
           flex flex-col justify-center
           bg-[#fefefe]
