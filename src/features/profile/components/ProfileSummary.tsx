@@ -24,12 +24,12 @@ export default function ProfileSummary({
   return (
     <section className="flex flex-col items-center py-16">
       {/* Avatar */}
-      <div className="mb-4 h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+      <div className="mb-4 h-24 w-24 rounded-full bg-gray-200 relative overflow-hidden">
         <Image
           src={profileImageUrl ?? "/icons/user.svg"}
           alt="profile"
-          width={45}
-          height={45}
+          fill
+          sizes="96px"
           className="object-cover"
         />
       </div>
