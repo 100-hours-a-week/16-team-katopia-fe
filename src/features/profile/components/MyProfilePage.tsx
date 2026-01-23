@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import ProfileHeader from "./ProfileHeader";
 import ProfileSummary from "./ProfileSummary";
 import ProfilePostGrid from "./ProfilePostGrid";
@@ -8,6 +9,10 @@ import ProfileWithdrawModal from "./ProfileWithdrawModal";
 import ProfileLogoutModal from "./ProfileLogoutModal";
 import { API_BASE_URL } from "@/src/config/api";
 import { getAccessToken } from "@/src/lib/auth";
+import {
+  getCachedProfileImage,
+  setCachedProfileImage,
+} from "@/src/features/profile/utils/profileImageCache";
 
 type Profile = {
   nickname: string;
@@ -19,6 +24,7 @@ type Profile = {
 };
 
 export default function MyProfilePage() {
+  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -41,9 +47,10 @@ export default function MyProfilePage() {
             Authorization: `Bearer ${token}`,
           },
           credentials: "include",
+          cache: "no-store",
         });
 
-        console.log(res);
+        // console.log(res);
 
         if (!res.ok) {
           console.log((await res.json()).code);
@@ -51,7 +58,24 @@ export default function MyProfilePage() {
         }
 
         const json = await res.json();
-        setProfile(json.data.profile);
+        const rawProfile = json.data.profile;
+        const normalizedGender =
+          rawProfile.gender === "M" || rawProfile.gender === "MALE"
+            ? "male"
+            : rawProfile.gender === "F" || rawProfile.gender === "FEMALE"
+              ? "female"
+              : null;
+
+        if (rawProfile.profileImageUrl) {
+          setCachedProfileImage(rawProfile.profileImageUrl);
+        }
+        const cachedImage = getCachedProfileImage();
+
+        setProfile({
+          ...rawProfile,
+          gender: normalizedGender,
+          profileImageUrl: rawProfile.profileImageUrl ?? cachedImage,
+        });
       } catch (err) {
         console.error(err);
       } finally {
@@ -60,7 +84,7 @@ export default function MyProfilePage() {
     };
 
     fetchMe();
-  }, []);
+  }, [searchParams.toString()]);
 
   const handleToggleMenu = () => setMenuOpen((prev) => !prev);
   const handleCloseMenu = () => setMenuOpen(false);
