@@ -156,7 +156,7 @@ jobs:
             NEXTJS_ROOT="/home/ec2-user/nextjs"
             CURRENT_LINK="$NEXTJS_ROOT/current"
             
-            # [수정] needs를 통해 이전 Job의 output을 가져옵니다.
+            # 이전 Job의 output을 가져옵니다.
             ARTIFACT_NAME="${{ needs.ci-and-delivery.outputs.artifact_name }}"
             RELEASE_NAME="${ARTIFACT_NAME%.tgz}"
             RELEASE_PATH="$NEXTJS_ROOT/$RELEASE_NAME"
