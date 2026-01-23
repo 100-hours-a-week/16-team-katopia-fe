@@ -112,8 +112,6 @@ export default function ProfileEditPage() {
   const queryClient = useQueryClient();
   const { ready } = useAuth(); // 🔥 핵심
 
-  console.log("ProfileEdit render, ready =", ready);
-
   /* ---------- State ---------- */
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -174,7 +172,7 @@ export default function ProfileEditPage() {
       const token = getAccessToken();
       if (!token) return;
 
-      console.log("Fetched token:", token);
+      // console.log("Fetched token:", token);
 
       const res = await fetch(`${API_BASE_URL}/api/members/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -186,7 +184,7 @@ export default function ProfileEditPage() {
       const json = await res.json();
       const profile = json.data.profile;
 
-      console.log("Fetched profile:", profile);
+      // console.log("Fetched profile:", profile);
 
       reset({
         nickname: profile.nickname ?? "",
