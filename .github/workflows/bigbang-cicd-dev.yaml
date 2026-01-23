@@ -108,7 +108,8 @@ jobs:
               --exclude=.github \
               --exclude=node_modules \
               --exclude=.next/cache \
-              -czf "${TARGET_NAME}" .
+              --exclude="${TARGET_NAME}" \
+              -czf "${TARGET_NAME}" . || [ $? -eq 1 ]
 
           echo "artifact_name=${TARGET_NAME}" >> "$GITHUB_OUTPUT"
           echo "✅ Prepared: ${TARGET_NAME}"
