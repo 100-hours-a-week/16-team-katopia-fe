@@ -1,3 +1,5 @@
+"use client";
+
 import { memo } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 import { Input } from "@/components/ui/input";
