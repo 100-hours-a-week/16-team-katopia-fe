@@ -1,14 +1,10 @@
 import { useCallback, useRef, useState } from "react";
-import type { UseFormTrigger } from "react-hook-form";
+import type { UseFormTrigger, FieldValues, Path } from "react-hook-form";
 import { API_BASE_URL } from "@/src/config/api";
 
-/** SignupStep1 폼 값 타입 */
-type SignupStep1Values = {
-  nickname: string;
-};
-
-export function useNicknameHandlers(
-  trigger: UseFormTrigger<SignupStep1Values>,
+export function useNicknameHandlers<T extends FieldValues>(
+  trigger: UseFormTrigger<T>,
+  nicknamePath: Path<T>, // 🔥 핵심
 ) {
   const lastVerifiedNicknameRef = useRef<string>("");
 
@@ -17,7 +13,6 @@ export function useNicknameHandlers(
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [duplicateSuccess, setDuplicateSuccess] = useState<string | null>(null);
 
-  /** 닉네임 입력 시 */
   const handleNicknameChangeCapture = useCallback(
     (e: React.FormEvent<HTMLInputElement>) => {
       const value = (e.target as HTMLInputElement).value;
@@ -33,14 +28,13 @@ export function useNicknameHandlers(
     [],
   );
 
-  /** 닉네임 중복 검사 */
   const handleDuplicateCheck = useCallback(
     async (nickname: string) => {
       setDuplicateError(null);
       setDuplicateSuccess(null);
 
-      /** 1️⃣ Zod validation */
-      const isValid = await trigger("nickname");
+      // ✅ 타입 완벽
+      const isValid = await trigger(nicknamePath);
       if (!isValid) {
         setIsNicknameVerified(false);
         setDuplicateError("닉네임 형식을 확인해주세요.");
@@ -48,10 +42,6 @@ export function useNicknameHandlers(
       }
 
       lastVerifiedNicknameRef.current = nickname;
-
-      console.log(encodeURIComponent(nickname));
-
-      console.log(API_BASE_URL);
 
       try {
         const res = await fetch(
@@ -64,17 +54,13 @@ export function useNicknameHandlers(
           },
         );
 
-        if (!res.ok) {
-          throw new Error(`닉네임 확인 실패 (${res.status})`);
-        }
+        if (!res.ok) throw new Error();
 
         const payload = (await res.json()) as {
           data?: { isDuplicated?: boolean };
         };
 
-        const isDuplicated = payload.data?.isDuplicated ?? true;
-
-        if (isDuplicated) {
+        if (payload.data?.isDuplicated) {
           setIsNicknameVerified(false);
           setDuplicateError("이미 사용 중인 닉네임입니다.");
           return;
@@ -87,7 +73,7 @@ export function useNicknameHandlers(
         setDuplicateError("닉네임 중복 검사에 실패했습니다.");
       }
     },
-    [trigger],
+    [trigger, nicknamePath],
   );
 
   return {

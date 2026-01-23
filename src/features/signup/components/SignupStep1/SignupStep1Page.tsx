@@ -100,7 +100,7 @@ export default function SignupStep1() {
     duplicateSuccess,
     handleNicknameChangeCapture,
     handleDuplicateCheck,
-  } = useNicknameHandlers(trigger);
+  } = useNicknameHandlers(trigger, "nickname");
 
   /* -------------------------
      Submit (회원가입 → 즉시 로그인)
@@ -156,7 +156,7 @@ export default function SignupStep1() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full max-w-[390px] min-h-[844px] mx-auto px-6 py-8"
+      className="w-full max-w-97.5 min-h-211 mx-auto px-6 py-8"
     >
       <Header />
 
