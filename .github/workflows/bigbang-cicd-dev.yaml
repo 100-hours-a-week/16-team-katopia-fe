@@ -104,7 +104,7 @@ jobs:
 
           # 파일명 정의 (확장자 .tgz)
           TARGET_NAME="${DATE}_${SLUG}.tgz"
-          
+
           # 압축 실행 (node_modules 제외)
           tar --exclude=.git \
               --exclude=.github \
@@ -122,12 +122,12 @@ jobs:
           mkdir -p ~/.ssh
           # 서버의 호스트 키를 미리 등록
           ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
-          
+
           printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
           ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }} "mkdir -p /home/ec2-user/nextjs"
-          
+
           scp -i ~/.ssh/id_rsa "${{ steps.prep_artifact.outputs.artifact_name }}" \
           ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}:/home/ec2-user/nextjs/
 
@@ -179,9 +179,9 @@ jobs:
             
             pm2 save
 
-            echo "🧹 오래된 버전 정리 (최신 5개 유지)..."
+            echo "🧹 오래된 버전 정리 (최신 2개 유지)..."
             cd "$NEXTJS_ROOT"
-            ls -1dt 20*/ | grep -v "current" | tail -n +6 | xargs -r rm -rf
+            ls -1dt 20*/ | grep -v "current" | tail -n +3 | xargs -r rm -rf
             rm -f "$NEXTJS_ROOT/$ARTIFACT_NAME"
             
             echo "✅ 배포 완료"
