@@ -4,7 +4,7 @@ on:
   push:
     branches: ["dev"]
 
-# github.ref는 refs/heads/dev이므로 다른 브랜치와 관련 없습니다.
+# github.ref는 refs/heads/dev입니다. 새로운 푸시가 있을 때마다 기존 진행 중인 워크플로우를 취소합니다.
 concurrency:
   group: cicd-dev-nextjs-${{ github.ref }}
   cancel-in-progress: true
