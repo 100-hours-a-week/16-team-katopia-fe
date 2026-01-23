@@ -8,8 +8,23 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/input";
+import { useQueryClient } from "@tanstack/react-query";
 
+import { updateProfile } from "@/src/features/profile/api/updateProfile";
+import { API_BASE_URL } from "@/src/config/api";
+import { getAccessToken } from "@/src/lib/auth";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
+import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep1/hooks/useNicknameHandlers";
 import NicknameInput from "./NickNameInput";
+import {
+  getCachedProfileImage,
+  isRemoteUrl,
+  setCachedProfileImage,
+} from "@/src/features/profile/utils/profileImageCache";
+
+/* =========================
+   Constants
+========================= */
 
 const STYLE_OPTIONS = [
   "미니멀",
@@ -24,13 +39,35 @@ const STYLE_OPTIONS = [
   "Y2K",
 ];
 
+const STYLE_TO_ENUM: Record<string, string> = {
+  미니멀: "MINIMAL",
+  페미닌: "FEMININE",
+  시크모던: "CHIC_MODERN",
+  러블리: "LOVELY",
+  빈티지: "VINTAGE",
+  캐주얼: "CASUAL",
+  스트릿: "STREET",
+  클래식: "CLASSIC",
+  스포티: "SPORTY",
+  Y2K: "Y2K",
+};
+
+const ENUM_TO_STYLE: Record<string, string> = Object.fromEntries(
+  Object.entries(STYLE_TO_ENUM).map(([k, v]) => [v, k]),
+);
+
+/* =========================
+   Schema
+========================= */
+
 const schema = z.object({
   nickname: z
     .string()
     .trim()
     .optional()
     .superRefine((value, ctx) => {
-      if (!value) return;
+      // ✅ 수정 안 한 경우 → 검증 패스
+      if (!value || value.length === 0) return;
 
       if (value.length < 2) {
         ctx.addIssue({
@@ -46,41 +83,178 @@ const schema = z.object({
         });
       }
 
+      if (/^[ㄱ-ㅎㅏ-ㅣ]+$/.test(value)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "자음/모음만으로는 닉네임을 만들 수 없습니다.",
+        });
+      }
+
       if (!/^[a-zA-Z0-9._가-힣]+$/.test(value)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "사용할 수 없는 문자가 포함되어 있습니다.",
+          message: "특수문자는 ( . _ ) 만 사용할 수 있습니다.",
         });
       }
     }),
+
   gender: z.enum(["MALE", "FEMALE"]),
   height: z.string().optional(),
   weight: z.string().optional(),
+  enableRealtimeNotification: z.boolean().optional(),
   styles: z.array(z.string()).max(2),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 export default function ProfileEditPage() {
-  const [imageError, setImageError] = useState<string | null>(null);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { ready } = useAuth(); // 🔥 핵심
+
+  console.log("ProfileEdit render, ready =", ready);
+
+  /* ---------- State ---------- */
   const [preview, setPreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
-  // ✅ 닉네임 중복 관련 상태
-  const [duplicateError, setDuplicateError] = useState<string | null>(null);
-  const [duplicateSuccess, setDuplicateSuccess] = useState<string | null>(null);
-
-  // 선호 스타일 에러
   const [styleError, setStyleError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const router = useRouter();
+  const [initialNickname, setInitialNickname] = useState<string | null>(null);
 
-  const sanitizeNumericInput = (value: string) => {
-    const digits = value.replace(/\D/g, "").slice(0, 3);
-    if (!digits) return "";
-    return String(parseInt(digits, 10));
+  const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  /* ---------- Form ---------- */
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    trigger,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    mode: "onChange",
+    reValidateMode: "onChange",
+    defaultValues: {
+      nickname: "",
+      gender: "MALE",
+      height: "",
+      weight: "",
+      enableRealtimeNotification: true,
+      styles: [],
+    },
+  });
+
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const nickname = watch("nickname");
+  const styles = watch("styles");
+  const selectedGender = watch("gender");
+
+  /* ---------- Nickname Duplicate Logic ---------- */
+  const {
+    isNicknameVerified,
+    duplicateError,
+    duplicateSuccess,
+    handleNicknameChangeCapture,
+    handleDuplicateCheck,
+  } = useNicknameHandlers<FormValues>(trigger, "nickname");
+
+  /* =========================
+     🔥 기존 프로필 불러오기
+     (토큰 준비된 뒤 실행)
+  ========================= */
+
+  useEffect(() => {
+    if (!ready) return;
+
+    const fetchProfile = async () => {
+      const token = getAccessToken();
+      if (!token) return;
+
+      console.log("Fetched token:", token);
+
+      const res = await fetch(`${API_BASE_URL}/api/members/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+
+      if (!res.ok) return;
+
+      const json = await res.json();
+      const profile = json.data.profile;
+
+      console.log("Fetched profile:", profile);
+
+      reset({
+        nickname: profile.nickname ?? "",
+        gender: profile.gender === "F" ? "FEMALE" : "MALE",
+        height: profile.height ? String(profile.height) : "",
+        weight: profile.weight ? String(profile.weight) : "",
+        enableRealtimeNotification: profile.enableRealtimeNotification ?? true,
+        styles: profile.style?.map((s: string) => ENUM_TO_STYLE[s] ?? s) ?? [],
+      });
+
+      setInitialNickname(profile.nickname ?? null);
+      if (profile.profileImageUrl) {
+        setCachedProfileImage(profile.profileImageUrl);
+      }
+      const cachedImage = getCachedProfileImage();
+      setPreview(profile.profileImageUrl ?? cachedImage);
+    };
+
+    fetchProfile();
+  }, [ready, reset]);
+
+  /* =========================
+     Submit
+  ========================= */
+
+  const onSubmit = async (data: FormValues) => {
+    const trimmedNickname = data.nickname?.trim();
+    const isNicknameChanged =
+      trimmedNickname && trimmedNickname !== initialNickname;
+
+    if (isNicknameChanged && !isNicknameVerified) {
+      setToastMessage("닉네임 중복 확인이 필요합니다.");
+      return;
+    }
+
+    try {
+      const profileImageUrl =
+        preview && isRemoteUrl(preview) ? preview : undefined;
+
+      await updateProfile({
+        nickname: trimmedNickname || undefined,
+        profileImageUrl, // 🔥 이미 업로드된 URL만 전송
+        gender: data.gender === "MALE" ? "M" : "F",
+        height: data.height ? Number(data.height) : null,
+        weight: data.weight ? Number(data.weight) : null,
+        enableRealtimeNotification: data.enableRealtimeNotification ?? true,
+        style: data.styles.map((s) => STYLE_TO_ENUM[s]),
+      });
+
+      // 🔥 캐시 무효화 → 마이프로필 즉시 반영
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+
+      setToastMessage("수정이 완료되었습니다.");
+      redirectTimerRef.current = setTimeout(
+        () => router.push("/profile"),
+        1500,
+      );
+    } catch (e) {
+      setToastMessage(
+        e instanceof Error ? e.message : "프로필 수정에 실패했습니다.",
+      );
+    }
   };
+
+  /* ---------- Utils ---------- */
+
+  const sanitizeNumericInput = (value: string) =>
+    value.replace(/\D/g, "").slice(0, 3);
 
   const handleNumericChange = (
     e: ChangeEvent<HTMLInputElement>,
@@ -88,119 +262,7 @@ export default function ProfileEditPage() {
   ) => {
     const sanitized = sanitizeNumericInput(e.target.value);
     e.target.value = sanitized;
-    setValue(field, sanitized, { shouldDirty: true });
-  };
-
-  // 스타일 에러 자동 숨김
-  useEffect(() => {
-    if (!styleError) return;
-
-    const timer = setTimeout(() => setStyleError(null), 3000);
-    return () => clearTimeout(timer);
-  }, [styleError]);
-
-  // 토스트 타이머 클린업
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-    };
-  }, []);
-
-  const showToast = (message: string) => {
-    setToastMessage(message);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => setToastMessage(null), 2500);
-  };
-
-  const onToggle = (style: string) => {
-    // 이미 선택된 경우 → 제거
-    if (styles.includes(style)) {
-      const next = styles.filter((s) => s !== style);
-      setValue("styles", next);
-      setStyleError(null);
-      return;
-    }
-
-    // 최대 2개 초과 방지
-    if (styles.length >= 2) {
-      setStyleError("선호 스타일은 최대 2개까지 선택할 수 있습니다.");
-      return;
-    }
-
-    // 정상 추가
-    setValue("styles", [...styles, style]);
-    setStyleError(null);
-  };
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    trigger,
-    formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      styles: [],
-      gender: "MALE",
-    },
-  });
-
-  const styles = watch("styles");
-  const nickname = watch("nickname");
-  const selectedGender = watch("gender");
-
-  /* ---------------- 닉네임 로직 ---------------- */
-
-  // 닉네임 변경 시 중복 메시지 초기화
-  const handleNicknameChangeCapture = () => {
-    setDuplicateError(null);
-    setDuplicateSuccess(null);
-  };
-
-  // 중복 확인
-  const handleDuplicateCheck = async () => {
-    if (!nickname?.trim()) {
-      setDuplicateError("닉네임 입력 후 확인해주세요.");
-      setDuplicateSuccess(null);
-      return;
-    }
-
-    const isValid = await trigger("nickname");
-    if (!isValid) {
-      setDuplicateSuccess(null);
-      return;
-    }
-
-    // TODO: 실제 API로 교체
-    const isDuplicated = nickname === "admin";
-
-    if (isDuplicated) {
-      setDuplicateError("이미 사용중인 닉네임입니다.");
-      setDuplicateSuccess(null);
-    } else {
-      setDuplicateSuccess("사용 가능한 닉네임입니다.");
-      setDuplicateError(null);
-    }
-  };
-
-  /* ------------------------------------------------ */
-
-  const onSubmit = (data: FormValues) => {
-    const trimmedNickname = nickname?.trim();
-
-    if (trimmedNickname && !duplicateSuccess) {
-      setDuplicateError("닉네임 중복 확인이 필요합니다.");
-      return;
-    }
-
-    console.log(data);
-    // API 연결
-    showToast("수정이 완료되었습니다.");
-    if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-    redirectTimerRef.current = setTimeout(() => router.push("/profile"), 2500);
+    setValue(field, sanitized);
   };
 
   const handleImageChange = (file: File) => {
@@ -208,8 +270,81 @@ export default function ProfileEditPage() {
       setImageError("사진 크기가 너무 큽니다. (최대 5MB)");
       return;
     }
+
+    const resizeToDataUrl = (target: File) =>
+      new Promise<string>((resolve, reject) => {
+        const img = new window.Image();
+        const objectUrl = URL.createObjectURL(target);
+
+        img.onload = () => {
+          const side = 256;
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error("이미지 처리 실패"));
+            return;
+          }
+
+          const min = Math.min(img.width, img.height);
+          const sx = (img.width - min) / 2;
+          const sy = (img.height - min) / 2;
+
+          canvas.width = side;
+          canvas.height = side;
+          ctx.drawImage(img, sx, sy, min, min, 0, 0, side, side);
+          URL.revokeObjectURL(objectUrl);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                reject(new Error("이미지 변환 실패"));
+                return;
+              }
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = () => reject(new Error("이미지 읽기 실패"));
+              reader.readAsDataURL(blob);
+            },
+            "image/jpeg",
+            0.85,
+          );
+        };
+
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("이미지 로드 실패"));
+        };
+
+        img.src = objectUrl;
+      });
+
+    setImageFile(file); // 🔥 핵심
     setImageError(null);
-    setPreview(URL.createObjectURL(file));
+    resizeToDataUrl(file)
+      .then((dataUrl) => {
+        setPreview(dataUrl);
+        setCachedProfileImage(dataUrl);
+      })
+      .catch((err) => {
+        setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
+      });
+  };
+
+  const onToggle = (style: string) => {
+    if (styles.includes(style)) {
+      setValue(
+        "styles",
+        styles.filter((s) => s !== style),
+      );
+      return;
+    }
+    if (styles.length >= 2) {
+      setStyleError("선호 스타일은 최대 2개 선택 가능합니다.");
+      return;
+    }
+    setValue("styles", [...styles, style]);
+    setStyleError(null);
   };
 
   return (
@@ -270,7 +405,10 @@ export default function ProfileEditPage() {
             error={errors.nickname?.message}
             duplicateError={duplicateError}
             duplicateSuccess={duplicateSuccess}
-            onDuplicateCheck={handleDuplicateCheck}
+            onDuplicateCheck={() => {
+              if (!nickname) return;
+              handleDuplicateCheck(nickname); // 🔥 반드시 nickname 전달
+            }}
           />
         </section>
 
