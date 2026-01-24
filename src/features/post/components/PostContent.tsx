@@ -1,16 +1,27 @@
+"use client";
+
 import { useState } from "react";
 import Image from "next/image";
-import { MOCK_FEED } from "../data/mockFeed";
 
-interface Props {
+type PostContentProps = {
+  content: string;
+  likeCount: number;
   commentCount: number;
-}
+  isLiked?: boolean; // (추후 API 대비)
+};
 
-export default function PostContent({ commentCount }: Props) {
-  const [liked, setLiked] = useState(false);
-  const [likes, setLikes] = useState(MOCK_FEED.likes);
+export default function PostContent({
+  content,
+  likeCount,
+  commentCount,
+  isLiked = false,
+}: PostContentProps) {
+  const [liked, setLiked] = useState(isLiked);
+  const [likes, setLikes] = useState(likeCount);
 
   const handleToggleLike = () => {
+    // 🔥 지금은 UI 토글만
+    // 다음 단계에서 API 연동
     setLiked((prev) => {
       const next = !prev;
       setLikes((count) => count + (next ? 1 : -1));
@@ -20,6 +31,7 @@ export default function PostContent({ commentCount }: Props) {
 
   return (
     <div className="mt-4 space-y-5">
+      {/* 좋아요 / 댓글 */}
       <div className="flex items-center gap-4 text-sm">
         <button
           type="button"
@@ -36,12 +48,15 @@ export default function PostContent({ commentCount }: Props) {
           />
           <span className="text-[12px]">{likes}</span>
         </button>
+
         <div className="flex items-center gap-1.5">
           <Image src="/icons/comment.svg" alt="댓글" width={25} height={25} />
           <span className="text-[12px]">{commentCount}</span>
         </div>
       </div>
-      <p className="text-[13px]">{MOCK_FEED.content}</p>
+
+      {/* 본문 */}
+      <p className="text-[13px] whitespace-pre-line">{content}</p>
     </div>
   );
 }
