@@ -7,12 +7,12 @@ type Props = {
 
 export default function PostImagePreview({ images }: Props) {
   return (
-    <div className="mt-4 overflow-x-auto">
-      <div className="flex gap-3">
+    <div className="mt-4">
+      <div className="flex flex-col gap-3">
         {images.map((img) => (
           <div
             key={img.id}
-            className="relative h-[60vh] aspect-[3/4] flex-shrink-0 rounded-xl overflow-hidden bg-gray-200"
+            className="relative h-[60vh] w-full overflow-hidden rounded-xl bg-gray-200"
           >
             <Image src={img.url} alt="" fill className="object-cover" />
           </div>
