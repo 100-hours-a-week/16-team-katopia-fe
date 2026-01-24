@@ -9,18 +9,20 @@ import {
   CarouselPrevious,
   useCarousel,
 } from "@/components/ui/carousel";
-import { MOCK_FEED } from "../data/mockFeed";
 
-// 여기 이미지 움직이는데 왜 다른것도 다 렌더링이 계속 돼? 이거 고쳐야돼.
+type PostImageCarouselProps = {
+  images: string[];
+};
 
-export default function PostImageCarousel() {
-  const total = MOCK_FEED.images.length;
+export default function PostImageCarousel({ images }: PostImageCarouselProps) {
+  const total = images.length;
 
   const Indicators = () => {
     const { index, setIndex } = useCarousel();
+
     return (
       <div className="mt-2 flex justify-center gap-2">
-        {MOCK_FEED.images.map((_, i) => (
+        {images.map((_, i) => (
           <button
             key={i}
             aria-label={`Go to slide ${i + 1}`}
@@ -34,17 +36,21 @@ export default function PostImageCarousel() {
     );
   };
 
+  if (total === 0) return null;
+
   return (
     <Carousel className="mt-6">
       <CarouselContent>
-        {MOCK_FEED.images.map((src, i) => (
+        {images.map((src, i) => (
           <CarouselItem key={i}>
             <div className="relative aspect-[3/4] bg-muted">
               <Image
                 src={src}
-                alt="게시물 이미지"
+                alt={`게시물 이미지 ${i + 1}`}
                 fill
                 className="object-cover"
+                sizes="(max-width: 768px) 100vw, 768px"
+                priority={i === 0}
               />
             </div>
           </CarouselItem>
@@ -60,7 +66,7 @@ export default function PostImageCarousel() {
       )}
 
       {/* dots */}
-      <Indicators />
+      {total > 1 && <Indicators />}
     </Carousel>
   );
 }
