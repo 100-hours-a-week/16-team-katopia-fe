@@ -12,6 +12,7 @@ interface Props {
 
 export default function CommentInput({ onSubmit }: Props) {
   const [value, setValue] = useState("");
+  const [isComposing, setIsComposing] = useState(false);
 
   const handleSubmit = () => {
     const trimmed = value.trim();
@@ -21,7 +22,7 @@ export default function CommentInput({ onSubmit }: Props) {
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
+    if (event.key === "Enter" && !isComposing) {
       event.preventDefault();
       handleSubmit();
     }
@@ -35,6 +36,8 @@ export default function CommentInput({ onSubmit }: Props) {
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={handleKeyDown}
+        onCompositionStart={() => setIsComposing(true)}
+        onCompositionEnd={() => setIsComposing(false)}
       />
       <button type="button" onClick={handleSubmit} aria-label="댓글 전송">
         <Image src="/icons/send.svg" alt="전송" width={20} height={20} />
