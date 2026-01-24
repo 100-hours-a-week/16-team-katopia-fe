@@ -2,18 +2,18 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { postCreateSchema, PostCreateValues } from "./schemas";
 import { usePostUnsavedGuard } from "./hooks/usePostUnsavedGuard";
+import { createPost } from "../api/createPost";
 
 import PostFormLayout from "../PostFormLayout";
 import PostFormHeader from "../components/PostFormHeader";
 
 import PostImageUploader from "./components/PostImageUploader";
 import PostContentInput from "./components/PostContentInput";
-import PostSubmitButton from "./components/PostSubmitButton";
 import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
 
 export default function PostCreatePage() {
@@ -31,19 +31,53 @@ export default function PostCreatePage() {
 
   const {
     handleSubmit,
+    watch,
     formState: { isDirty, isSubmitting },
   } = methods;
+
+  const [images, content] = watch(["images", "content"]);
+  const canSubmit = (images?.length ?? 0) > 0 && !!content?.trim();
 
   usePostUnsavedGuard(isDirty);
 
   const onSubmit = async (data: PostCreateValues) => {
     try {
-      // TODO: POST /api/posts
-      const postId = "123"; // 응답값
-      router.push(`/post/${postId}`);
+      console.log("post create submit", data);
+      const res = await createPost(data);
+
+      const postId = res.data.id;
+      alert("게시글이 성공적으로 등록되었어요.");
+      router.replace("/home");
     } catch (e) {
-      // TODO: 토스트 처리
+      /**
+       * 서버 에러 코드별 분기
+      //  */
+      // const code = e?.code;
+      // switch (code) {
+      //   case "POST-E-001":
+      //     toast.error("본문 내용을 입력해주세요.");
+      //     break;
+      //   case "POST-E-002":
+      //     toast.error("본문은 최대 200자까지 입력할 수 있어요.");
+      //     break;
+      //   case "POST-E-003":
+      //     toast.error("이미지는 최소 1장, 최대 3장까지 등록 가능해요.");
+      //     break;
+      //   case "POST-E-004":
+      //     toast.error("태그는 최소 1개, 최대 20개까지 가능해요.");
+      //     break;
+      //   case "AUTH-E-002":
+      //     toast.error("로그인이 필요합니다.");
+      //     router.replace("/login");
+      //     break;
+      //   default:
+      //     toast.error("게시글 등록에 실패했어요.");
+      // }
     }
+  };
+
+  const onInvalid = (errors: FieldErrors<PostCreateValues>) => {
+    console.log("post create invalid", errors);
   };
 
   return (
@@ -55,12 +89,16 @@ export default function PostCreatePage() {
             if (isDirty) setShowCancelModal(true);
             else router.back();
           }}
+          formId="post-create-form"
+          submitDisabled={!canSubmit || isSubmitting}
         />
 
-        <form onSubmit={handleSubmit(onSubmit)}>
+        <form
+          id="post-create-form"
+          onSubmit={handleSubmit(onSubmit, onInvalid)}
+        >
           <PostImageUploader />
           <PostContentInput />
-          <PostSubmitButton disabled={isSubmitting} />
         </form>
 
         <PostCancelConfirmModal
