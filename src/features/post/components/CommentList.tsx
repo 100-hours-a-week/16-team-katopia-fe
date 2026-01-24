@@ -1,18 +1,35 @@
 import { useEffect, useRef, useState } from "react";
-import { MockComment } from "../data/mockFeed";
 import CommentItem from "./CommentItem";
 
+export type Comment = {
+  id: number;
+  nickname: string;
+  content: string;
+  createdAt?: string;
+  isMine?: boolean;
+  authorId?: number | string;
+  profileImageUrl?: string | null;
+};
+
 interface Props {
-  comments: MockComment[];
+  comments: Comment[];
   onDelete: (id: number) => void;
   onUpdate: (id: number, content: string) => void;
+  currentUserId?: number | string;
+  currentUserNickname?: string;
 }
 
 const PAGE_SIZE = 10;
 
-export default function CommentList({ comments, onDelete, onUpdate }: Props) {
+export default function CommentList({
+  comments,
+  onDelete,
+  onUpdate,
+  currentUserId,
+  currentUserNickname,
+}: Props) {
   const [page, setPage] = useState(1);
-  const [items, setItems] = useState<MockComment[]>([]);
+  const [items, setItems] = useState<Comment[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -50,6 +67,8 @@ export default function CommentList({ comments, onDelete, onUpdate }: Props) {
           comment={comment}
           onDelete={onDelete}
           onUpdate={onUpdate}
+          currentUserId={currentUserId}
+          currentUserNickname={currentUserNickname}
         />
       ))}
       <div ref={sentinelRef} />
