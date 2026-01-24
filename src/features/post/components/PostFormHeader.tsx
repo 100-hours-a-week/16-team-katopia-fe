@@ -6,6 +6,7 @@ type Props = {
   title: string;
   onBack: () => void;
   onSubmit?: () => void;
+  formId?: string;
   submitDisabled?: boolean;
 };
 
@@ -13,6 +14,7 @@ export default function PostFormHeader({
   title,
   onBack,
   onSubmit,
+  formId,
   submitDisabled = false,
 }: Props) {
   return (
@@ -27,18 +29,17 @@ export default function PostFormHeader({
         <h1 className="text-[14px] font-semibold">{title}</h1>
 
         {/* 완료 버튼 */}
-        {
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitDisabled}
-            className={`text-[14px] font-semibold ${
-              submitDisabled ? "text-gray-400" : "text-black"
-            }`}
-          >
-            완료
-          </button>
-        }
+        <button
+          type={formId ? "submit" : "button"}
+          form={formId}
+          onClick={formId ? undefined : onSubmit}
+          disabled={submitDisabled}
+          className={`text-[14px] font-semibold ${
+            submitDisabled ? "text-gray-400" : "text-black"
+          }`}
+        >
+          완료
+        </button>
       </div>
     </header>
   );
