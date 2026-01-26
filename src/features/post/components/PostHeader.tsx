@@ -65,7 +65,12 @@ export default function PostHeader({
               aria-label="더보기"
               onClick={() => setMenuOpen((prev) => !prev)}
             >
-              <Image src="/icons/more.svg" alt="더보기" width={20} height={20} />
+              <Image
+                src="/icons/more.svg"
+                alt="더보기"
+                width={24}
+                height={24}
+              />
             </button>
             {menuOpen && (
               <div
@@ -122,7 +127,7 @@ export default function PostHeader({
           <p className="text-xs text-muted-foreground">
             {(author.heightCm ?? author.height)
               ? `${author.heightCm ?? author.height}cm`
-              : "-"}
+              : ""}
             {(author.weightKg ?? author.weight)
               ? ` · ${author.weightKg ?? author.weight}kg`
               : ""}
