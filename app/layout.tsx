@@ -11,7 +11,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="bg-[#f0f0f0] min-h-screen">
+      <body
+        className="min-h-screen bg-[#f0f0f0] text-[#121212]"
+        style={{ color: "#121212", backgroundColor: "#f0f0f0" }}
+      >
         {/* 🔥 전역 인증 부트스트랩 */}
         <ReactQueryProvider>
           <AuthProvider>
