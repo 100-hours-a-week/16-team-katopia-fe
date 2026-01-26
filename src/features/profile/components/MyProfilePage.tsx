@@ -8,13 +8,15 @@ import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileWithdrawModal from "./ProfileWithdrawModal";
 import ProfileLogoutModal from "./ProfileLogoutModal";
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
+import { getMemberPosts } from "../api/getMemberPosts";
 import {
   getCachedProfileImage,
   setCachedProfileImage,
 } from "@/src/features/profile/utils/profileImageCache";
 
 type Profile = {
+  userId: number;
   nickname: string;
   profileImageUrl: string | null;
   gender: "male" | "female" | null;
@@ -31,6 +33,8 @@ export default function MyProfilePage() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<{ id: number; imageUrl: string }[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   /* -------------------------
      내 정보 조회
@@ -38,14 +42,8 @@ export default function MyProfilePage() {
   useEffect(() => {
     const fetchMe = async () => {
       try {
-        const token = getAccessToken();
-        if (!token) return;
-
-        const res = await fetch(`${API_BASE_URL}/api/members/me`, {
+        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
           method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
           credentials: "include",
           cache: "no-store",
         });
@@ -59,6 +57,7 @@ export default function MyProfilePage() {
 
         const json = await res.json();
         const rawProfile = json.data.profile;
+        const userId = json.data.id; // ✅ 여기
         const normalizedGender =
           rawProfile.gender === "M" || rawProfile.gender === "MALE"
             ? "male"
@@ -71,7 +70,10 @@ export default function MyProfilePage() {
         }
         const cachedImage = getCachedProfileImage();
 
+        console.log(userId);
+
         setProfile({
+          userId, // ✅ 저장
           ...rawProfile,
           gender: normalizedGender,
           profileImageUrl: rawProfile.profileImageUrl ?? cachedImage,
@@ -85,6 +87,25 @@ export default function MyProfilePage() {
 
     fetchMe();
   }, [searchParams.toString()]);
+
+  useEffect(() => {
+    if (!profile?.userId) return;
+
+    setPostsLoading(true);
+    getMemberPosts({ memberId: profile.userId, size: 30 })
+      .then((data) => {
+        const mapped = data.posts
+          .map((post) => ({
+            id: post.id,
+            imageUrl: post.imageUrl,
+          }))
+          .filter((post) => !!post.imageUrl);
+
+        setPosts(mapped);
+      })
+      .catch(() => setPosts([]))
+      .finally(() => setPostsLoading(false));
+  }, [profile?.userId]);
 
   const handleToggleMenu = () => setMenuOpen((prev) => !prev);
   const handleCloseMenu = () => setMenuOpen(false);
@@ -107,7 +128,7 @@ export default function MyProfilePage() {
         {/* ✅ 데이터 내려줌 */}
         <ProfileSummary profile={profile} loading={loading} />
 
-        <ProfilePostGrid />
+        <ProfilePostGrid posts={posts} loading={postsLoading} />
       </div>
 
       <ProfileWithdrawModal
