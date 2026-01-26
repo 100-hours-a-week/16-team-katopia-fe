@@ -1,11 +1,11 @@
 "use client";
 
 import { memo } from "react";
-import { MockAccount } from "../data/mockAccounts";
 import SearchAccountItem from "./SearchAccountItem";
+import type { SearchUserItem } from "../api/searchUsers";
 
 interface Props {
-  accounts: MockAccount[];
+  accounts: SearchUserItem[];
   searchQuery: string;
 }
 
@@ -17,7 +17,7 @@ function SearchAccountList({ accounts, searchQuery }: Props) {
           key={account.id}
           nickname={account.nickname}
           userId={account.id}
-          profileImage={account.profileImage}
+          profileImage={account.profileImageUrl ?? undefined}
           searchQuery={searchQuery}
         />
       ))}
