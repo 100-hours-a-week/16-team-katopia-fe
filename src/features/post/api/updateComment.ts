@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 
 type UpdateCommentParams = {
   postId: string;
@@ -12,15 +12,12 @@ export async function updateComment({
   commentId,
   content,
 }: UpdateCommentParams) {
-  const token = getAccessToken();
-
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE_URL}/api/posts/${postId}/comments/${commentId}`,
     {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ content }),
     },
