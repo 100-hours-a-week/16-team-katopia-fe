@@ -47,6 +47,7 @@ export default function PostCreatePage() {
 
       const postId = res.data.id;
       console.log("게시글이 성공적으로 등록되었어요.");
+      console.log(postId);
       router.replace("/home");
     } catch (e) {
       /**

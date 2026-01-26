@@ -105,16 +105,17 @@ export default function PostEditPage() {
       await updatePost({
         postId,
         content: values.content,
-        imageUrls: images.map((img) => img.url),
       });
 
-      alert("게시글이 수정되었습니다.");
+      console.log("게시글이 수정되었습니다.");
       router.replace(`/post/${postId}`);
     } catch (e: unknown) {
       if (!isApiError(e)) {
         alert("알 수 없는 오류가 발생했습니다.");
         return;
       }
+
+      console.log(e.code);
 
       switch (e.code) {
         case "POST-E-001":
