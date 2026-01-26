@@ -4,35 +4,52 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { API_BASE_URL } from "@/src/config/api";
+import { authFetch } from "@/src/lib/auth";
+import { getMemberPosts } from "../api/getMemberPosts";
+import ProfilePostGrid from "./ProfilePostGrid";
 
 interface Props {
   userId: string;
 }
 
-type Profile = {
+/* ================= 타입 ================= */
+
+type ApiProfile = {
   nickname: string;
   profileImageUrl: string | null;
-  gender: "male" | "female" | null;
+  gender: "M" | "F" | null;
+  heightCm: number | null;
+  weightKg: number | null;
+};
+
+type UserProfile = {
+  nickname: string;
+  profileImageUrl: string | null;
+  gender: "M" | "F" | null;
   height: number | null;
   weight: number | null;
-  style: string[];
 };
+
+/* ================= 페이지 ================= */
 
 export default function UserProfilePage({ userId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const memberId = Number(userId);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<{ id: number; imageUrl: string }[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
 
   useEffect(() => {
     if (Number.isNaN(memberId)) return;
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/members/${memberId}`, {
+        const res = await authFetch(`${API_BASE_URL}/api/members/${memberId}`, {
           method: "GET",
+          cache: "no-store",
         });
 
         if (!res.ok) {
@@ -40,7 +57,21 @@ export default function UserProfilePage({ userId }: Props) {
         }
 
         const json = await res.json();
-        setProfile(json.data.profile);
+        const apiProfile: ApiProfile | undefined = json.data?.profile;
+
+        if (!apiProfile) {
+          setProfile(null);
+          return;
+        }
+
+        // ✅ API → UI용 모델 변환
+        setProfile({
+          nickname: apiProfile.nickname,
+          profileImageUrl: apiProfile.profileImageUrl,
+          gender: apiProfile.gender,
+          height: apiProfile.heightCm,
+          weight: apiProfile.weightKg,
+        });
       } catch (err) {
         console.error(err);
         setProfile(null);
@@ -52,9 +83,26 @@ export default function UserProfilePage({ userId }: Props) {
     fetchProfile();
   }, [memberId]);
 
-  /* -------------------------
-     Loading / Error
-  ------------------------- */
+  useEffect(() => {
+    if (Number.isNaN(memberId)) return;
+
+    setPostsLoading(true);
+    getMemberPosts({ memberId, size: 30 })
+      .then((data) => {
+        const mapped = data.posts
+          .map((post) => ({
+            id: post.id,
+            imageUrl: post.imageUrl,
+          }))
+          .filter((post) => !!post.imageUrl);
+        setPosts(mapped);
+      })
+      .catch(() => setPosts([]))
+      .finally(() => setPostsLoading(false));
+  }, [memberId]);
+
+  /* ================= Loading / Error ================= */
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
@@ -72,15 +120,13 @@ export default function UserProfilePage({ userId }: Props) {
   }
 
   const { nickname, profileImageUrl, gender, height, weight } = profile;
+  const hasBodyInfo = height != null || weight != null;
 
-  const hasBodyInfo = height !== null || weight !== null;
+  /* ================= Render ================= */
 
-  /* -------------------------
-     Render
-  ------------------------- */
   return (
     <div className="min-h-screen px-4 py-4">
-      {/* 헤더 */}
+      {/* 뒤로가기 */}
       <button
         onClick={() => {
           const q = searchParams.get("q");
@@ -94,44 +140,40 @@ export default function UserProfilePage({ userId }: Props) {
         <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
       </button>
 
-      {/* 프로필 정보 */}
+      {/* 프로필 */}
       <div className="mt-8 flex flex-col items-center">
-        <div className="relative h-24 w-24 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-          <Image
-            src={profileImageUrl ?? "/icons/user.svg"}
-            alt={nickname}
-            fill={!!profileImageUrl}
-            width={profileImageUrl ? undefined : 32}
-            height={profileImageUrl ? undefined : 32}
-            className={profileImageUrl ? "rounded-full object-cover" : ""}
-          />
+        <div className="relative h-24 w-24 rounded-full bg-muted overflow-hidden flex items-center justify-center">
+          {profileImageUrl ? (
+            <Image
+              src={profileImageUrl}
+              alt={nickname}
+              fill
+              className="object-cover"
+            />
+          ) : (
+            <Image src="/icons/user.svg" alt="유저" width={32} height={32} />
+          )}
         </div>
 
         <p className="mt-4 font-semibold">
           {nickname}
           {gender && (
             <span className="ml-1 text-muted-foreground">
-              ({gender === "female" ? "WOMAN" : "MAN"})
+              ({gender === "F" ? "WOMAN" : "MAN"})
             </span>
           )}
         </p>
 
         {hasBodyInfo && (
           <p className="mt-2 text-sm text-muted-foreground">
-            {height !== null && <span>{height}cm</span>}
-            {height !== null && weight !== null && <span>&nbsp;&nbsp;</span>}
-            {weight !== null && <span>{weight}kg</span>}
+            {height != null && <span>{height}cm</span>}
+            {height != null && weight != null && <span>&nbsp;&nbsp;</span>}
+            {weight != null && <span>{weight}kg</span>}
           </p>
         )}
       </div>
 
-      {/* 게시물 그리드 */}
-      {/* TODO: 게시물 API 연결 시 교체 */}
-      <div className="mt-10 grid grid-cols-3 gap-2">
-        <div className="aspect-3/4 bg-muted" />
-        <div className="aspect-3/4 bg-muted" />
-        <div className="aspect-3/4 bg-muted" />
-      </div>
+      <ProfilePostGrid posts={posts} loading={postsLoading} />
     </div>
   );
 }
