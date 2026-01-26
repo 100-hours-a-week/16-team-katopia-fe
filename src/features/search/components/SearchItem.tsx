@@ -1,22 +1,25 @@
-import Image from "next/image";
-import { memo } from "react";
+import Link from "next/link";
 
-interface Props {
+type Props = {
   src: string;
-}
+  postId: number;
+};
 
-function SearchItem({ src }: Props) {
+export default function SearchItem({ src, postId }: Props) {
+  const hasImage = !!src && src.startsWith("http");
   return (
-    <div className="relative aspect-[3/4] overflow-hidden rounded">
-      <Image
-        src={src}
-        alt="검색 이미지"
-        fill
-        className="object-cover"
-        sizes="(max-width: 390px) 33vw"
-      />
-    </div>
+    <Link
+      href={`/post/${postId}`}
+      className="relative aspect-[3/4] bg-gray-100 overflow-hidden block"
+    >
+      {hasImage ? (
+        <img
+          src={src}
+          alt="검색 이미지"
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      ) : null}
+    </Link>
   );
 }
-
-export default memo(SearchItem);
