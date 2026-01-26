@@ -73,7 +73,7 @@ export default function CommentItem({
       </div>
 
       {isEditing ? (
-        <div className="mt-1 pl-[40px]">
+        <div className="mt-0 pl-[40px]">
           <input
             className="w-full rounded border px-3 py-2 text-[12px] outline-none"
             value={draft}
@@ -81,7 +81,7 @@ export default function CommentItem({
           />
         </div>
       ) : (
-        <p className="mt-1 pl-[40px] text-[12px]">{comment.content}</p>
+        <p className="mt-0 pl-[40px] text-[12px]">{comment.content}</p>
       )}
 
       {isMine && (
