@@ -7,6 +7,7 @@ import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
 import { getMemberPosts } from "../api/getMemberPosts";
 import ProfilePostGrid from "./ProfilePostGrid";
+import ProfileSummary from "./ProfileSummary";
 
 interface Props {
   userId: string;
@@ -25,7 +26,7 @@ type ApiProfile = {
 type UserProfile = {
   nickname: string;
   profileImageUrl: string | null;
-  gender: "M" | "F" | null;
+  gender: "male" | "female" | null; // ✅ 수정
   height: number | null;
   weight: number | null;
 };
@@ -68,7 +69,12 @@ export default function UserProfilePage({ userId }: Props) {
         setProfile({
           nickname: apiProfile.nickname,
           profileImageUrl: apiProfile.profileImageUrl,
-          gender: apiProfile.gender,
+          gender:
+            apiProfile.gender === "M"
+              ? "male"
+              : apiProfile.gender === "F"
+                ? "female"
+                : null,
           height: apiProfile.heightCm,
           weight: apiProfile.weightKg,
         });
@@ -105,8 +111,8 @@ export default function UserProfilePage({ userId }: Props) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        불러오는 중…
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-t-transparent" />
       </div>
     );
   }
@@ -118,9 +124,6 @@ export default function UserProfilePage({ userId }: Props) {
       </div>
     );
   }
-
-  const { nickname, profileImageUrl, gender, height, weight } = profile;
-  const hasBodyInfo = height != null || weight != null;
 
   /* ================= Render ================= */
 
@@ -140,38 +143,8 @@ export default function UserProfilePage({ userId }: Props) {
         <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
       </button>
 
-      {/* 프로필 */}
-      <div className="mt-8 flex flex-col items-center">
-        <div className="relative h-24 w-24 rounded-full bg-muted overflow-hidden flex items-center justify-center">
-          {profileImageUrl ? (
-            <Image
-              src={profileImageUrl}
-              alt={nickname}
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <Image src="/icons/user.svg" alt="유저" width={32} height={32} />
-          )}
-        </div>
-
-        <p className="mt-4 font-semibold">
-          {nickname}
-          {gender && (
-            <span className="ml-1 text-muted-foreground">
-              ({gender === "F" ? "WOMAN" : "MAN"})
-            </span>
-          )}
-        </p>
-
-        {hasBodyInfo && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            {height != null && <span>{height}cm</span>}
-            {height != null && weight != null && <span>&nbsp;&nbsp;</span>}
-            {weight != null && <span>{weight}kg</span>}
-          </p>
-        )}
-      </div>
+      {/* 프로필 (마이프로필과 동일 컴포넌트 사용) */}
+      <ProfileSummary profile={profile} loading={false} />
 
       <ProfilePostGrid posts={posts} loading={postsLoading} />
     </div>
