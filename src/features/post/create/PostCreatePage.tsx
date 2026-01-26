@@ -46,7 +46,7 @@ export default function PostCreatePage() {
       const res = await createPost(data);
 
       const postId = res.data.id;
-      alert("게시글이 성공적으로 등록되었어요.");
+      console.log("게시글이 성공적으로 등록되었어요.");
       router.replace("/home");
     } catch (e) {
       /**
