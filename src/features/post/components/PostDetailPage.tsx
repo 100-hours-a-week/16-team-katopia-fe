@@ -10,7 +10,7 @@ import { deleteComment } from "../api/deleteComment";
 import { getComments } from "../api/getComments";
 import { updateComment } from "../api/updateComment";
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 
 import PostHeader from "./PostHeader";
 import PostDeleteConfirmModal from "./PostDeleteConfirmModal";
@@ -129,14 +129,8 @@ export default function PostDetailPage() {
   }, [postId]);
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
-
-    fetch(`${API_BASE_URL}/api/members/me`, {
+    authFetch(`${API_BASE_URL}/api/members/me`, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       credentials: "include",
       cache: "no-store",
     })
@@ -269,7 +263,13 @@ export default function PostDetailPage() {
     }
   };
 
-  if (loading) return <div>로딩중...</div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-t-transparent" />
+      </div>
+    );
+  }
   if (!post) return null;
 
   const author = post.author ?? {
