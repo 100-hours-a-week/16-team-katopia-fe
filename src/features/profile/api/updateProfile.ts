@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken, issueAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 
 export type UpdateProfilePayload = {
   nickname?: string;
@@ -14,22 +14,12 @@ export type UpdateProfilePayload = {
 export async function updateProfile(payload: UpdateProfilePayload) {
   console.log("updateProfile called", payload);
 
-  let token = getAccessToken();
-  if (!token) {
-    try {
-      token = await issueAccessToken();
-    } catch {
-      throw new Error("Access Token 없음");
-    }
-  }
-
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}/api/members`, {
+    res = await authFetch(`${API_BASE_URL}/api/members`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
       },
       credentials: "include",
       body: JSON.stringify(payload),
