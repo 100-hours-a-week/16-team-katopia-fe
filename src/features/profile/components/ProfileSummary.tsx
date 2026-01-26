@@ -35,11 +35,19 @@ export default function ProfileSummary({
       </div>
 
       {/* Nickname */}
-      <p className="mb-1 text-sm font-semibold">
+      <p
+        className="mb-1 text-[13px] font-semibold"
+        style={{ color: "#121212" }}
+      >
         {nickname}
         {gender && (
-          <span className="ml-1 text-gray-500">
-            ({gender === "female" ? "WOMAN" : "MAN"})
+          <span className="ml-1 inline-flex items-center relative top-[4px]">
+            <Image
+              src={gender === "female" ? "/icons/woman.svg" : "/icons/man.svg"}
+              alt={gender === "female" ? "여성" : "남성"}
+              width={16}
+              height={16}
+            />
           </span>
         )}
       </p>
