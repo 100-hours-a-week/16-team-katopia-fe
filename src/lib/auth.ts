@@ -32,3 +32,42 @@ export async function issueAccessToken() {
   setAccessToken(token);
   return token;
 }
+
+type AuthFetchInit = RequestInit & { skipAuthRefresh?: boolean };
+
+export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
+  let token = getAccessToken();
+  if (!token) {
+    try {
+      token = await issueAccessToken();
+    } catch {
+      token = null;
+    }
+  }
+
+  const doFetch = (bearer?: string) => {
+    const headers = new Headers(init.headers || {});
+    if (bearer) {
+      headers.set("Authorization", `Bearer ${bearer}`);
+    }
+    return fetch(input, {
+      ...init,
+      headers,
+      credentials: init.credentials ?? "include",
+    });
+  };
+
+  let res = await doFetch(token ?? undefined);
+  if (res.status !== 401 || init.skipAuthRefresh) {
+    return res;
+  }
+
+  try {
+    const refreshed = await issueAccessToken();
+    res = await doFetch(refreshed);
+  } catch {
+    // refresh failed, return original 401 response
+  }
+
+  return res;
+}
