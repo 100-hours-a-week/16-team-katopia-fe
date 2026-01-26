@@ -26,7 +26,7 @@ type ApiProfile = {
 type UserProfile = {
   nickname: string;
   profileImageUrl: string | null;
-  gender: "male" | "female" | null; // ✅ 수정
+  gender: "male" | "female" | null;
   height: number | null;
   weight: number | null;
 };

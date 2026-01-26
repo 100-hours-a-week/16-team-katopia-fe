@@ -116,6 +116,7 @@ export default function ProfileEditPage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
 
   const [styleError, setStyleError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -195,6 +196,7 @@ export default function ProfileEditPage() {
       }
       const cachedImage = getCachedProfileImage();
       setPreview(profile.profileImageUrl ?? cachedImage);
+      setRemoveImage(false);
     };
 
     fetchProfile();
@@ -215,8 +217,11 @@ export default function ProfileEditPage() {
     }
 
     try {
-      const profileImageUrl =
-        preview && isRemoteUrl(preview) ? preview : undefined;
+      const profileImageUrl = removeImage
+        ? null
+        : preview && isRemoteUrl(preview)
+          ? preview
+          : undefined;
 
       await updateProfile({
         nickname: trimmedNickname || undefined,
@@ -317,6 +322,7 @@ export default function ProfileEditPage() {
 
     setImageFile(file); // 🔥 핵심
     setImageError(null);
+    setRemoveImage(false);
     resizeToDataUrl(file)
       .then((dataUrl) => {
         setPreview(dataUrl);
@@ -325,6 +331,13 @@ export default function ProfileEditPage() {
       .catch((err) => {
         setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
       });
+  };
+
+  const handleRemoveImage = () => {
+    setPreview(null);
+    setImageFile(null);
+    setCachedProfileImage(null);
+    setRemoveImage(true);
   };
 
   const onToggle = (style: string) => {
@@ -378,6 +391,20 @@ export default function ProfileEditPage() {
               />
             ) : (
               <span className="text-4xl">+</span>
+            )}
+            {preview && (
+              <button
+                type="button"
+                aria-label="프로필 이미지 삭제"
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-lg font-semibold text-black shadow"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleRemoveImage();
+                }}
+              >
+                ×
+              </button>
             )}
             <input
               type="file"
