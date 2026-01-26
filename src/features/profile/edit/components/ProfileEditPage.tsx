@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep1/hooks/useNicknameHandlers";
 import NicknameInput from "./NickNameInput";
@@ -169,13 +169,7 @@ export default function ProfileEditPage() {
     if (!ready) return;
 
     const fetchProfile = async () => {
-      const token = getAccessToken();
-      if (!token) return;
-
-      // console.log("Fetched token:", token);
-
-      const res = await fetch(`${API_BASE_URL}/api/members/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
         credentials: "include",
       });
 
@@ -251,8 +245,12 @@ export default function ProfileEditPage() {
 
   /* ---------- Utils ---------- */
 
-  const sanitizeNumericInput = (value: string) =>
-    value.replace(/\D/g, "").slice(0, 3);
+  const sanitizeNumericInput = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 3);
+    if (!digits) return "";
+    const num = Number(digits);
+    return String(Math.min(num, 300));
+  };
 
   const handleNumericChange = (
     e: ChangeEvent<HTMLInputElement>,
@@ -362,8 +360,8 @@ export default function ProfileEditPage() {
               height={24}
             />
           </button>
-          <h1 className="font-semibold">프로필 수정</h1>
-          <button type="submit" className="font-semibold">
+          <h1 className="text-[14px] font-semibold">프로필 수정</h1>
+          <button type="submit" className="text-[14px] font-semibold">
             완료
           </button>
         </header>
@@ -461,7 +459,7 @@ export default function ProfileEditPage() {
                   className="w-[80px] text-right text-[13px]
           placeholder:text-right
           placeholder:text-[13px]
-          placeholder:text-[#d9d9d9]"
+          placeholder:!text-[#d9d9d9]"
                   onChange={(e) => handleNumericChange(e, "height")}
                 />
                 <span className="text-sm text-muted-foreground">cm</span>
@@ -482,7 +480,7 @@ export default function ProfileEditPage() {
                   className="w-[80px] text-right text-[13px]
           placeholder:text-right
           placeholder:text-[13px]
-          placeholder:text-[#d9d9d9]"
+          placeholder:!text-[#d9d9d9]"
                   onChange={(e) => handleNumericChange(e, "weight")}
                 />
                 <span className="text-sm text-muted-foreground">kg</span>
