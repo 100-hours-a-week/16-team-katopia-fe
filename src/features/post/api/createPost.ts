@@ -1,16 +1,13 @@
 // src/features/posts/api/createPost.ts
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 import { PostCreateValues } from "../create/schemas";
 
 export async function createPost(data: PostCreateValues) {
-  const token = getAccessToken();
-
-  const res = await fetch(`${API_BASE_URL}/api/posts`, {
+  const res = await authFetch(`${API_BASE_URL}/api/posts`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
       content: data.content,

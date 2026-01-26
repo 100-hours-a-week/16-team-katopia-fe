@@ -1,14 +1,9 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 
 export async function deletePost(postId: string) {
-  const token = getAccessToken();
-
-  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/posts/${postId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
   });
 
   if (!res.ok) {

@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 
 export type CommentAuthor = {
   id: number | string;
@@ -23,7 +23,6 @@ export async function getComments(
   postId: string,
   params?: { size?: number; after?: number | string },
 ): Promise<GetCommentsResponse> {
-  const token = getAccessToken();
   const search = new URLSearchParams();
 
   if (params?.size != null) {
@@ -34,13 +33,9 @@ export async function getComments(
   }
 
   const query = search.toString();
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE_URL}/api/posts/${postId}/comments${query ? `?${query}` : ""}`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
+    {},
   );
 
   const result = await res.json();

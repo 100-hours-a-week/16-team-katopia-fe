@@ -1,14 +1,8 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 
 export async function getPostDetail(postId: string) {
-  const token = getAccessToken();
-
-  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const res = await authFetch(`${API_BASE_URL}/api/posts/${postId}`);
 
   const result = await res.json();
 
