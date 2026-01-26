@@ -53,29 +53,36 @@ jobs:
         id: npm_ci
         run: npm ci
 
-      # 2) 코드 분석 4종: TypeScript / ESLint / Prettier / npm audit
-      # - name: TypeScript typecheck
-      #   id: ts_typecheck
-      #   run: npx tsc --noEmit
+      # 2) 정적 코드 분석
+      # 코드를 예쁘게 만들기(ex: 줄 바꿈, 세미콜론 여부, 따옴표 종류 등)
+      - name: Prettier (check)
+        id: prettier_check
+        run: npx prettier --check .
+        continue-on-error: true # 에러 무시
 
-      # - name: ESLint
-      #   id: eslint
-      #   run: npm run lint
+      # 코드를 올바르게 만들기(ex: 안 쓰는 변수, 선언 전 호출, 논리적 오류 등)
+      - name: ESLint
+        id: eslint
+        run: npm run lint
+        continue-on-error: true # 에러 무시
 
-      # Prettier 없음.
-      # - name: Prettier (check)
-      #   id: prettier_check
-      #   run: npx prettier --check .
-      #   continue-on-error: true
+      # ts 타입 확인
+      - name: TypeScript typecheck
+        id: ts_typecheck
+        run: npx tsc --noEmit
 
-      # - name: npm audit (high+)
-      #   id: npm_audit
-      #   run: npm audit --audit-level=high
+      # 보안 취약점 탐색
+      - name: npm audit (high+)
+        id: npm_audit
+        run: npm audit --audit-level=high
 
-      # 3) E2E 테스트
+      # E2E 테스트
       # - name: E2E tests
       #   id: e2e_tests
-      #   run: ls # 이후 정해지면 작성합니다.
+      #   run: |
+      #     npx playwright install --with-deps  # 브라우저 엔진 설치
+      #     npm run dev &                       # 서버를 백그라운드에서 실행
+      #     npx playwright test                 # E2E 테스트 수행
 
       # 4) 빌드
       - name: Build (next build)
