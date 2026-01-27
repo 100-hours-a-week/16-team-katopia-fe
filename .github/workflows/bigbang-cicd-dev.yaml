@@ -168,6 +168,12 @@ jobs:
             RELEASE_NAME="${ARTIFACT_NAME%.tgz}"
             RELEASE_PATH="$NEXTJS_ROOT/$RELEASE_NAME"
 
+            # pm2가 없으면 전역 설치
+            if ! command -v pm2 &> /dev/null; then
+              echo "pm2가 설치되어 있지 않습니다. 설치 중..."
+              npm install -g pm2
+            fi
+
             echo "=== 배포 시작 (Flat 구조) ==="
 
             mkdir -p "$RELEASE_PATH"
@@ -176,7 +182,6 @@ jobs:
             cd "$RELEASE_PATH"
             npm ci --production
 
-            # 기존 nextjs가 디렉토리일 경우를 대비해 삭제 후 링크 생성
             rm -rf "$CURRENT_LINK"
             ln -sfn "$RELEASE_PATH" "$CURRENT_LINK"
 
