@@ -171,7 +171,7 @@ jobs:
             # pm2가 없으면 전역 설치
             if ! command -v pm2 &> /dev/null; then
               echo "pm2가 설치되어 있지 않습니다. 설치 중..."
-              npm install -g pm2
+              sudo npm install -g pm2
             fi
 
             echo "=== 배포 시작 (Flat 구조) ==="
