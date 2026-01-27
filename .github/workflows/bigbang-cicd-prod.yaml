@@ -124,24 +124,25 @@ jobs:
           echo "✅ Prepared: ${TARGET_NAME}"
 
       # 5) scp 전송
-      - name: SCP to EC2
+      - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
-          # 서버의 호스트 키를 미리 등록
+          cat <<EOF > ~/.ssh/id_rsa
+          ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+          EOF
+          chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
 
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-          # -o 뒤에 반드시 설정 명칭이 와야 합니다.
-          ssh -v -i ~/.ssh/id_rsa \
-            -o StrictHostKeyChecking=no \
+      - name: Create Remote Directory
+        run: |
+          # StrictHostKeyChecking 옵션을 명시적으로 주어 중단을 방지합니다.
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
             ${{ secrets.EC2_USER }}@${{ secrets.PROD_SERVER_HOST }} \
             "mkdir -p /home/ec2-user/nextjs"
 
-          # scp에서도 -o 설정은 동일하게 적용합니다.
-          scp -v -i ~/.ssh/id_rsa \
-            -o StrictHostKeyChecking=no \
+      - name: SCP Artifact to EC2
+        run: |
+          scp -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
             "${{ steps.prep_artifact.outputs.artifact_name }}" \
             ${{ secrets.EC2_USER }}@${{ secrets.PROD_SERVER_HOST }}:/home/ec2-user/nextjs/
 
