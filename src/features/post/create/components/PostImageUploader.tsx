@@ -1,0 +1,192 @@
+"use client";
+
+import Image from "next/image";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Controller, useFormContext } from "react-hook-form";
+
+type PreviewItem = {
+  id: string;
+  url: string; // local preview url
+  name: string;
+};
+
+const MAX_FILES = 3;
+const ACCEPT = ".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic";
+
+const toBlobUrl = (file: File) => URL.createObjectURL(file);
+
+export default function PostImageUploader() {
+  const { control, setError, clearErrors } = useFormContext();
+  const [previews, setPreviews] = useState<PreviewItem[]>([]);
+  const [overLimitMessage, setOverLimitMessage] = useState<string | null>(null);
+
+  const inputId = useId();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const canAddMore = previews.length < MAX_FILES;
+
+  useEffect(() => {
+    return () => {
+      previews.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, [previews]);
+
+  const removePreviewByIndex = useCallback(
+    (index: number, onChange: (v: string[]) => void, currentUrls: string[]) => {
+      setPreviews((prev) => {
+        const next = [...prev];
+        const removed = next.splice(index, 1);
+        removed.forEach((r) => URL.revokeObjectURL(r.url));
+        return next;
+      });
+
+      const nextUrls = [...currentUrls];
+      nextUrls.splice(index, 1);
+      onChange(nextUrls);
+    },
+    [],
+  );
+
+  return (
+    <Controller
+      name="images"
+      control={control}
+      render={({ field, fieldState }) => {
+        const currentUrls = Array.isArray(field.value) ? field.value : [];
+
+        return (
+          <div>
+            <input
+              id={inputId}
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPT}
+              multiple
+              className="hidden"
+              onChange={async (event) => {
+                const files = event.target.files;
+                if (!files || files.length === 0) return;
+
+                const remainingSlots = MAX_FILES - currentUrls.length;
+
+                if (remainingSlots <= 0) {
+                  setError("images", {
+                    type: "manual",
+                    message: "최대 3장까지 업로드할 수 있습니다",
+                  });
+                  setOverLimitMessage("최대 3장까지 업로드할 수 있습니다.");
+                  return;
+                }
+
+                const selectedFiles = Array.from(files).slice(
+                  0,
+                  remainingSlots,
+                );
+
+                if (files.length > remainingSlots) {
+                  setError("images", {
+                    type: "manual",
+                    message: "최대 3장까지 업로드할 수 있습니다",
+                  });
+                  setOverLimitMessage("최대 3장까지 업로드할 수 있습니다.");
+                } else {
+                  clearErrors("images");
+                  setOverLimitMessage(null);
+                }
+
+                const blobUrls = selectedFiles.map(toBlobUrl);
+
+                const newPreviews: PreviewItem[] = blobUrls.map(
+                  (url, index) => ({
+                    id: crypto.randomUUID(),
+                    url,
+                    name: selectedFiles[index].name,
+                  }),
+                );
+
+                setPreviews((prev) => [...prev, ...newPreviews]);
+
+                // ✅ RHF에는 string[]만 저장
+                field.onChange([...currentUrls, ...blobUrls]);
+              }}
+            />
+
+            {/* Preview 영역 */}
+            <div className="mt-2.5 overflow-x-auto">
+              <div className="flex gap-3 snap-x snap-mandatory">
+                {previews.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.url}
+                      alt={item.name}
+                      className="h-full w-full object-cover"
+                    />
+
+                    <button
+                      type="button"
+                      aria-label="사진 삭제"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removePreviewByIndex(
+                          index,
+                          field.onChange,
+                          currentUrls,
+                        );
+                      }}
+                      className="absolute right-2 top-2 bg-white rounded-full p-1 hover:scale-110 transition-transform"
+                    >
+                      <Image
+                        src="/icons/delete.svg"
+                        alt=""
+                        width={32}
+                        height={32}
+                      />
+                    </button>
+                  </div>
+                ))}
+
+                {canAddMore && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      fileInputRef.current?.click();
+                    }}
+                    className="h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
+                    aria-label="사진 추가"
+                  >
+                    <Image
+                      src="/icons/upload.svg"
+                      alt=""
+                      width={24}
+                      height={24}
+                    />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Error UI */}
+            {fieldState.error && (
+              <p className="text-red-500 text-[12px] mt-2">
+                {fieldState.error.message}
+              </p>
+            )}
+
+            {overLimitMessage && (
+              <p className="text-red-500 text-[12px] mt-2">
+                {overLimitMessage}
+              </p>
+            )}
+          </div>
+        );
+      }}
+    />
+  );
+}

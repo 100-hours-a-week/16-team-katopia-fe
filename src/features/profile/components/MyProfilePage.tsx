@@ -1,0 +1,145 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import ProfileHeader from "./ProfileHeader";
+import ProfileSummary from "./ProfileSummary";
+import ProfilePostGrid from "./ProfilePostGrid";
+import ProfileWithdrawModal from "./ProfileWithdrawModal";
+import ProfileLogoutModal from "./ProfileLogoutModal";
+import { API_BASE_URL } from "@/src/config/api";
+import { authFetch } from "@/src/lib/auth";
+import { getMemberPosts } from "../api/getMemberPosts";
+import {
+  getCachedProfileImage,
+  setCachedProfileImage,
+} from "@/src/features/profile/utils/profileImageCache";
+
+type Profile = {
+  userId: number;
+  nickname: string;
+  profileImageUrl: string | null;
+  gender: "male" | "female" | null;
+  height: number | null;
+  weight: number | null;
+  style: string[];
+};
+
+export default function MyProfilePage() {
+  const searchParams = useSearchParams();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState<{ id: number; imageUrl: string }[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+
+  /* -------------------------
+     내 정보 조회
+  ------------------------- */
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        // console.log(res);
+
+        if (!res.ok) {
+          console.log((await res.json()).code);
+          throw new Error("내 정보 조회 실패");
+        }
+
+        const json = await res.json();
+        const rawProfile = json.data.profile;
+        const userId = json.data.id; // ✅ 여기
+        const normalizedGender =
+          rawProfile.gender === "M" || rawProfile.gender === "MALE"
+            ? "male"
+            : rawProfile.gender === "F" || rawProfile.gender === "FEMALE"
+              ? "female"
+              : null;
+
+        if (rawProfile.profileImageUrl) {
+          setCachedProfileImage(rawProfile.profileImageUrl);
+        }
+        const cachedImage = getCachedProfileImage();
+
+        console.log(userId);
+
+        setProfile({
+          userId, // ✅ 저장
+          ...rawProfile,
+          gender: normalizedGender,
+          profileImageUrl: rawProfile.profileImageUrl ?? cachedImage,
+        });
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMe();
+  }, [searchParams.toString()]);
+
+  useEffect(() => {
+    if (!profile?.userId) return;
+
+    setPostsLoading(true);
+    getMemberPosts({ memberId: profile.userId, size: 30 })
+      .then((data) => {
+        const mapped = data.posts
+          .map((post) => ({
+            id: post.id,
+            imageUrl: post.imageUrl,
+          }))
+          .filter((post) => !!post.imageUrl);
+
+        setPosts(mapped);
+      })
+      .catch(() => setPosts([]))
+      .finally(() => setPostsLoading(false));
+  }, [profile?.userId]);
+
+  const handleToggleMenu = () => setMenuOpen((prev) => !prev);
+  const handleCloseMenu = () => setMenuOpen(false);
+  const handleOpenWithdraw = () => setWithdrawOpen(true);
+  const handleCloseWithdraw = () => setWithdrawOpen(false);
+  const handleOpenLogout = () => setLogoutOpen(true);
+  const handleCloseLogout = () => setLogoutOpen(false);
+
+  return (
+    <>
+      <div className="min-h-screen bg-white">
+        <ProfileHeader
+          menuOpen={menuOpen}
+          onToggleMenu={handleToggleMenu}
+          onCloseMenu={handleCloseMenu}
+          onLogout={handleOpenLogout}
+          onWithdraw={handleOpenWithdraw}
+        />
+
+        {/* ✅ 데이터 내려줌 */}
+        <ProfileSummary profile={profile} loading={loading} />
+
+        <ProfilePostGrid posts={posts} loading={postsLoading} />
+      </div>
+
+      <ProfileWithdrawModal
+        open={withdrawOpen}
+        onClose={handleCloseWithdraw}
+        onConfirm={() => {
+          handleCloseWithdraw();
+        }}
+      />
+
+      <ProfileLogoutModal open={logoutOpen} onClose={handleCloseLogout} />
+    </>
+  );
+}

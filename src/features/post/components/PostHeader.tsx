@@ -1,0 +1,143 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+
+type Author = {
+  nickname: string;
+  profileImageUrl?: string | null;
+  gender?: "M" | "F" | null;
+  height?: number | null;
+  weight?: number | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+};
+
+type PostHeaderProps = {
+  author: Author;
+  createdAt: string;
+  isMine?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
+};
+
+export default function PostHeader({
+  author,
+  createdAt,
+  isMine = false,
+  onEdit,
+  onDelete,
+}: PostHeaderProps) {
+  const router = useRouter();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const clickedMenu = menuRef.current?.contains(target);
+      const clickedTrigger = triggerRef.current?.contains(target);
+
+      if (!clickedMenu && !clickedTrigger) {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [menuOpen]);
+
+  return (
+    <div className="mb-4">
+      {/* 상단 */}
+      <div className="flex items-center justify-between mb-8">
+        <button onClick={() => router.back()}>
+          <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
+        </button>
+        {isMine ? (
+          <div className="relative">
+            <button
+              ref={triggerRef}
+              aria-label="더보기"
+              onClick={() => setMenuOpen((prev) => !prev)}
+            >
+              <Image
+                src="/icons/more.svg"
+                alt="더보기"
+                width={24}
+                height={24}
+              />
+            </button>
+            {menuOpen && (
+              <div
+                ref={menuRef}
+                className="absolute right-0 top-7 z-50 w-[92px] overflow-hidden rounded-md border-2 border-black bg-white text-xs"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEdit?.();
+                  }}
+                  className="w-full px-3 py-2 text-center hover:bg-gray-100"
+                >
+                  수정
+                </button>
+                <div className="h-px bg-black" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete?.();
+                  }}
+                  className="w-full px-3 py-2 text-center hover:bg-gray-100"
+                >
+                  삭제
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <span aria-hidden className="w-5" />
+        )}
+      </div>
+
+      {/* 작성자 */}
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-full overflow-hidden bg-muted flex items-center justify-center">
+          {author.profileImageUrl ? (
+            <Image
+              src={author.profileImageUrl}
+              alt={author.nickname}
+              width={40}
+              height={40}
+              className="object-cover"
+            />
+          ) : (
+            <Image src="/icons/user.svg" alt="유저" width={20} height={20} />
+          )}
+        </div>
+
+        <div className="flex-1">
+          <p className="text-sm font-semibold">{author.nickname}</p>
+          <p className="text-xs text-muted-foreground">
+            {(author.heightCm ?? author.height)
+              ? `${author.heightCm ?? author.height}cm`
+              : ""}
+            {(author.weightKg ?? author.weight)
+              ? ` · ${author.weightKg ?? author.weight}kg`
+              : ""}
+          </p>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          {new Date(createdAt).toLocaleDateString()}
+        </p>
+      </div>
+    </div>
+  );
+}

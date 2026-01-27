@@ -1,0 +1,183 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+import Header from "./Header";
+import ProfileImageUploader from "./ProfileImageUploader";
+import NicknameField from "./NicknameField";
+import SubmitButton from "./SubmitButton";
+
+import { useProfileImage } from "./hooks/useProfileImage";
+import { useNicknameHandlers } from "./hooks/useNicknameHandlers";
+import { API_BASE_URL } from "@/src/config/api";
+import { issueAccessToken } from "@/src/lib/auth";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
+
+/* =========================
+   Schema & Types
+========================= */
+
+const signupStep1Schema = z.object({
+  nickname: z
+    .string()
+    .min(2, "닉네임은 최소 2자 이상, 최대 20자 이하만 가능합니다.")
+    .max(20, "닉네임은 최소 2자 이상, 최대 20자 이하만 가능합니다.")
+    .regex(/^\S+$/, "공백은 입력할 수 없습니다")
+    .regex(
+      /^[a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ._]+$/,
+      "특수문자는 '_' 또는 '.'만 허용됩니다.",
+    ),
+});
+
+type SignupStep1Values = z.infer<typeof signupStep1Schema>;
+
+/* =========================
+   Component
+========================= */
+
+export default function SignupStep1() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const hasHandledOAuth = useRef(false);
+  const { setAuthenticated } = useAuth(); // 🔥 전역 인증 상태
+
+  /* -------------------------
+     OAuth 콜백 처리 (status 분기만)
+  ------------------------- */
+  useEffect(() => {
+    if (hasHandledOAuth.current) return;
+
+    const status = searchParams.get("status");
+    if (!status) return;
+
+    hasHandledOAuth.current = true;
+
+    if (status === "ACTIVE") {
+      router.replace("/home");
+    }
+
+    if (status === "PENDING") {
+      router.replace("/signup/step1");
+    }
+  }, [router, searchParams]);
+
+  /* -------------------------
+     React Hook Form
+  ------------------------- */
+  const {
+    register,
+    handleSubmit,
+    trigger,
+    watch,
+    formState: { errors },
+  } = useForm<SignupStep1Values>({
+    resolver: zodResolver(signupStep1Schema),
+    mode: "onChange",
+    defaultValues: {
+      nickname: "",
+    },
+  });
+
+  const nickname = watch("nickname");
+
+  /* -------------------------
+     Profile Image
+  ------------------------- */
+  const { preview, imageError, handleImageChange, handleRemoveImage } =
+    useProfileImage();
+
+  /* -------------------------
+     Nickname Logic
+  ------------------------- */
+  const {
+    isNicknameVerified,
+    hasNicknameValue,
+    duplicateError,
+    duplicateSuccess,
+    handleNicknameChangeCapture,
+    handleDuplicateCheck,
+  } = useNicknameHandlers(trigger, "nickname");
+
+  /* -------------------------
+     Submit (회원가입 → 즉시 로그인)
+  ------------------------- */
+  const onSubmit = useCallback(
+    async (data: SignupStep1Values) => {
+      try {
+        // 1️⃣ 회원가입 (Registration Token → RT 발급)
+        const res = await fetch(`${API_BASE_URL}/api/members`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include", // 🔥 registration_token 쿠키 포함
+          body: JSON.stringify({
+            nickname: data.nickname,
+          }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          console.error(error.code);
+          throw new Error(`회원가입 실패 (${res.status})`);
+        }
+
+        // 2️⃣ RT → AT 발급 (🔥 핵심)
+        await issueAccessToken();
+
+        // 3️⃣ 전역 로그인 상태 ON
+        setAuthenticated(true);
+
+        // 4️⃣ 다음 단계로 이동
+        router.replace("/signup/step2"); // 또는 바로 /home
+      } catch (err) {
+        console.error(err);
+        alert("회원가입 중 오류가 발생했습니다.");
+      }
+    },
+    [router, setAuthenticated],
+  );
+
+  /* -------------------------
+     Submit Button Disabled
+  ------------------------- */
+  const isSubmitDisabled = useMemo(
+    () => !isNicknameVerified || !!errors.nickname || !hasNicknameValue,
+    [isNicknameVerified, errors.nickname, hasNicknameValue],
+  );
+
+  /* -------------------------
+     Render
+  ------------------------- */
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="w-full max-w-97.5 min-h-211 mx-auto px-6 py-8"
+    >
+      <Header />
+
+      <ProfileImageUploader
+        preview={preview}
+        error={imageError}
+        onChange={handleImageChange}
+        onRemove={handleRemoveImage}
+      />
+
+      <NicknameField
+        register={register("nickname")}
+        nickname={nickname}
+        onChangeCapture={handleNicknameChangeCapture}
+        error={errors.nickname?.message}
+        duplicateError={duplicateError}
+        duplicateSuccess={duplicateSuccess}
+        onDuplicateCheck={handleDuplicateCheck}
+      />
+
+      <SubmitButton disabled={isSubmitDisabled} />
+    </form>
+  );
+}
