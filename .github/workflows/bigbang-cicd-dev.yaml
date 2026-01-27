@@ -128,15 +128,15 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           # 서버의 호스트 키를 미리 등록
-          ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts
 
           printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-          ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }} "mkdir -p /home/ec2-user/nextjs"
+          ssh -i ~/.ssh/id_rsa ${{ secrets.EC2_USER }}@${{ secrets.DEV_SERVER_HOST }} "mkdir -p /home/ec2-user/nextjs"
 
           scp -i ~/.ssh/id_rsa "${{ steps.prep_artifact.outputs.artifact_name }}" \
-          ${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}:/home/ec2-user/nextjs/
+          ${{ secrets.EC2_USER }}@${{ secrets.DEV_SERVER_HOST }}:/home/ec2-user/nextjs/
 
   cd:
     name: CD - Deploy to Dev Server
@@ -153,11 +153,11 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s" "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.DEV_EC2_PUBLIC_IP }} >> ~/.ssh/known_hosts
+          ssh-keyscan -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to port 3000
         run: |
-          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_SERVER_HOST }}" << 'SSH'
             set -euo pipefail
 
             NEXTJS_ROOT="/home/ec2-user/nextjs"
@@ -199,7 +199,7 @@ jobs:
         id: verify_process
         shell: bash
         run: |
-          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_SERVER_HOST }}" << 'SSH'
             set -euo pipefail
 
             # PM2 프로세스 상태 확인
@@ -223,7 +223,7 @@ jobs:
         id: verify_health
         shell: bash
         run: |
-          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_EC2_PUBLIC_IP }}" << 'SSH'
+          ssh -i ~/.ssh/id_rsa "${{ secrets.EC2_USER }}@${{ secrets.DEV_SERVER_HOST }}" << 'SSH'
             set -euo pipefail
 
             echo "포트 3000 헬스체크..."
