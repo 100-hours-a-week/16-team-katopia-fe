@@ -133,12 +133,16 @@ jobs:
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
+          # -o 뒤에 반드시 설정 명칭이 와야 합니다.
           ssh -v -i ~/.ssh/id_rsa \
-            -o ${{ secrets.EC2_USER }}@${{ secrets.PROD_SERVER_HOST }} \
+            -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.PROD_SERVER_HOST }} \
             "mkdir -p /home/ec2-user/nextjs"
 
+          # scp에서도 -o 설정은 동일하게 적용합니다.
           scp -v -i ~/.ssh/id_rsa \
-            -o "${{ steps.prep_artifact.outputs.artifact_name }}" \
+            -o StrictHostKeyChecking=no \
+            "${{ steps.prep_artifact.outputs.artifact_name }}" \
             ${{ secrets.EC2_USER }}@${{ secrets.PROD_SERVER_HOST }}:/home/ec2-user/nextjs/
 
   cd:
