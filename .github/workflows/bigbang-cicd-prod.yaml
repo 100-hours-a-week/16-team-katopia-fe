@@ -6,7 +6,7 @@ on:
 
 # github.ref는 refs/heads/main입니다. 새로운 푸시가 있을 때마다 기존 진행 중인 워크플로우를 취소합니다.
 concurrency:
-  group: cicd-dev-nextjs-${{ github.ref }}
+  group: cicd-prod-nextjs-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -53,7 +53,7 @@ jobs:
         id: npm_ci
         run: npm ci
 
-      # 2) 정적 코드 분석
+      # 정적 코드 분석
       # 코드를 예쁘게 만들기(ex: 줄 바꿈, 세미콜론 여부, 따옴표 종류 등)
       - name: Prettier (check)
         id: prettier_check
@@ -84,12 +84,12 @@ jobs:
       #     npm run dev &                       # 서버를 백그라운드에서 실행
       #     npx playwright test                 # E2E 테스트 수행
 
-      # 4) 빌드
+      # 빌드
       - name: Build (next build)
         id: build_next
         run: npm run build
 
-      # 4.5) 전송할 압축 파일명 만들기
+      # 전송할 압축 파일명 만들기
       - name: Prepare artifact filename (date + commit message)
         id: prep_artifact
         if: success()
@@ -123,7 +123,7 @@ jobs:
           echo "artifact_name=${TARGET_NAME}" >> "$GITHUB_OUTPUT"
           echo "✅ Prepared: ${TARGET_NAME}"
 
-      # 5) scp 전송
+      # scp 전송
       - name: Setup SSH Key
         run: |
           mkdir -p ~/.ssh
@@ -168,7 +168,7 @@ jobs:
 
             NEXTJS_ROOT="/home/ec2-user/nextjs"
             CURRENT_LINK="$NEXTJS_ROOT/current"
-            
+
             # 이전 Job의 output을 가져옵니다.
             ARTIFACT_NAME="${{ needs.ci-and-delivery.outputs.artifact_name }}"
             RELEASE_NAME="${ARTIFACT_NAME%.tgz}"
@@ -194,14 +194,14 @@ jobs:
             pm2 describe nextjs > /dev/null 2>&1 \
               && pm2 reload nextjs --update-env \
               || pm2 start npm --name nextjs --cwd "$CURRENT_LINK" -- start
-            
+
             pm2 save
 
             echo "🧹 오래된 버전 정리 (최신 2개 유지)..."
             cd "$NEXTJS_ROOT"
             ls -1dt 20*/ | grep -v "current" | tail -n +3 | xargs -r rm -rf
             rm -f "$NEXTJS_ROOT/$ARTIFACT_NAME"
-            
+
             echo "✅ 배포 완료"
           SSH
 
