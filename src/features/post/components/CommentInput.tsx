@@ -3,9 +3,6 @@
 import Image from "next/image";
 import { useState, type KeyboardEvent } from "react";
 
-// 여기도 지금 충분히 댓글 입력할 때 리렌더링 줄여볼 수 있을 것 같거든? 그렇게 막 오바는 아닌데
-// 댓글 입력할 때 마다 계속 리렌더링 돼.
-
 interface Props {
   onSubmit: (content: string) => void;
 }
