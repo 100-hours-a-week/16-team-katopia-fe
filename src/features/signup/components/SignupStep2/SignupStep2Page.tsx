@@ -19,6 +19,9 @@ import {
   PRIVACY_POLICY_TEXT,
   TERMS_OF_SERVICE_TEXT,
 } from "../constants/policies";
+import { API_BASE_URL } from "@/src/config/api";
+import { issueAccessToken } from "@/src/lib/auth";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 /* =========================
    Schema & Types
@@ -39,6 +42,7 @@ type GenderRegisterProps = UseFormRegisterReturn<"gender">;
 
 export default function SignupStep2() {
   const router = useRouter();
+  const { setAuthenticated } = useAuth();
 
   const [styles, setStyles] = useState<string[]>([]);
   const [styleError, setStyleError] = useState<string | null>(null);
@@ -150,15 +154,57 @@ export default function SignupStep2() {
      Submit (중요!)
   ------------------------- */
   const onSubmit = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    async (_data: SignupStep2Values) => {
-      /**
-       * ✅ Step2에서는 회원가입 API 호출 ❌
-       * ✅ (추후 프로필 저장 API 생기면 여기서 호출)
-       */
-      router.replace("/home");
+    async (data: SignupStep2Values) => {
+      try {
+        let nickname = "";
+        try {
+          nickname = window.localStorage.getItem("signup-nickname") ?? "";
+        } catch {
+          nickname = "";
+        }
+
+        if (!nickname) {
+          alert("닉네임 정보가 없습니다. 다시 시도해주세요.");
+          router.replace("/signup/step1");
+          return;
+        }
+
+        const gender = data.gender === "male" ? "M" : "F";
+
+        const res = await fetch(`${API_BASE_URL}/api/members`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            nickname,
+            gender,
+          }),
+        });
+
+        if (!res.ok) {
+          const error = await res.json().catch(() => null);
+          console.error(error?.code ?? res.status);
+          throw new Error(`회원가입 실패 (${res.status})`);
+        }
+
+        await issueAccessToken();
+        setAuthenticated(true);
+
+        try {
+          window.localStorage.removeItem("signup-nickname");
+        } catch {
+          // ignore storage errors
+        }
+
+        router.replace("/home");
+      } catch (err) {
+        console.error(err);
+        alert("회원가입 중 오류가 발생했습니다.");
+      }
     },
-    [router],
+    [router, setAuthenticated],
   );
 
   const isSubmitDisabled = useMemo(

@@ -38,7 +38,7 @@ export function useNicknameHandlers<T extends FieldValues>(
       if (!isValid) {
         setIsNicknameVerified(false);
         setDuplicateError("닉네임 형식을 확인해주세요.");
-        return;
+        return false;
       }
 
       lastVerifiedNicknameRef.current = nickname;
@@ -63,14 +63,16 @@ export function useNicknameHandlers<T extends FieldValues>(
         if (payload.data?.isDuplicated) {
           setIsNicknameVerified(false);
           setDuplicateError("이미 사용 중인 닉네임입니다.");
-          return;
+          return false;
         }
 
         setIsNicknameVerified(true);
         setDuplicateSuccess("사용 가능한 닉네임입니다.");
+        return true;
       } catch {
         setIsNicknameVerified(false);
         setDuplicateError("닉네임 중복 검사에 실패했습니다.");
+        return false;
       }
     },
     [trigger, nicknamePath],
