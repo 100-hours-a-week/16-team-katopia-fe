@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -13,6 +13,7 @@ import {
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
 import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 import PostFormLayout from "../PostFormLayout";
 import PostFormHeader from "../components/PostFormHeader";
@@ -24,6 +25,14 @@ import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
 export default function PostCreatePage() {
   const router = useRouter();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const { ready, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!isAuthenticated) {
+      router.replace("/home");
+    }
+  }, [isAuthenticated, ready, router]);
 
   const methods = useForm<PostCreateValues>({
     resolver: zodResolver(postCreateSchema),
