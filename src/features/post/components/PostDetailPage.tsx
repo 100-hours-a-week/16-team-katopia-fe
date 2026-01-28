@@ -38,9 +38,21 @@ type PostDetail = {
   imageUrls?: string[] | ImageUrlItem[];
   content?: string | null;
   author?: PostAuthor | null;
+  isLiked?: boolean | null;
+  isLike?: boolean | null;
+  liked?: boolean | null;
+  likedByMe?: boolean | null;
+  likedYn?: boolean | null;
+  likeYn?: boolean | null;
   aggregate?: {
     likeCount?: number | null;
     commentCount?: number | null;
+    isLiked?: boolean | null;
+    isLike?: boolean | null;
+    liked?: boolean | null;
+    likedByMe?: boolean | null;
+    likedYn?: boolean | null;
+    likeYn?: boolean | null;
   } | null;
   createdAt: string;
 };
@@ -70,6 +82,7 @@ export default function PostDetailPage() {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
@@ -108,6 +121,17 @@ export default function PostDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [postId, router]);
+
+  useEffect(() => {
+    if (!postId) return;
+    try {
+      const stored = window.localStorage.getItem(`post-liked-${postId}`);
+      if (stored == null) return;
+      setLikedOverride(stored === "true");
+    } catch {
+      // ignore storage errors
+    }
+  }, [postId]);
 
   useEffect(() => {
     if (!postId) return;
@@ -237,10 +261,7 @@ export default function PostDetailPage() {
       setComments((prev) => prev.filter((comment) => comment.id !== id));
       setPost((prev) => {
         if (!prev?.aggregate) return prev;
-        const nextCount = Math.max(
-          0,
-          (prev.aggregate.commentCount ?? 0) - 1,
-        );
+        const nextCount = Math.max(0, (prev.aggregate.commentCount ?? 0) - 1);
         return {
           ...prev,
           aggregate: {
@@ -277,6 +298,20 @@ export default function PostDetailPage() {
     profileImageUrl: null,
   };
 
+  const initialLiked = Boolean(
+    post.isLiked ??
+    post.isLike ??
+    post.liked ??
+    post.likedByMe ??
+    post.likedYn ??
+    post.likeYn ??
+    post.aggregate?.isLiked ??
+    post.aggregate?.isLike ??
+    post.aggregate?.liked ??
+    post.aggregate?.likedByMe,
+  );
+  const effectiveLiked = likedOverride ?? initialLiked;
+
   return (
     <div className="min-h-screen px-4 py-4">
       <PostHeader
@@ -293,9 +328,22 @@ export default function PostDetailPage() {
       <PostImageCarousel images={sortedImageUrls} />
 
       <PostContent
+        postId={postId}
         content={post.content ?? ""}
         likeCount={post.aggregate?.likeCount ?? 0}
         commentCount={post.aggregate?.commentCount ?? 0}
+        isLiked={effectiveLiked}
+        onLikedChange={(nextLiked) => {
+          setLikedOverride(nextLiked);
+          try {
+            window.localStorage.setItem(
+              `post-liked-${postId}`,
+              String(nextLiked),
+            );
+          } catch {
+            // ignore storage errors
+          }
+        }}
       />
 
       <div className="mt-8 border-t border-[#e5e5e5] pt-6">
