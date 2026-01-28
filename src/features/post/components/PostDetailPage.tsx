@@ -19,6 +19,7 @@ import PostContent from "./PostContent";
 import CommentInput from "./CommentInput";
 import CommentList, { type Comment as CommentListItem } from "./CommentList";
 import { pickImageUrl } from "@/src/features/upload/utils/normalizeImageUrls";
+import { getCachedProfileImage } from "@/src/features/profile/utils/profileImageCache";
 
 type PostAuthor = {
   nickname: string;
@@ -91,6 +92,7 @@ export default function PostDetailPage() {
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
+    profileImageUrl?: string | null;
   } | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -167,9 +169,11 @@ export default function PostDetailPage() {
       .then((json) => {
         if (!json) return;
         const rawProfile = json.data?.profile ?? {};
+        const cachedProfileImage = getCachedProfileImage();
         setMe({
           id: rawProfile.memberId ?? rawProfile.id ?? rawProfile.userId,
           nickname: rawProfile.nickname,
+          profileImageUrl: rawProfile.profileImageUrl ?? cachedProfileImage,
         });
       })
       .catch(() => {});
@@ -191,6 +195,7 @@ export default function PostDetailPage() {
           createdAt: newComment.createdAt,
           nickname: me?.nickname ?? "나",
           authorId: me?.id,
+          profileImageUrl: me?.profileImageUrl ?? null,
           isMine: true,
         },
         ...prev,
