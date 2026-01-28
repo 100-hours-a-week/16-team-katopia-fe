@@ -23,7 +23,12 @@ export async function searchPosts(params: {
 }): Promise<SearchPostsResponse> {
   const searchParams = new URLSearchParams();
 
-  searchParams.set("query", params.query.trim());
+  const rawQuery = params.query.trim();
+  searchParams.set("query", rawQuery);
+  if (rawQuery.startsWith("#")) {
+    const tagPrefix = rawQuery.slice(1);
+    if (tagPrefix) searchParams.set("tagPrefix", tagPrefix);
+  }
   if (params.size) searchParams.set("size", String(params.size));
   if (params.after) searchParams.set("after", params.after);
   if (params.height) searchParams.set("height", String(params.height));
