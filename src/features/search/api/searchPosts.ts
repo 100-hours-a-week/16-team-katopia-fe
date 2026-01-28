@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { getAccessToken } from "@/src/lib/auth";
+import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 export type SearchPostItem = {
   id: number;
@@ -52,5 +53,16 @@ export async function searchPosts(params: {
     throw result;
   }
 
-  return result.data;
+  const data = result.data as SearchPostsResponse;
+  return {
+    ...data,
+    posts: (data.posts ?? []).map((post) => ({
+      ...post,
+      imageUrls: normalizeImageUrls(
+        post.imageUrls as unknown as
+          | string[]
+          | { imageUrl?: string; accessUrl?: string; url?: string }[],
+      ),
+    })),
+  };
 }

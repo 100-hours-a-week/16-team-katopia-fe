@@ -18,8 +18,7 @@ import PostImageCarousel from "./PostImageCarousel";
 import PostContent from "./PostContent";
 import CommentInput from "./CommentInput";
 import CommentList, { type Comment as CommentListItem } from "./CommentList";
-
-type ImageUrlItem = { imageUrl: string; sortOrder?: number };
+import { pickImageUrl } from "@/src/features/upload/utils/normalizeImageUrls";
 
 type PostAuthor = {
   nickname: string;
@@ -34,8 +33,15 @@ type PostAuthor = {
   userId?: number | string;
 };
 
+type PostImageItem = {
+  imageUrl?: string;
+  accessUrl?: string;
+  url?: string;
+  sortOrder?: number;
+};
+
 type PostDetail = {
-  imageUrls?: string[] | ImageUrlItem[];
+  imageUrls?: string[] | PostImageItem[];
   content?: string | null;
   author?: PostAuthor | null;
   isLiked?: boolean | null;
@@ -59,20 +65,19 @@ type PostDetail = {
 
 type CommentItem = CommentListItem;
 
-function normalizeImageUrls(
-  value: string[] | ImageUrlItem[] | undefined,
+function normalizePostImageUrls(
+  value: string[] | PostImageItem[] | undefined,
 ): string[] {
   if (!value || value.length === 0) return [];
-
   if (typeof value[0] === "string") {
     return value as string[];
   }
 
-  const items = value as ImageUrlItem[];
+  const items = value as PostImageItem[];
   return [...items]
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map((img) => img.imageUrl)
-    .filter(Boolean);
+    .map((img) => pickImageUrl(img))
+    .filter(Boolean) as string[];
 }
 
 export default function PostDetailPage() {
@@ -90,7 +95,7 @@ export default function PostDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const sortedImageUrls = useMemo(() => {
-    return normalizeImageUrls(post?.imageUrls);
+    return normalizePostImageUrls(post?.imageUrls);
   }, [post]);
 
   const isMine = useMemo(() => {
