@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { deletePost } from "../api/deletePost";
 import { getPostDetail } from "../api/getPostDetail";
@@ -84,6 +84,7 @@ function normalizePostImageUrls(
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
@@ -375,7 +376,8 @@ export default function PostDetailPage() {
           if (!postId) return;
           try {
             await deletePost(postId);
-            router.replace("/home");
+            const from = searchParams.get("from");
+            router.replace(from === "profile" ? "/profile" : "/home");
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
             alert(

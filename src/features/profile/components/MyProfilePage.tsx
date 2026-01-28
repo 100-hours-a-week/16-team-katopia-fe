@@ -142,7 +142,11 @@ export default function MyProfilePage() {
         {/* ✅ 데이터 내려줌 */}
         <ProfileSummary profile={profile} loading={loading} />
 
-        <ProfilePostGrid posts={posts} loading={postsLoading} />
+        <ProfilePostGrid
+          posts={posts}
+          loading={postsLoading}
+          detailQuery="from=profile"
+        />
       </div>
 
       <ProfileWithdrawModal

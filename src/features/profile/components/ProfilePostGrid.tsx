@@ -4,11 +4,13 @@ type ProfilePostGridProps = {
     imageUrl: string;
   }[];
   loading?: boolean;
+  detailQuery?: string;
 };
 
 export default function ProfilePostGrid({
   posts,
   loading,
+  detailQuery,
 }: ProfilePostGridProps) {
   if (loading) {
     return (
@@ -36,7 +38,11 @@ export default function ProfilePostGrid({
       {posts.map((post) => (
         <a
           key={post.id}
-          href={`/post/${post.id}`}
+          href={
+            detailQuery
+              ? `/post/${post.id}?${detailQuery}`
+              : `/post/${post.id}`
+          }
           className="relative aspect-[3/4] overflow-hidden bg-gray-100"
         >
           <img
