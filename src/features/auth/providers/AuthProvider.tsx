@@ -31,7 +31,8 @@ export default function AuthProvider({
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
-        await issueAccessToken(); // RT → AT
+        const token = await issueAccessToken(); // RT → AT
+        console.log("issued access token", token);
 
         // 토큰 발급이 되더라도 실제 로그인 상태인지 한 번 더 확인합니다.
         const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {

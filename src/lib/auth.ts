@@ -29,6 +29,7 @@ export async function issueAccessToken() {
     throw new Error("Access Token 없음");
   }
 
+  console.log("access token issued", token);
   setAccessToken(token);
   return token;
 }
