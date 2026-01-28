@@ -54,6 +54,7 @@ export default function PostCreatePage() {
       }
 
       const presignedFiles = await requestUploadPresign("POST", extensions);
+      console.log("presign files", presignedFiles);
       if (presignedFiles.length !== data.images.length) {
         throw new Error("업로드 URL 개수가 올바르지 않습니다.");
       }
