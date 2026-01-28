@@ -1,8 +1,11 @@
 import { z } from "zod";
 
+const fileSchema =
+  typeof File !== "undefined" ? z.instanceof(File) : z.any();
+
 export const postCreateSchema = z.object({
   images: z
-    .array(z.string().min(1))
+    .array(fileSchema)
     .min(1, "이미지는 최소 1장 이상 업로드해야 합니다.")
     .max(3, "최대 3장까지 업로드할 수 있습니다"),
   content: z
