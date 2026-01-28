@@ -6,11 +6,11 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  {
-    href: "/home",
-    icon: "/icons/home.svg",
-    label: "홈",
-  },
+  // {
+  //   href: "/home",
+  //   icon: "/icons/home.svg",
+  //   label: "홈",
+  // },
   {
     href: "/search",
     icon: "/icons/search.svg",
@@ -21,11 +21,11 @@ const NAV_ITEMS = [
     icon: "/icons/plus.svg", // 중앙 +
     label: "작성",
   },
-  {
-    href: "/vote",
-    icon: "/icons/votee.svg",
-    label: "투표",
-  },
+  // {
+  //   href: "/vote",
+  //   icon: "/icons/votee.svg",
+  //   label: "투표",
+  // },
   {
     href: "/profile",
     icon: "/icons/profile.svg",
