@@ -12,6 +12,7 @@ import SearchAccountList from "./SearchAccountList";
 import { getPostList } from "../../post/api/getPostList";
 import { searchUsers, SearchUserItem } from "../api/searchUsers";
 import { searchPosts } from "../api/searchPosts";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 type GridPost = {
   id: number;
@@ -21,6 +22,7 @@ type GridPost = {
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { ready, isAuthenticated } = useAuth();
   const tabParam = searchParams.get("tab");
   const qParam = searchParams.get("q") ?? "";
 
@@ -175,10 +177,17 @@ export default function SearchPage() {
   const shouldShowPostEmpty =
     shouldShowPosts && !postLoading && postResults.length === 0;
 
+  useEffect(() => {
+    if (!ready) return;
+    if (isAuthenticated) return;
+    router.replace("/home");
+  }, [isAuthenticated, ready, router]);
+
   /* -------------------------
      Render
   ------------------------- */
   useEffect(() => {
+    if (!ready || !isAuthenticated) return;
     const params = new URLSearchParams();
 
     if (isSearching) {
@@ -190,7 +199,11 @@ export default function SearchPage() {
 
     const next = params.toString();
     router.replace(next ? `/search?${next}` : "/search");
-  }, [activeTab, isSearching, query, router]);
+  }, [activeTab, isAuthenticated, isSearching, query, ready, router]);
+
+  if (!ready || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="px-4 py-4">
