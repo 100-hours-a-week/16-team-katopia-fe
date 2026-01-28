@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { API_BASE_URL } from "@/src/config/api";
-import { authFetch, issueAccessToken } from "@/src/lib/auth";
+import { authFetch, issueAccessToken, isLoggedOutFlag } from "@/src/lib/auth";
 
 type AuthContextValue = {
   isAuthenticated: boolean;
@@ -31,6 +31,10 @@ export default function AuthProvider({
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
+        if (isLoggedOutFlag()) {
+          setAuthenticated(false);
+          return;
+        }
         const token = await issueAccessToken(); // RT → AT
         console.log("issued access token", token);
 

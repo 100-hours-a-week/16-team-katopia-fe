@@ -84,7 +84,7 @@ export default function PostCreatePage() {
       const postId = res.data.id;
       console.log("게시글이 성공적으로 등록되었어요.");
       console.log(postId);
-      // router.replace("/home");
+      // router.replace("/home"); 원래는 home으로 가게 하는게 맞음. ver2에서 홈화면 구현하면서 바꿀 예정
       router.replace("/search");
     } catch (e) {
       /**

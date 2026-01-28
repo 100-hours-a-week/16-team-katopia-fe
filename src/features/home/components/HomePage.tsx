@@ -37,9 +37,7 @@ export default function HomePage() {
             피드가 텅 비었어요!
           </p>
           <p className="mt-2 text-[13px] leading-5 text-gray-500">
-            관심 있는 사용자를 팔로우하고
-            <br />
-            새로운 게시물을 만나보세요.
+            검색 탭에서 새로운 게시물을 만나보세요.
           </p>
         </div>
       </main>

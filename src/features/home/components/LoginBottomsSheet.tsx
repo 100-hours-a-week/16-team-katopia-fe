@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { KAKAO_OAUTH_URL } from "@/src/config/api";
+import { setLoggedOutFlag } from "@/src/lib/auth";
 
 type Props = {
   persist?: boolean;
@@ -11,6 +12,7 @@ type Props = {
 
 export default function LoginBottomSheet({ persist = false }: Props) {
   const handleKakaoLogin = () => {
+    setLoggedOutFlag(false);
     window.location.href = KAKAO_OAUTH_URL;
   };
 
