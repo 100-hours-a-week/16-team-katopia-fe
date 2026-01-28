@@ -378,7 +378,11 @@ export default function PostDetailPage() {
             router.replace("/home");
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (e) {
-            alert("게시글 삭제에 실패했습니다.");
+            alert(
+              e instanceof Error
+                ? e.message
+                : "게시글 삭제에 실패했습니다.",
+            );
           } finally {
             setDeleteOpen(false);
           }
