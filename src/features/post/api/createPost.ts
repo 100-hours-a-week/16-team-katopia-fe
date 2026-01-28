@@ -1,6 +1,7 @@
 // src/features/posts/api/createPost.ts
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { extractTags } from "@/src/features/post/utils/extractTags";
 export async function createPost(data: {
   content: string;
   imageUrls: string[];
@@ -13,6 +14,7 @@ export async function createPost(data: {
     body: JSON.stringify({
       content: data.content,
       imageUrls: data.imageUrls, // 🔥 중요: key 이름 맞추기
+      tags: extractTags(data.content),
     }),
   });
 

@@ -27,7 +27,13 @@ export async function searchPosts(params: {
   const normalizedQuery = rawQuery.startsWith("#")
     ? rawQuery.slice(1)
     : rawQuery;
-  searchParams.set("query", normalizedQuery);
+  if (normalizedQuery.length < 2) {
+    return { posts: [], nextCursor: null };
+  }
+  searchParams.set(
+    "query",
+    rawQuery.startsWith("#") ? rawQuery : normalizedQuery,
+  );
   if (params.size) searchParams.set("size", String(params.size));
   if (params.after) searchParams.set("after", params.after);
   if (params.height) searchParams.set("height", String(params.height));
