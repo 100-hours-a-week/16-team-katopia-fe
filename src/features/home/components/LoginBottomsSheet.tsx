@@ -5,15 +5,26 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { KAKAO_OAUTH_URL } from "@/src/config/api";
 
-export default function LoginBottomSheet() {
+type Props = {
+  persist?: boolean;
+};
+
+export default function LoginBottomSheet({ persist = false }: Props) {
   const handleKakaoLogin = () => {
     window.location.href = KAKAO_OAUTH_URL;
   };
 
   return (
-    <Sheet defaultOpen>
+    <Sheet
+      open={persist ? true : undefined}
+      defaultOpen={!persist}
+      onOpenChange={persist ? () => {} : undefined}
+    >
       <SheetContent
         side="bottom"
+        showClose={!persist}
+        onEscapeKeyDown={persist ? (e) => e.preventDefault() : undefined}
+        onInteractOutside={persist ? (e) => e.preventDefault() : undefined}
         className="
           rounded-t-2xl
           px-6 pb-10
