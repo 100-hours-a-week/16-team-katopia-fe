@@ -26,7 +26,7 @@ export default function ProfilePostGrid({
   if (posts.length === 0) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-t-transparent" />
+        <p className="text-sm text-gray-500">게시물이 없습니다.</p>
       </div>
     );
   }

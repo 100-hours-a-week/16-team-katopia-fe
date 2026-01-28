@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import ProfileHeader from "./ProfileHeader";
 import ProfileSummary from "./ProfileSummary";
 import ProfilePostGrid from "./ProfilePostGrid";
@@ -14,6 +14,7 @@ import {
   getCachedProfileImage,
   setCachedProfileImage,
 } from "@/src/features/profile/utils/profileImageCache";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 type Profile = {
   userId: number;
@@ -26,7 +27,9 @@ type Profile = {
 };
 
 export default function MyProfilePage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const { ready, isAuthenticated } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -40,6 +43,7 @@ export default function MyProfilePage() {
      내 정보 조회
   ------------------------- */
   useEffect(() => {
+    if (!ready || !isAuthenticated) return;
     const fetchMe = async () => {
       try {
         const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
@@ -86,7 +90,13 @@ export default function MyProfilePage() {
     };
 
     fetchMe();
-  }, [searchParams.toString()]);
+  }, [isAuthenticated, ready, searchParams, searchParams.toString()]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (isAuthenticated) return;
+    router.replace("/home");
+  }, [isAuthenticated, ready, router]);
 
   useEffect(() => {
     if (!profile?.userId) return;
@@ -113,6 +123,10 @@ export default function MyProfilePage() {
   const handleCloseWithdraw = () => setWithdrawOpen(false);
   const handleOpenLogout = () => setLogoutOpen(true);
   const handleCloseLogout = () => setLogoutOpen(false);
+
+  if (!ready || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <>
