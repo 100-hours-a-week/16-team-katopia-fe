@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import { useState } from "react";
 import type { Comment } from "./CommentList";
 
@@ -57,9 +58,9 @@ export default function CommentItem({
           className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden"
           style={{ backgroundColor: color }}
         >
-          {comment.profileImageUrl ? (
+          {resolveMediaUrl(comment.profileImageUrl) ? (
             <Image
-              src={comment.profileImageUrl}
+              src={resolveMediaUrl(comment.profileImageUrl) as string}
               alt={comment.nickname}
               width={32}
               height={32}

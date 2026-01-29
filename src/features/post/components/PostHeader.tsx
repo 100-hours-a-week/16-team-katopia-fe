@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type Author = {
   nickname: string;
@@ -109,12 +110,12 @@ export default function PostHeader({
       {/* 작성자 */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-          {author.profileImageUrl ? (
-            <Image
-              src={author.profileImageUrl}
-              alt={author.nickname}
-              width={40}
-              height={40}
+        {resolveMediaUrl(author.profileImageUrl) ? (
+          <Image
+            src={resolveMediaUrl(author.profileImageUrl) as string}
+            alt={author.nickname}
+            width={40}
+            height={40}
               className="object-cover"
             />
           ) : (
