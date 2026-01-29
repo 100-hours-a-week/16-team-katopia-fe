@@ -42,6 +42,8 @@ export default function MyProfilePage() {
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsCursor, setPostsCursor] = useState<string | null>(null);
   const [postsHasMore, setPostsHasMore] = useState(true);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const [lastLoadScrollY, setLastLoadScrollY] = useState(0);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -135,8 +137,13 @@ export default function MyProfilePage() {
           return Array.from(map.values());
         });
 
-        setPostsCursor(data.nextCursor ?? null);
-        setPostsHasMore(Boolean(data.nextCursor));
+        if (data.nextCursor === postsCursor) {
+          setPostsHasMore(false);
+        } else {
+          setPostsCursor(data.nextCursor ?? null);
+          setPostsHasMore(Boolean(data.nextCursor));
+        }
+        setLastLoadScrollY(window.scrollY);
       })
       .catch(() => {
         setPostsHasMore(false);
@@ -151,6 +158,8 @@ export default function MyProfilePage() {
     setPosts([]);
     setPostsCursor(null);
     setPostsHasMore(true);
+    setHasScrolled(false);
+    setLastLoadScrollY(0);
   }, [profile?.userId]);
 
   // 최초 1페이지 로딩
@@ -159,6 +168,15 @@ export default function MyProfilePage() {
       loadMorePosts();
     }
   }, [profile?.userId, loadMorePosts]);
+
+  // 사용자 스크롤 감지
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 0) setHasScrolled(true);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // IntersectionObserver
   useEffect(() => {
@@ -171,7 +189,11 @@ export default function MyProfilePage() {
 
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (
+          entry.isIntersecting &&
+          hasScrolled &&
+          window.scrollY > lastLoadScrollY + 10
+        ) {
           loadMorePosts();
         }
       },
@@ -185,7 +207,7 @@ export default function MyProfilePage() {
     observerRef.current.observe(node);
 
     return () => observerRef.current?.disconnect();
-  }, [postsHasMore, postsLoading, loadMorePosts]);
+  }, [postsHasMore, postsLoading, loadMorePosts, hasScrolled, lastLoadScrollY]);
 
   /* -------------------------
      UI

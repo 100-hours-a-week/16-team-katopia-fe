@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 type ProfilePostGridProps = {
   posts: {
@@ -20,7 +21,7 @@ export default function ProfilePostGrid({
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
-            className="aspect-[3/4] rounded bg-gray-200 animate-pulse"
+            className="aspect-3/4 rounded bg-gray-200 animate-pulse"
           />
         ))}
       </div>
@@ -38,17 +39,22 @@ export default function ProfilePostGrid({
   return (
     <div className="mt-6 grid grid-cols-3 gap-2 px-4">
       {posts.map((post) => (
-        <a
+        <Link
           key={post.id}
           href={
-            detailQuery
-              ? `/post/${post.id}?${detailQuery}`
-              : `/post/${post.id}`
+            detailQuery ? `/post/${post.id}?${detailQuery}` : `/post/${post.id}`
           }
-          className="relative aspect-[3/4] overflow-hidden bg-gray-100"
+          className="relative aspect-3/4 overflow-hidden bg-gray-100"
         >
-          <Image src={post.imageUrl} alt="" fill className="object-cover" />
-        </a>
+          <Image
+            src={post.imageUrl}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="(max-width: 640px) 33vw, 200px"
+            placeholder="empty"
+          />
+        </Link>
       ))}
     </div>
   );
