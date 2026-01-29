@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPostList } from "../../post/api/getPostList";
 import { getMemberPosts } from "../../profile/api/getMemberPosts";
+import { searchPosts } from "../api/searchPosts";
 
 type GridPost = {
   id: number;
@@ -10,7 +11,9 @@ type GridPost = {
 type Params = {
   memberId?: number;
   size?: number;
-  mode?: "public" | "member";
+  mode?: "public" | "member" | "search";
+  query?: string;
+  enabled?: boolean;
 };
 
 export function useInfinitePostGrid(params?: Params) {
@@ -21,8 +24,12 @@ export function useInfinitePostGrid(params?: Params) {
 
   // ✅ mode로 명시적으로 제어
   const isMemberMode = params?.mode === "member";
+  const isSearchMode = params?.mode === "search";
   const size = params?.size ?? 18;
   const memberId = params?.memberId;
+  const enabled = params?.enabled ?? true;
+  const query = params?.query ?? "";
+  const trimmedQuery = query.trim();
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -45,9 +52,11 @@ export function useInfinitePostGrid(params?: Params) {
     // 🔒 중복/폭주 방지
     if (inFlightRef.current) return;
     if (!hasMoreRef.current) return;
+    if (!enabled) return;
 
     // 멤버 모드인데 memberId 없으면 중단
     if (isMemberMode && typeof memberId !== "number") return;
+    if (isSearchMode && trimmedQuery.length < 2) return;
 
     inFlightRef.current = true;
     setLoading(true);
@@ -60,18 +69,33 @@ export function useInfinitePostGrid(params?: Params) {
       const afterForPost =
         cursorRef.current != null ? String(cursorRef.current) : undefined;
 
-      const data = isMemberMode
-        ? await getMemberPosts({
-            memberId: memberId as number,
+      const data = isSearchMode
+        ? await searchPosts({
+            query: trimmedQuery,
             size,
-            after: afterForMember, // string
+            after: afterForPost,
           })
-        : await getPostList({
-            size,
-            after: afterForPost, // number
-          });
+        : isMemberMode
+          ? await getMemberPosts({
+              memberId: memberId as number,
+              size,
+              after: afterForMember, // string
+            })
+          : await getPostList({
+              size,
+              after: afterForPost, // number
+            });
 
-      const mapped: GridPost[] = data.posts
+      const rawPosts =
+        (data.posts as {
+          id: number;
+          imageUrls?: string[];
+          imageUrl?: string;
+        }[]) ?? [];
+      const rawCount = rawPosts.length;
+      const lastRawId = rawPosts[rawCount - 1]?.id ?? null;
+
+      const mapped: GridPost[] = rawPosts
         .map(
           (post: { id: number; imageUrls?: string[]; imageUrl?: string }) => ({
             id: post.id,
@@ -89,12 +113,25 @@ export function useInfinitePostGrid(params?: Params) {
         return Array.from(map.values());
       });
 
-      if (data.nextCursor === prevCursor) {
+      const rawNextCursor =
+        data.nextCursor === "" ? null : data.nextCursor ?? null;
+      const shouldFallbackCursor =
+        !isMemberMode &&
+        !isSearchMode &&
+        rawNextCursor == null &&
+        lastRawId != null;
+      const fallbackCursor = shouldFallbackCursor ? lastRawId : null;
+      const nextCursorValue = shouldFallbackCursor
+        ? fallbackCursor
+        : rawNextCursor;
+
+      if (nextCursorValue === prevCursor) {
         setHasMore(false);
         return;
       }
-      setNextCursor(data.nextCursor ?? null);
-      setHasMore(data.nextCursor != null);
+      cursorRef.current = nextCursorValue;
+      setNextCursor(nextCursorValue);
+      setHasMore(nextCursorValue != null);
     } catch (e) {
       // 요청 실패 시 더 불러오기 중단(무한 재시도 방지)
       setHasMore(false);
@@ -102,7 +139,7 @@ export function useInfinitePostGrid(params?: Params) {
       inFlightRef.current = false;
       setLoading(false);
     }
-  }, [isMemberMode, memberId, size]);
+  }, [enabled, isMemberMode, isSearchMode, memberId, size, trimmedQuery]);
 
   const observe = useCallback(
     (node: HTMLDivElement | null) => {
@@ -144,11 +181,21 @@ export function useInfinitePostGrid(params?: Params) {
     hasMoreRef.current = true;
     inFlightRef.current = false;
 
+    if (!enabled) return;
     // 멤버 모드인데 memberId 없으면 로드하지 않음
     if (isMemberMode && typeof memberId !== "number") return;
+    if (isSearchMode && trimmedQuery.length < 2) return;
 
     loadMore();
-  }, [isMemberMode, memberId, size, loadMore]);
+  }, [
+    enabled,
+    isMemberMode,
+    isSearchMode,
+    memberId,
+    size,
+    trimmedQuery,
+    loadMore,
+  ]);
 
   // 언마운트 정리
   useEffect(() => {
@@ -157,6 +204,37 @@ export function useInfinitePostGrid(params?: Params) {
       observerRef.current = null;
     };
   }, []);
+
+  // IntersectionObserver가 동작하지 않는 환경 대비 스크롤 폴백
+  useEffect(() => {
+    if (!enabled) return;
+    if (typeof window === "undefined") return;
+    if (isMemberMode && typeof memberId !== "number") return;
+    if (isSearchMode && trimmedQuery.length < 2) return;
+
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        if (inFlightRef.current) return;
+        if (!hasMoreRef.current) return;
+
+        const doc = document.documentElement;
+        const scrolled = window.scrollY + window.innerHeight;
+        const threshold = doc.scrollHeight - 600;
+        if (scrolled >= threshold) {
+          loadMore();
+        }
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [enabled, isMemberMode, isSearchMode, memberId, trimmedQuery, loadMore]);
 
   return { items, hasMore, observe, loading, loadMore };
 }

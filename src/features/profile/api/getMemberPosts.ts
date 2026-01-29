@@ -31,7 +31,7 @@ export async function getMemberPosts(params: {
 }): Promise<GetMemberPostsResponse> {
   const searchParams = new URLSearchParams();
   if (params.size) searchParams.set("size", String(params.size));
-  if (params.after) searchParams.set("after", params.after);
+  if (params.after != null) searchParams.set("after", params.after);
 
   const res = await authFetch(
     `${API_BASE_URL}/api/members/${params.memberId}/posts?${searchParams.toString()}`,

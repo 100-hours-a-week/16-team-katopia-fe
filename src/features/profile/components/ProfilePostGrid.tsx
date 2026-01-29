@@ -15,7 +15,7 @@ export default function ProfilePostGrid({
   loading,
   detailQuery,
 }: ProfilePostGridProps) {
-  if (loading) {
+  if (loading && posts.length === 0) {
     return (
       <div className="mt-6 grid grid-cols-3 gap-2 px-4">
         {Array.from({ length: 6 }).map((_, i) => (
@@ -56,6 +56,14 @@ export default function ProfilePostGrid({
           />
         </Link>
       ))}
+
+      {loading &&
+        Array.from({ length: 3 }).map((_, i) => (
+          <div
+            key={`loading-${i}`}
+            className="aspect-3/4 rounded bg-gray-200 animate-pulse"
+          />
+        ))}
     </div>
   );
 }
