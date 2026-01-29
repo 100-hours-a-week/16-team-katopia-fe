@@ -11,7 +11,7 @@ export default function PostContentInput() {
       <textarea
         {...register("content")}
         placeholder="내용을 입력해주세요."
-        className="w-full border p-3 text-[13px] rounded-[5px] focus:outline-none focus:border-black focus:border"
+        className="w-full border p-3 text-[13px] rounded-[5px] focus:outline-none focus:border-black focus:border resize-none"
         rows={5}
       />
 

@@ -11,7 +11,8 @@ type PreviewItem = {
 };
 
 const MAX_FILES = 3;
-const ACCEPT = ".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic";
+const ACCEPT =
+  ".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic";
 
 const toBlobUrl = (file: File) => URL.createObjectURL(file);
 
