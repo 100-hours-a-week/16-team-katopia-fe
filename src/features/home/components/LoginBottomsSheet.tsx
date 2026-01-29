@@ -12,6 +12,11 @@ type Props = {
 
 export default function LoginBottomSheet({ persist = false }: Props) {
   const handleKakaoLogin = () => {
+    try {
+      window.sessionStorage.setItem("katopia.loginRedirect", "1");
+    } catch {
+      // ignore storage errors
+    }
     setLoggedOutFlag(false);
     window.location.href = KAKAO_OAUTH_URL;
   };

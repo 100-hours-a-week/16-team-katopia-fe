@@ -1,6 +1,7 @@
 let accessToken: string | null = null;
 let authInvalidated = false;
 const LOGOUT_FLAG_KEY = "katopia.loggedOut";
+const HAS_LOGGED_IN_KEY = "katopia.hasLoggedIn";
 
 export function setAccessToken(token: string) {
   accessToken = token;
@@ -36,12 +37,39 @@ export function isLoggedOutFlag() {
   }
 }
 
+export function setHasLoggedInFlag() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(HAS_LOGGED_IN_KEY, "1");
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function hasLoggedInFlag() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(HAS_LOGGED_IN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function isAuthInvalidated() {
   return authInvalidated;
 }
 
 export function notifyAuthInvalid() {
   if (authInvalidated) return;
+  if (typeof window !== "undefined") {
+    try {
+      if (window.sessionStorage.getItem("katopia.loginRedirect") === "1") {
+        return;
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }
   authInvalidated = true;
   clearAccessToken();
   setLoggedOutFlag(true);
@@ -76,6 +104,7 @@ export async function issueAccessToken() {
   setAccessToken(token);
   authInvalidated = false;
   setLoggedOutFlag(false);
+  setHasLoggedInFlag();
   return token;
 }
 
