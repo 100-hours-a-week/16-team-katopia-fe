@@ -11,6 +11,7 @@ export default function HomePage() {
   const searchParams = useSearchParams();
   useAuth();
   const isActiveState = searchParams.get("STATE") === "ACTIVE";
+  const isPendingSignup = searchParams.get("status") === "PENDING";
 
   useEffect(() => {
     if (!isActiveState) return;
@@ -20,6 +21,11 @@ export default function HomePage() {
     const nextQuery = nextParams.toString();
     router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname);
   }, [isActiveState, pathname, router, searchParams]);
+
+  useEffect(() => {
+    if (!isPendingSignup) return;
+    router.replace("/signup/step1");
+  }, [isPendingSignup, router]);
 
   return (
     <div className="relative min-h-screen flex flex-col">

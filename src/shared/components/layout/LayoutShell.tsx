@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import BottomNav from "./BottomNav";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import LoginBottomSheet from "@/src/features/home/components/LoginBottomsSheet";
@@ -16,9 +16,11 @@ type Props = {
 
 export default function LayoutShell({ children }: Props) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const hideBottomNav = HIDE_BOTTOM_NAV_PATHS.includes(pathname ?? "");
   const { ready, isAuthenticated, authInvalidated } = useAuth();
   const hasAlertedRef = useRef(false);
+  const isPendingSignup = searchParams.get("status") === "PENDING";
 
   useEffect(() => {
     if (!authInvalidated) return;
@@ -30,6 +32,7 @@ export default function LayoutShell({ children }: Props) {
   const shouldLock =
     ready &&
     !isAuthenticated &&
+    !isPendingSignup &&
     (authInvalidated || LOGIN_GUARD_PATHS.includes(pathname ?? ""));
 
   return (
