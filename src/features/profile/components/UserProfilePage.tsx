@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { API_BASE_URL } from "@/src/config/api";
@@ -44,6 +44,10 @@ export default function UserProfilePage({ userId }: Props) {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<{ id: number; imageUrl: string }[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
+  const [postsCursor, setPostsCursor] = useState<string | null>(null);
+  const [postsHasMore, setPostsHasMore] = useState(true);
+  const postsObserverRef = useRef<IntersectionObserver | null>(null);
+  const postsSentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (Number.isNaN(memberId)) return;
@@ -92,11 +96,15 @@ export default function UserProfilePage({ userId }: Props) {
     fetchProfile();
   }, [memberId]);
 
-  useEffect(() => {
-    if (Number.isNaN(memberId)) return;
+  const loadMorePosts = useCallback(() => {
+    if (Number.isNaN(memberId) || postsLoading || !postsHasMore) return;
 
     setPostsLoading(true);
-    getMemberPosts({ memberId, size: 30 })
+    getMemberPosts({
+      memberId,
+      size: 30,
+      after: postsCursor ?? undefined,
+    })
       .then((data) => {
         const mapped = data.posts
           .map((post) => ({
@@ -104,11 +112,46 @@ export default function UserProfilePage({ userId }: Props) {
             imageUrl: post.imageUrl,
           }))
           .filter((post) => !!post.imageUrl);
-        setPosts(mapped);
+        setPosts((prev) => {
+          const map = new Map<number, { id: number; imageUrl: string }>();
+          prev.forEach((item) => map.set(item.id, item));
+          mapped.forEach((item) => map.set(item.id, item));
+          return Array.from(map.values());
+        });
+        setPostsCursor(data.nextCursor ?? null);
+        setPostsHasMore(!!data.nextCursor);
       })
-      .catch(() => setPosts([]))
+      .catch(() => setPostsHasMore(false))
       .finally(() => setPostsLoading(false));
+  }, [memberId, postsLoading, postsHasMore, postsCursor]);
+
+  useEffect(() => {
+    setPosts([]);
+    setPostsCursor(null);
+    setPostsHasMore(true);
   }, [memberId]);
+
+  useEffect(() => {
+    if (Number.isNaN(memberId)) return;
+    loadMorePosts();
+  }, [memberId, loadMorePosts]);
+
+  useEffect(() => {
+    if (!postsHasMore) return;
+    const node = postsSentinelRef.current;
+    if (!node) return;
+    postsObserverRef.current?.disconnect();
+    postsObserverRef.current = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          loadMorePosts();
+        }
+      },
+      { threshold: 0.4 },
+    );
+    postsObserverRef.current.observe(node);
+    return () => postsObserverRef.current?.disconnect();
+  }, [postsHasMore, loadMorePosts]);
 
   /* ================= Loading / Error ================= */
 
@@ -150,6 +193,7 @@ export default function UserProfilePage({ userId }: Props) {
       <ProfileSummary profile={profile} loading={false} />
 
       <ProfilePostGrid posts={posts} loading={postsLoading} />
+      <div ref={postsSentinelRef} />
     </div>
   );
 }
