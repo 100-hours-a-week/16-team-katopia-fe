@@ -57,7 +57,7 @@ export function useInfinitePostGrid(params?: Params) {
         cursorRef.current != null ? String(cursorRef.current) : undefined;
 
       const afterForPost =
-        cursorRef.current != null ? Number(cursorRef.current) : undefined;
+        cursorRef.current != null ? String(cursorRef.current) : undefined;
 
       const data = isMemberMode
         ? await getMemberPosts({
