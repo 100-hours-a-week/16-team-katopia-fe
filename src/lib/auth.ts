@@ -50,8 +50,10 @@ export function notifyAuthInvalid() {
   }
 }
 
+import { API_BASE_URL } from "@/src/config/api";
+
 export async function issueAccessToken() {
-  const res = await fetch("https://dev.fitcheck.kr/api/auth/tokens", {
+  const res = await fetch(`${API_BASE_URL}/api/auth/tokens`, {
     method: "POST",
     credentials: "include", // 🔥 Refresh Token 쿠키 포함
   });
