@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 const TABS = ["계정", "게시글/해시태그"] as const;
 
 interface Props {

@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 export type SearchPostItem = {
@@ -40,15 +40,10 @@ export async function searchPosts(params: {
   if (params.weight) searchParams.set("weight", String(params.weight));
   if (params.gender) searchParams.set("gender", params.gender);
 
-  const token = getAccessToken();
-  const headers: HeadersInit = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE_URL}/api/search/posts?${searchParams.toString()}`,
     {
       method: "GET",
-      headers,
       credentials: "include",
       cache: "no-store",
     },
@@ -60,6 +55,9 @@ export async function searchPosts(params: {
 
   const result = await res.json();
   if (!res.ok) {
+    if (res.status === 401) {
+      return { posts: [], nextCursor: null };
+    }
     throw result;
   }
 

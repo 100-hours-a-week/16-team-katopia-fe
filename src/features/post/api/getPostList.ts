@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
+import { authFetch } from "@/src/lib/auth";
 import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 type PostListItem = {
@@ -20,7 +21,7 @@ export async function getPostList(params?: {
   if (params?.size) searchParams.set("size", String(params.size));
   if (params?.after) searchParams.set("after", String(params.after));
 
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE_URL}/api/posts?${searchParams.toString()}`,
     {
       method: "GET",
@@ -31,6 +32,9 @@ export async function getPostList(params?: {
   const result = await res.json();
 
   if (!res.ok) {
+    if (res.status === 401) {
+      return { posts: [], nextCursor: null };
+    }
     throw result;
   }
 

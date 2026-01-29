@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import BottomNav from "./BottomNav";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
@@ -17,27 +17,20 @@ type Props = {
 export default function LayoutShell({ children }: Props) {
   const pathname = usePathname();
   const hideBottomNav = HIDE_BOTTOM_NAV_PATHS.includes(pathname ?? "");
-  const { ready, isAuthenticated } = useAuth();
-  const [forceLogin, setForceLogin] = useState(false);
+  const { ready, isAuthenticated, authInvalidated } = useAuth();
   const hasAlertedRef = useRef(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const handleInvalid = () => {
-      if (!hasAlertedRef.current) {
-        hasAlertedRef.current = true;
-        alert("인증 정보가 유효하지 않습니다. 다시 로그인해주세요.");
-      }
-      setForceLogin(true);
-    };
-    window.addEventListener("auth:invalid", handleInvalid);
-    return () => window.removeEventListener("auth:invalid", handleInvalid);
-  }, []);
+    if (!authInvalidated) return;
+    if (hasAlertedRef.current) return;
+    hasAlertedRef.current = true;
+    alert("인증 정보가 유효하지 않습니다. 다시 로그인해주세요.");
+  }, [authInvalidated]);
 
   const shouldLock =
     ready &&
     !isAuthenticated &&
-    (forceLogin || LOGIN_GUARD_PATHS.includes(pathname ?? ""));
+    (authInvalidated || LOGIN_GUARD_PATHS.includes(pathname ?? ""));
 
   return (
     <>

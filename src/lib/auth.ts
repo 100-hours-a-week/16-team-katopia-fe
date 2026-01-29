@@ -1,4 +1,5 @@
 let accessToken: string | null = null;
+let authInvalidated = false;
 const LOGOUT_FLAG_KEY = "katopia.loggedOut";
 
 export function setAccessToken(token: string) {
@@ -35,10 +36,13 @@ export function isLoggedOutFlag() {
   }
 }
 
-export function notifyAuthInvalid(
-  payload: { code?: string } | null | undefined,
-) {
-  if (payload?.code !== "AUTH-E-011") return;
+export function isAuthInvalidated() {
+  return authInvalidated;
+}
+
+export function notifyAuthInvalid() {
+  if (authInvalidated) return;
+  authInvalidated = true;
   clearAccessToken();
   setLoggedOutFlag(true);
   if (typeof window !== "undefined") {
@@ -53,6 +57,9 @@ export async function issueAccessToken() {
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      notifyAuthInvalid();
+    }
     throw new Error("Access Token 발급 실패");
   }
 
@@ -65,6 +72,7 @@ export async function issueAccessToken() {
 
   console.log("access token issued", token);
   setAccessToken(token);
+  authInvalidated = false;
   setLoggedOutFlag(false);
   return token;
 }
@@ -72,25 +80,18 @@ export async function issueAccessToken() {
 type AuthFetchInit = RequestInit & { skipAuthRefresh?: boolean };
 
 export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
+  if (authInvalidated) {
+    return new Response(null, { status: 401, statusText: "Unauthorized" });
+  }
   let token = getAccessToken();
   if (!token) {
     try {
       token = await issueAccessToken();
     } catch {
+      notifyAuthInvalid();
       token = null;
     }
   }
-
-  const notifyAuthInvalidResponse = async (res: Response) => {
-    if (res.status !== 401) return;
-    try {
-      const clone = res.clone();
-      const data = await clone.json();
-      notifyAuthInvalid(data);
-    } catch {
-      // ignore parse errors
-    }
-  };
 
   const doFetch = (bearer?: string) => {
     const headers = new Headers(init.headers || {});
@@ -104,19 +105,9 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
     });
   };
 
-  let res = await doFetch(token ?? undefined);
-  if (res.status !== 401 || init.skipAuthRefresh) {
-    await notifyAuthInvalidResponse(res);
-    return res;
+  const res = await doFetch(token ?? undefined);
+  if (res.status === 401 && !init.skipAuthRefresh) {
+    notifyAuthInvalid();
   }
-
-  try {
-    const refreshed = await issueAccessToken();
-    res = await doFetch(refreshed);
-  } catch {
-    // refresh failed, return original 401 response
-  }
-
-  await notifyAuthInvalidResponse(res);
   return res;
 }
