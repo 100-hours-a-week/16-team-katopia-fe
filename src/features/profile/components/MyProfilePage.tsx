@@ -30,25 +30,28 @@ export default function MyProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { ready, isAuthenticated } = useAuth();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
   const [posts, setPosts] = useState<{ id: number; imageUrl: string }[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsCursor, setPostsCursor] = useState<string | null>(null);
   const [postsHasMore, setPostsHasMore] = useState(true);
-  const postsObserverRef = useRef<IntersectionObserver | null>(null);
-  const postsSentinelRef = useRef<HTMLDivElement | null>(null);
-  const [hasScrolled, setHasScrolled] = useState(false);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   /* -------------------------
      내 정보 조회
   ------------------------- */
   useEffect(() => {
     if (!ready || !isAuthenticated) return;
+
     const fetchMe = async () => {
       try {
         const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
@@ -57,16 +60,14 @@ export default function MyProfilePage() {
           cache: "no-store",
         });
 
-        // console.log(res);
-
         if (!res.ok) {
-          console.log((await res.json()).code);
           throw new Error("내 정보 조회 실패");
         }
 
         const json = await res.json();
         const rawProfile = json.data.profile;
-        const userId = json.data.id; // ✅ 여기
+        const userId = json.data.id;
+
         const normalizedGender =
           rawProfile.gender === "M" || rawProfile.gender === "MALE"
             ? "male"
@@ -77,12 +78,11 @@ export default function MyProfilePage() {
         if (rawProfile.profileImageUrl) {
           setCachedProfileImage(rawProfile.profileImageUrl);
         }
+
         const cachedImage = getCachedProfileImage();
 
-        console.log(userId);
-
         setProfile({
-          userId, // ✅ 저장
+          userId,
           ...rawProfile,
           gender: normalizedGender,
           profileImageUrl: rawProfile.profileImageUrl ?? cachedImage,
@@ -95,17 +95,25 @@ export default function MyProfilePage() {
     };
 
     fetchMe();
-  }, [isAuthenticated, ready, searchParams, searchParams.toString()]);
+  }, [ready, isAuthenticated, searchParams.toString()]);
 
   useEffect(() => {
     if (!ready) return;
-    if (isAuthenticated) return;
-    router.replace("/home");
-  }, [isAuthenticated, ready, router]);
+    if (!isAuthenticated) {
+      router.replace("/home");
+    }
+  }, [ready, isAuthenticated, router]);
 
+  /* -------------------------
+     게시글 로딩
+  ------------------------- */
   const loadMorePosts = useCallback(() => {
-    if (!profile?.userId || postsLoading || !postsHasMore) return;
+    if (!profile?.userId || postsLoading || !postsHasMore) {
+      return;
+    }
+
     setPostsLoading(true);
+
     getMemberPosts({
       memberId: profile.userId,
       size: 30,
@@ -113,71 +121,75 @@ export default function MyProfilePage() {
     })
       .then((data) => {
         const mapped = data.posts
-          .map((post) => ({
-            id: post.id,
-            imageUrl: post.imageUrl,
-          }))
-          .filter((post) => !!post.imageUrl);
+          .filter((p) => p.imageUrl)
+          .map((p) => ({
+            id: p.id,
+            imageUrl: p.imageUrl,
+          }));
 
+        // 🔒 id 기준 중복 제거
         setPosts((prev) => {
           const map = new Map<number, { id: number; imageUrl: string }>();
           prev.forEach((item) => map.set(item.id, item));
           mapped.forEach((item) => map.set(item.id, item));
           return Array.from(map.values());
         });
+
         setPostsCursor(data.nextCursor ?? null);
-        setPostsHasMore(!!data.nextCursor);
+        setPostsHasMore(Boolean(data.nextCursor));
       })
       .catch(() => {
         setPostsHasMore(false);
       })
-      .finally(() => setPostsLoading(false));
-  }, [profile?.userId, postsLoading, postsHasMore, postsCursor]);
+      .finally(() => {
+        setPostsLoading(false);
+      });
+  }, [profile?.userId, postsCursor, postsHasMore, postsLoading]);
 
+  // 프로필 변경 시 초기화
   useEffect(() => {
     setPosts([]);
     setPostsCursor(null);
     setPostsHasMore(true);
-    setHasScrolled(false);
   }, [profile?.userId]);
 
+  // 최초 1페이지 로딩
   useEffect(() => {
-    if (!profile?.userId) return;
-    loadMorePosts();
+    if (profile?.userId) {
+      loadMorePosts();
+    }
   }, [profile?.userId, loadMorePosts]);
 
+  // IntersectionObserver
   useEffect(() => {
-    if (!postsHasMore) return;
-    const node = postsSentinelRef.current;
+    if (!postsHasMore || postsLoading) return;
+
+    const node = sentinelRef.current;
     if (!node) return;
-    postsObserverRef.current?.disconnect();
-    postsObserverRef.current = new IntersectionObserver(
+
+    observerRef.current?.disconnect();
+
+    observerRef.current = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasScrolled) {
+        if (entry.isIntersecting) {
           loadMorePosts();
         }
       },
-      { threshold: 0.4 },
+      {
+        root: null,
+        rootMargin: "200px", // ⭐ 바닥 근처에서만 미리 로딩
+        threshold: 0,
+      },
     );
-    postsObserverRef.current.observe(node);
-    return () => postsObserverRef.current?.disconnect();
-  }, [postsHasMore, loadMorePosts, hasScrolled]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 0) setHasScrolled(true);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    observerRef.current.observe(node);
 
-  const handleToggleMenu = () => setMenuOpen((prev) => !prev);
-  const handleCloseMenu = () => setMenuOpen(false);
-  const handleOpenWithdraw = () => setWithdrawOpen(true);
-  const handleCloseWithdraw = () => setWithdrawOpen(false);
-  const handleOpenLogout = () => setLogoutOpen(true);
-  const handleCloseLogout = () => setLogoutOpen(false);
+    return () => observerRef.current?.disconnect();
+  }, [postsHasMore, postsLoading, loadMorePosts]);
 
+  /* -------------------------
+     UI
+  ------------------------- */
   if (!ready || !isAuthenticated) {
     return null;
   }
@@ -187,13 +199,12 @@ export default function MyProfilePage() {
       <div className="min-h-screen bg-white">
         <ProfileHeader
           menuOpen={menuOpen}
-          onToggleMenu={handleToggleMenu}
-          onCloseMenu={handleCloseMenu}
-          onLogout={handleOpenLogout}
-          onWithdraw={handleOpenWithdraw}
+          onToggleMenu={() => setMenuOpen((prev) => !prev)}
+          onCloseMenu={() => setMenuOpen(false)}
+          onLogout={() => setLogoutOpen(true)}
+          onWithdraw={() => setWithdrawOpen(true)}
         />
 
-        {/* ✅ 데이터 내려줌 */}
         <ProfileSummary profile={profile} loading={loading} />
 
         <ProfilePostGrid
@@ -201,18 +212,23 @@ export default function MyProfilePage() {
           loading={postsLoading}
           detailQuery="from=profile"
         />
-        <div ref={postsSentinelRef} />
+
+        {/* ⭐ 반드시 높이 있는 sentinel */}
+        <div ref={sentinelRef} className="h-24" />
       </div>
 
       <ProfileWithdrawModal
         open={withdrawOpen}
-        onClose={handleCloseWithdraw}
+        onClose={() => setWithdrawOpen(false)}
         onConfirm={() => {
-          handleCloseWithdraw();
+          setWithdrawOpen(false);
         }}
       />
 
-      <ProfileLogoutModal open={logoutOpen} onClose={handleCloseLogout} />
+      <ProfileLogoutModal
+        open={logoutOpen}
+        onClose={() => setLogoutOpen(false)}
+      />
     </>
   );
 }

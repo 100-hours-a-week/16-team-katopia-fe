@@ -42,13 +42,16 @@ export default function UserProfilePage({ userId }: Props) {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
   const [posts, setPosts] = useState<{ id: number; imageUrl: string }[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsCursor, setPostsCursor] = useState<string | null>(null);
   const [postsHasMore, setPostsHasMore] = useState(true);
-  const postsObserverRef = useRef<IntersectionObserver | null>(null);
-  const postsSentinelRef = useRef<HTMLDivElement | null>(null);
-  const [hasScrolled, setHasScrolled] = useState(false);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  /* ================= 프로필 ================= */
 
   useEffect(() => {
     if (Number.isNaN(memberId)) return;
@@ -60,9 +63,7 @@ export default function UserProfilePage({ userId }: Props) {
           cache: "no-store",
         });
 
-        if (!res.ok) {
-          throw new Error("프로필 조회 실패");
-        }
+        if (!res.ok) throw new Error("프로필 조회 실패");
 
         const json = await res.json();
         const apiProfile: ApiProfile | undefined = json.data?.profile;
@@ -72,7 +73,6 @@ export default function UserProfilePage({ userId }: Props) {
           return;
         }
 
-        // ✅ API → UI용 모델 변환
         setProfile({
           nickname: apiProfile.nickname,
           profileImageUrl: apiProfile.profileImageUrl,
@@ -86,8 +86,7 @@ export default function UserProfilePage({ userId }: Props) {
           weight: apiProfile.weightKg,
           style: apiProfile.style ?? [],
         });
-      } catch (err) {
-        console.error(err);
+      } catch {
         setProfile(null);
       } finally {
         setLoading(false);
@@ -97,10 +96,15 @@ export default function UserProfilePage({ userId }: Props) {
     fetchProfile();
   }, [memberId]);
 
+  /* ================= 게시글 ================= */
+
   const loadMorePosts = useCallback(() => {
-    if (Number.isNaN(memberId) || postsLoading || !postsHasMore) return;
+    if (Number.isNaN(memberId) || postsLoading || !postsHasMore) {
+      return;
+    }
 
     setPostsLoading(true);
+
     getMemberPosts({
       memberId,
       size: 30,
@@ -108,66 +112,77 @@ export default function UserProfilePage({ userId }: Props) {
     })
       .then((data) => {
         const mapped = data.posts
-          .map((post) => ({
-            id: post.id,
-            imageUrl: post.imageUrl,
-          }))
-          .filter((post) => !!post.imageUrl);
+          .filter((p) => p.imageUrl)
+          .map((p) => ({
+            id: p.id,
+            imageUrl: p.imageUrl,
+          }));
+
+        // 🔒 id 기준 중복 제거
         setPosts((prev) => {
           const map = new Map<number, { id: number; imageUrl: string }>();
           prev.forEach((item) => map.set(item.id, item));
           mapped.forEach((item) => map.set(item.id, item));
           return Array.from(map.values());
         });
-        setPostsCursor(data.nextCursor ?? null);
-        setPostsHasMore(!!data.nextCursor);
-      })
-      .catch(() => setPostsHasMore(false))
-      .finally(() => setPostsLoading(false));
-  }, [memberId, postsLoading, postsHasMore, postsCursor]);
 
+        setPostsCursor(data.nextCursor ?? null);
+        setPostsHasMore(Boolean(data.nextCursor));
+      })
+      .catch(() => {
+        setPostsHasMore(false);
+      })
+      .finally(() => {
+        setPostsLoading(false);
+      });
+  }, [memberId, postsCursor, postsHasMore, postsLoading]);
+
+  // member 변경 시 초기화
   useEffect(() => {
     setPosts([]);
     setPostsCursor(null);
     setPostsHasMore(true);
-    setHasScrolled(false);
   }, [memberId]);
 
+  // 최초 1페이지 로딩
   useEffect(() => {
-    if (Number.isNaN(memberId)) return;
-    loadMorePosts();
+    if (!Number.isNaN(memberId)) {
+      loadMorePosts();
+    }
   }, [memberId, loadMorePosts]);
 
+  // IntersectionObserver
   useEffect(() => {
-    if (!postsHasMore) return;
-    const node = postsSentinelRef.current;
+    if (!postsHasMore || postsLoading) return;
+
+    const node = sentinelRef.current;
     if (!node) return;
-    postsObserverRef.current?.disconnect();
-    postsObserverRef.current = new IntersectionObserver(
+
+    observerRef.current?.disconnect();
+
+    observerRef.current = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasScrolled) {
+        if (entry.isIntersecting) {
           loadMorePosts();
         }
       },
-      { threshold: 0.4 },
+      {
+        root: null,
+        rootMargin: "200px", // ⭐ 바닥 근처에서만 미리 로딩
+        threshold: 0,
+      },
     );
-    postsObserverRef.current.observe(node);
-    return () => postsObserverRef.current?.disconnect();
-  }, [postsHasMore, loadMorePosts, hasScrolled]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 0) setHasScrolled(true);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+    observerRef.current.observe(node);
 
-  /* ================= Loading / Error ================= */
+    return () => observerRef.current?.disconnect();
+  }, [postsHasMore, postsLoading, loadMorePosts]);
+
+  /* ================= UI ================= */
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-t-transparent" />
       </div>
     );
@@ -180,8 +195,6 @@ export default function UserProfilePage({ userId }: Props) {
       </div>
     );
   }
-
-  /* ================= Render ================= */
 
   return (
     <div className="min-h-screen px-4 py-4">
@@ -199,11 +212,12 @@ export default function UserProfilePage({ userId }: Props) {
         <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
       </button>
 
-      {/* 프로필 (마이프로필과 동일 컴포넌트 사용) */}
       <ProfileSummary profile={profile} loading={false} />
 
       <ProfilePostGrid posts={posts} loading={postsLoading} />
-      <div ref={postsSentinelRef} />
+
+      {/* ⭐ sentinel은 반드시 높이를 줘야 함 */}
+      <div ref={sentinelRef} className="h-24" />
     </div>
   );
 }
