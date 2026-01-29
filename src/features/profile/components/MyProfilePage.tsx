@@ -46,6 +46,7 @@ export default function MyProfilePage() {
   } = useInfinitePostGrid({
     memberId: profile?.userId,
     size: 30,
+    mode: "member",
   });
 
   /* -------------------------

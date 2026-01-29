@@ -51,6 +51,7 @@ export default function UserProfilePage({ userId }: Props) {
   } = useInfinitePostGrid({
     memberId,
     size: 30,
+    mode: "member",
   });
 
   /* ================= 프로필 ================= */

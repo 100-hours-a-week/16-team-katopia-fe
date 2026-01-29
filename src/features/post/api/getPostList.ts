@@ -9,17 +9,17 @@ type PostListItem = {
 
 type GetPostListResponse = {
   posts: PostListItem[];
-  nextCursor: number | null;
+  nextCursor: number | string | null;
 };
 
 export async function getPostList(params?: {
   size?: number;
-  after?: number;
+  after?: number | string;
 }): Promise<GetPostListResponse> {
   const searchParams = new URLSearchParams();
 
   if (params?.size) searchParams.set("size", String(params.size));
-  if (params?.after) searchParams.set("after", String(params.after));
+  if (params?.after != null) searchParams.set("after", String(params.after));
 
   const res = await authFetch(
     `${API_BASE_URL}/api/posts?${searchParams.toString()}`,

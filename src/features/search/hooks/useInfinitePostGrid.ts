@@ -10,6 +10,7 @@ type GridPost = {
 type Params = {
   memberId?: number;
   size?: number;
+  mode?: "public" | "member";
 };
 
 export function useInfinitePostGrid(params?: Params) {
@@ -18,8 +19,8 @@ export function useInfinitePostGrid(params?: Params) {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // ✅ memberId가 "숫자"로 있을 때만 멤버 모드
-  const isMemberMode = typeof params?.memberId === "number";
+  // ✅ mode로 명시적으로 제어
+  const isMemberMode = params?.mode === "member";
   const size = params?.size ?? 18;
   const memberId = params?.memberId;
 
@@ -88,7 +89,7 @@ export function useInfinitePostGrid(params?: Params) {
       });
 
       setNextCursor(data.nextCursor ?? null);
-      setHasMore(Boolean(data.nextCursor));
+      setHasMore(data.nextCursor != null);
     } catch (e) {
       // 요청 실패 시 더 불러오기 중단(무한 재시도 방지)
       setHasMore(false);
