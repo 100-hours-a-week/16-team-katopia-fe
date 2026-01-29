@@ -61,7 +61,7 @@ export function Carousel({
   );
 }
 
-interface CarouselContentProps extends React.HTMLAttributes<HTMLDivElement> {}
+type CarouselContentProps = React.HTMLAttributes<HTMLDivElement>;
 
 export function CarouselContent({
   children,
@@ -93,16 +93,13 @@ export function CarouselContent({
   );
 }
 
-interface CarouselItemProps extends React.HTMLAttributes<HTMLDivElement> {}
+type CarouselItemProps = React.HTMLAttributes<HTMLDivElement>;
 
-export function CarouselItem({
-  className,
-  ...props
-}: CarouselItemProps) {
+export function CarouselItem({ className, ...props }: CarouselItemProps) {
   return <div className={cn("h-full w-full", className)} {...props} />;
 }
 
-interface ControlProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {}
+type ControlProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
 export function CarouselPrevious({ className, ...props }: ControlProps) {
   const { index, count, setIndex } = useCarouselContext();
