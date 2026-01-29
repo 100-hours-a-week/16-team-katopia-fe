@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { extractTags } from "@/src/features/post/utils/extractTags";
 
 type UpdatePostParams = {
   postId: string;
@@ -13,7 +14,8 @@ export async function updatePost({ postId, content }: UpdatePostParams) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      content, // 🔥 임시: content만 전송
+      content,
+      tags: extractTags(content),
     }),
   });
 

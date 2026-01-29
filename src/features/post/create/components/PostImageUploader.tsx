@@ -11,7 +11,8 @@ type PreviewItem = {
 };
 
 const MAX_FILES = 3;
-const ACCEPT = ".jpg,.jpeg,.png,.heic,image/jpeg,image/png,image/heic";
+const ACCEPT =
+  ".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic";
 
 const toBlobUrl = (file: File) => URL.createObjectURL(file);
 
@@ -32,7 +33,11 @@ export default function PostImageUploader() {
   }, [previews]);
 
   const removePreviewByIndex = useCallback(
-    (index: number, onChange: (v: string[]) => void, currentUrls: string[]) => {
+    (
+      index: number,
+      onChange: (v: File[]) => void,
+      currentFiles: File[],
+    ) => {
       setPreviews((prev) => {
         const next = [...prev];
         const removed = next.splice(index, 1);
@@ -40,9 +45,9 @@ export default function PostImageUploader() {
         return next;
       });
 
-      const nextUrls = [...currentUrls];
-      nextUrls.splice(index, 1);
-      onChange(nextUrls);
+      const nextFiles = [...currentFiles];
+      nextFiles.splice(index, 1);
+      onChange(nextFiles);
     },
     [],
   );
@@ -52,7 +57,7 @@ export default function PostImageUploader() {
       name="images"
       control={control}
       render={({ field, fieldState }) => {
-        const currentUrls = Array.isArray(field.value) ? field.value : [];
+        const currentFiles = Array.isArray(field.value) ? field.value : [];
 
         return (
           <div>
@@ -67,7 +72,7 @@ export default function PostImageUploader() {
                 const files = event.target.files;
                 if (!files || files.length === 0) return;
 
-                const remainingSlots = MAX_FILES - currentUrls.length;
+                const remainingSlots = MAX_FILES - currentFiles.length;
 
                 if (remainingSlots <= 0) {
                   setError("images", {
@@ -75,6 +80,7 @@ export default function PostImageUploader() {
                     message: "최대 3장까지 업로드할 수 있습니다",
                   });
                   setOverLimitMessage("최대 3장까지 업로드할 수 있습니다.");
+                  event.target.value = "";
                   return;
                 }
 
@@ -106,8 +112,9 @@ export default function PostImageUploader() {
 
                 setPreviews((prev) => [...prev, ...newPreviews]);
 
-                // ✅ RHF에는 string[]만 저장
-                field.onChange([...currentUrls, ...blobUrls]);
+                // ✅ RHF에는 File[] 저장
+                field.onChange([...currentFiles, ...selectedFiles]);
+                event.target.value = "";
               }}
             />
 
@@ -135,7 +142,7 @@ export default function PostImageUploader() {
                         removePreviewByIndex(
                           index,
                           field.onChange,
-                          currentUrls,
+                          currentFiles,
                         );
                       }}
                       className="absolute right-2 top-2 bg-white rounded-full p-1 hover:scale-110 transition-transform"

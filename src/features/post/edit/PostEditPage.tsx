@@ -14,6 +14,7 @@ import PostContentInput from "../create/components/PostContentInput";
 import PostCancelConfirmModal from "../create/components/PostCancelConfirmModal";
 
 import { updatePost } from "../api/updatePost";
+import { pickImageUrl } from "@/src/features/upload/utils/normalizeImageUrls";
 
 /* ================= schema ================= */
 
@@ -26,7 +27,12 @@ const postEditSchema = z.object({
 
 type PostEditValues = z.infer<typeof postEditSchema>;
 
-type ImageUrlItem = { imageUrl: string; sortOrder?: number };
+type ImageUrlItem = {
+  imageUrl?: string;
+  accessUrl?: string;
+  url?: string;
+  sortOrder?: number;
+};
 
 function normalizeImageUrls(
   value: string[] | ImageUrlItem[] | undefined,
@@ -40,8 +46,8 @@ function normalizeImageUrls(
   const items = value as ImageUrlItem[];
   return [...items]
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map((img) => img.imageUrl)
-    .filter(Boolean);
+    .map((img) => pickImageUrl(img))
+    .filter(Boolean) as string[];
 }
 
 function isApiError(e: unknown): e is { code?: string } {

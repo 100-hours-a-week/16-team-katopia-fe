@@ -4,11 +4,13 @@ type ProfilePostGridProps = {
     imageUrl: string;
   }[];
   loading?: boolean;
+  detailQuery?: string;
 };
 
 export default function ProfilePostGrid({
   posts,
   loading,
+  detailQuery,
 }: ProfilePostGridProps) {
   if (loading) {
     return (
@@ -26,7 +28,7 @@ export default function ProfilePostGrid({
   if (posts.length === 0) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-t-transparent" />
+        <p className="text-sm text-gray-500">게시물이 없습니다.</p>
       </div>
     );
   }
@@ -36,7 +38,11 @@ export default function ProfilePostGrid({
       {posts.map((post) => (
         <a
           key={post.id}
-          href={`/post/${post.id}`}
+          href={
+            detailQuery
+              ? `/post/${post.id}?${detailQuery}`
+              : `/post/${post.id}`
+          }
           className="relative aspect-[3/4] overflow-hidden bg-gray-100"
         >
           <img

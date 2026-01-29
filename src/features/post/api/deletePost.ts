@@ -6,10 +6,15 @@ export async function deletePost(postId: string) {
     method: "DELETE",
   });
 
+  const raw = await res.text();
+  const parsed = raw ? JSON.parse(raw) : null;
+
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw error;
+    const message =
+      (parsed as { message?: string } | null)?.message ??
+      "게시글 삭제에 실패했습니다.";
+    throw new Error(`(${res.status}) ${message}`);
   }
 
-  return true;
+  return { status: res.status, body: parsed };
 }

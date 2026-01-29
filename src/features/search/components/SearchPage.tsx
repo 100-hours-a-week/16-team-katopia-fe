@@ -9,9 +9,10 @@ import SearchTabs from "./SearchTabs";
 import SearchResultEmpty from "./SearchResultEmpty";
 import SearchAccountList from "./SearchAccountList";
 
-import { getPostList } from "../../post/api/getPostList";
+import { useInfinitePostGrid } from "../hooks/useInfinitePostGrid";
 import { searchUsers, SearchUserItem } from "../api/searchUsers";
 import { searchPosts } from "../api/searchPosts";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 type GridPost = {
   id: number;
@@ -21,6 +22,7 @@ type GridPost = {
 export default function SearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { ready, isAuthenticated } = useAuth();
   const tabParam = searchParams.get("tab");
   const qParam = searchParams.get("q") ?? "";
 
@@ -39,10 +41,14 @@ export default function SearchPage() {
   );
 
   /* -------------------------
-     검색 전 게시글 그리드
+     검색 전 게시글 그리드 (무한 스크롤)
   ------------------------- */
-  const [gridPosts, setGridPosts] = useState<GridPost[]>([]);
-  const [loading, setLoading] = useState(false);
+  const {
+    items: gridPosts,
+    loading: gridLoading,
+    hasMore: gridHasMore,
+    observe: observeGrid,
+  } = useInfinitePostGrid();
 
   /* -------------------------
      계정 검색 결과
@@ -77,32 +83,6 @@ export default function SearchPage() {
 
     return () => clearTimeout(timer);
   }, [inputValue]);
-
-  /* -------------------------
-     검색 전: 게시글 목록
-  ------------------------- */
-  useEffect(() => {
-    if (isSearching) return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-
-    getPostList({ size: 18 })
-      .then((data) => {
-        const mapped = data.posts
-          .map((post) => ({
-            id: post.id,
-            imageUrl: post.imageUrls?.[0],
-          }))
-          .filter((p): p is GridPost => Boolean(p.imageUrl));
-
-        setGridPosts(mapped);
-      })
-      .catch(() => {
-        setGridPosts([]);
-      })
-      .finally(() => setLoading(false));
-  }, [isSearching]);
 
   /* -------------------------
      계정 검색 API
@@ -175,10 +155,17 @@ export default function SearchPage() {
   const shouldShowPostEmpty =
     shouldShowPosts && !postLoading && postResults.length === 0;
 
+  useEffect(() => {
+    if (!ready) return;
+    if (isAuthenticated) return;
+    router.replace("/home");
+  }, [isAuthenticated, ready, router]);
+
   /* -------------------------
      Render
   ------------------------- */
   useEffect(() => {
+    if (!ready || !isAuthenticated) return;
     const params = new URLSearchParams();
 
     if (isSearching) {
@@ -190,7 +177,11 @@ export default function SearchPage() {
 
     const next = params.toString();
     router.replace(next ? `/search?${next}` : "/search");
-  }, [activeTab, isSearching, query, router]);
+  }, [activeTab, isAuthenticated, isSearching, query, ready, router]);
+
+  if (!ready || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="px-4 py-4">
@@ -226,7 +217,10 @@ export default function SearchPage() {
             ))}
         </>
       ) : (
-        <SearchGrid posts={gridPosts} loading={loading} />
+        <>
+          <SearchGrid posts={gridPosts} loading={gridLoading} />
+          {gridHasMore && <div ref={observeGrid} />}
+        </>
       )}
     </div>
   );

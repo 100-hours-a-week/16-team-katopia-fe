@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { postCreateSchema, PostCreateValues } from "./schemas";
 import { usePostUnsavedGuard } from "./hooks/usePostUnsavedGuard";
 import { createPost } from "../api/createPost";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 import PostFormLayout from "../PostFormLayout";
 import PostFormHeader from "../components/PostFormHeader";
@@ -19,6 +25,14 @@ import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
 export default function PostCreatePage() {
   const router = useRouter();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const { ready, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!isAuthenticated) {
+      router.replace("/home");
+    }
+  }, [isAuthenticated, ready, router]);
 
   const methods = useForm<PostCreateValues>({
     resolver: zodResolver(postCreateSchema),
@@ -43,12 +57,35 @@ export default function PostCreatePage() {
   const onSubmit = async (data: PostCreateValues) => {
     try {
       console.log("post create submit", data);
-      const res = await createPost(data);
+      const extensions = data.images.map((file) => getFileExtension(file));
+      if (extensions.some((ext) => !ext)) {
+        throw new Error("지원하지 않는 이미지 확장자입니다.");
+      }
+
+      const presignedFiles = await requestUploadPresign("POST", extensions);
+      console.log("presign files", presignedFiles);
+      if (presignedFiles.length !== data.images.length) {
+        throw new Error("업로드 URL 개수가 올바르지 않습니다.");
+      }
+
+      await Promise.all(
+        presignedFiles.map((info, index) =>
+          uploadToPresignedUrl(
+            info.uploadUrl,
+            data.images[index],
+            data.images[index].type,
+          ),
+        ),
+      );
+
+      const imageUrls = presignedFiles.map((file) => file.accessUrl);
+      const res = await createPost({ content: data.content, imageUrls });
 
       const postId = res.data.id;
       console.log("게시글이 성공적으로 등록되었어요.");
       console.log(postId);
-      router.replace("/home");
+      // router.replace("/home"); 원래는 home으로 가게 하는게 맞음. ver2에서 홈화면 구현하면서 바꿀 예정
+      router.replace("/search");
     } catch (e) {
       /**
        * 서버 에러 코드별 분기

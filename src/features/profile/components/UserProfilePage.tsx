@@ -21,6 +21,7 @@ type ApiProfile = {
   gender: "M" | "F" | null;
   heightCm: number | null;
   weightKg: number | null;
+  style?: string[] | null;
 };
 
 type UserProfile = {
@@ -29,6 +30,7 @@ type UserProfile = {
   gender: "male" | "female" | null;
   height: number | null;
   weight: number | null;
+  style?: string[] | null;
 };
 
 /* ================= 페이지 ================= */
@@ -77,6 +79,7 @@ export default function UserProfilePage({ userId }: Props) {
                 : null,
           height: apiProfile.heightCm,
           weight: apiProfile.weightKg,
+          style: apiProfile.style ?? [],
         });
       } catch (err) {
         console.error(err);

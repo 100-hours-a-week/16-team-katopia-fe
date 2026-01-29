@@ -13,9 +13,6 @@ import SubmitButton from "./SubmitButton";
 
 import { useProfileImage } from "./hooks/useProfileImage";
 import { useNicknameHandlers } from "./hooks/useNicknameHandlers";
-import { API_BASE_URL } from "@/src/config/api";
-import { issueAccessToken } from "@/src/lib/auth";
-import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 /* =========================
    Schema & Types
@@ -43,7 +40,6 @@ export default function SignupStep1() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const hasHandledOAuth = useRef(false);
-  const { setAuthenticated } = useAuth(); // 🔥 전역 인증 상태
 
   /* -------------------------
      OAuth 콜백 처리 (status 분기만)
@@ -103,51 +99,38 @@ export default function SignupStep1() {
   } = useNicknameHandlers(trigger, "nickname");
 
   /* -------------------------
-     Submit (회원가입 → 즉시 로그인)
+     Submit (닉네임 저장 → Step2)
   ------------------------- */
   const onSubmit = useCallback(
     async (data: SignupStep1Values) => {
       try {
-        // 1️⃣ 회원가입 (Registration Token → RT 발급)
-        const res = await fetch(`${API_BASE_URL}/api/members`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include", // 🔥 registration_token 쿠키 포함
-          body: JSON.stringify({
-            nickname: data.nickname,
-          }),
-        });
-
-        if (!res.ok) {
-          const error = await res.json();
-          console.error(error.code);
-          throw new Error(`회원가입 실패 (${res.status})`);
+        if (!isNicknameVerified) {
+          const ok = await handleDuplicateCheck(data.nickname);
+          if (!ok) return;
         }
 
-        // 2️⃣ RT → AT 발급 (🔥 핵심)
-        await issueAccessToken();
+        try {
+          window.localStorage.setItem("signup-nickname", data.nickname);
+        } catch {
+          // ignore storage errors and still proceed
+        }
 
-        // 3️⃣ 전역 로그인 상태 ON
-        setAuthenticated(true);
-
-        // 4️⃣ 다음 단계로 이동
-        router.replace("/signup/step2"); // 또는 바로 /home
+        // Step2에서 gender까지 포함해 회원가입을 완료합니다.
+        router.replace("/signup/step2");
       } catch (err) {
         console.error(err);
         alert("회원가입 중 오류가 발생했습니다.");
       }
     },
-    [router, setAuthenticated],
+    [router, isNicknameVerified, handleDuplicateCheck],
   );
 
   /* -------------------------
      Submit Button Disabled
   ------------------------- */
   const isSubmitDisabled = useMemo(
-    () => !isNicknameVerified || !!errors.nickname || !hasNicknameValue,
-    [isNicknameVerified, errors.nickname, hasNicknameValue],
+    () => !!errors.nickname || !hasNicknameValue,
+    [errors.nickname, hasNicknameValue],
   );
 
   /* -------------------------

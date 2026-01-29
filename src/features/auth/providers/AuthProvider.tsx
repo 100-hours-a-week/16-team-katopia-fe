@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { issueAccessToken } from "@/src/lib/auth";
+import { API_BASE_URL } from "@/src/config/api";
+import { authFetch, issueAccessToken, isLoggedOutFlag } from "@/src/lib/auth";
 
 type AuthContextValue = {
   isAuthenticated: boolean;
@@ -30,8 +31,21 @@ export default function AuthProvider({
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
-        await issueAccessToken(); // RT → AT
-        setAuthenticated(true);
+        if (isLoggedOutFlag()) {
+          setAuthenticated(false);
+          return;
+        }
+        const token = await issueAccessToken(); // RT → AT
+        console.log("issued access token", token);
+
+        // 토큰 발급이 되더라도 실제 로그인 상태인지 한 번 더 확인합니다.
+        const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {
+          method: "GET",
+          cache: "no-store",
+          skipAuthRefresh: true,
+        });
+
+        setAuthenticated(meRes.ok);
       } catch {
         setAuthenticated(false);
       } finally {

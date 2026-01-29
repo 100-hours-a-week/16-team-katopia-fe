@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
+import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 type PostListItem = {
   id: number;
@@ -33,5 +34,16 @@ export async function getPostList(params?: {
     throw result;
   }
 
-  return result.data;
+  const data = result.data as GetPostListResponse;
+  return {
+    ...data,
+    posts: (data.posts ?? []).map((post) => ({
+      ...post,
+      imageUrls: normalizeImageUrls(
+        post.imageUrls as unknown as
+          | string[]
+          | { imageUrl?: string; accessUrl?: string; url?: string }[],
+      ),
+    })),
+  };
 }

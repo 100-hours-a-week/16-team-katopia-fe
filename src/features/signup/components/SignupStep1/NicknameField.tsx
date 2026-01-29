@@ -10,7 +10,7 @@ type Props = {
   error?: string;
   duplicateError: string | null;
   duplicateSuccess: string | null;
-  onDuplicateCheck: (nickname: string) => void;
+  onDuplicateCheck: (nickname: string) => boolean | void | Promise<boolean>;
 };
 
 const NicknameField = memo(

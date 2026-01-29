@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { deletePost } from "../api/deletePost";
 import { getPostDetail } from "../api/getPostDetail";
@@ -18,8 +18,10 @@ import PostImageCarousel from "./PostImageCarousel";
 import PostContent from "./PostContent";
 import CommentInput from "./CommentInput";
 import CommentList, { type Comment as CommentListItem } from "./CommentList";
+import { pickImageUrl } from "@/src/features/upload/utils/normalizeImageUrls";
+import { getCachedProfileImage } from "@/src/features/profile/utils/profileImageCache";
 
-type ImageUrlItem = { imageUrl: string; sortOrder?: number };
+/* ================= 타입 ================= */
 
 type PostAuthor = {
   nickname: string;
@@ -27,79 +29,80 @@ type PostAuthor = {
   gender?: "M" | "F" | null;
   height?: number | null;
   weight?: number | null;
-  heightCm?: number | null;
-  weightKg?: number | null;
   memberId?: number | string;
   id?: number | string;
   userId?: number | string;
 };
 
+type PostImageItem = {
+  imageUrl?: string;
+  accessUrl?: string;
+  url?: string;
+  sortOrder?: number;
+};
+
 type PostDetail = {
-  imageUrls?: string[] | ImageUrlItem[];
-  content?: string | null;
-  author?: PostAuthor | null;
-  aggregate?: {
-    likeCount?: number | null;
-    commentCount?: number | null;
-  } | null;
+  imageUrls: PostImageItem[];
+  content: string;
+  isLiked: boolean;
+  aggregate: {
+    likeCount: number;
+    commentCount: number;
+  };
   createdAt: string;
+  author: PostAuthor;
 };
 
 type CommentItem = CommentListItem;
 
-function normalizeImageUrls(
-  value: string[] | ImageUrlItem[] | undefined,
-): string[] {
+/* ================= 유틸 ================= */
+
+function normalizePostImageUrls(value: PostImageItem[] | undefined): string[] {
   if (!value || value.length === 0) return [];
 
-  if (typeof value[0] === "string") {
-    return value as string[];
-  }
-
-  const items = value as ImageUrlItem[];
-  return [...items]
+  return [...value]
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map((img) => img.imageUrl)
-    .filter(Boolean);
+    .map((img) => pickImageUrl(img))
+    .filter(Boolean) as string[];
 }
+
+/* ================= 페이지 ================= */
 
 export default function PostDetailPage() {
   const { postId } = useParams<{ postId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
+    profileImageUrl?: string | null;
   } | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const sortedImageUrls = useMemo(() => {
-    return normalizeImageUrls(post?.imageUrls);
-  }, [post]);
+  const sortedImageUrls = useMemo(
+    () => normalizePostImageUrls(post?.imageUrls),
+    [post],
+  );
 
   const isMine = useMemo(() => {
-    if (!post?.author) return false;
+    if (!post?.author || !me?.id) return false;
     const authorId =
       post.author.memberId ?? post.author.id ?? post.author.userId;
-    if (authorId != null && me?.id != null) {
-      return String(authorId) === String(me.id);
-    }
-    if (post.author.nickname && me?.nickname) {
-      return post.author.nickname === me.nickname;
-    }
-    return false;
+    return String(authorId) === String(me.id);
   }, [post, me]);
+
+  /* ================= 게시글 ================= */
 
   useEffect(() => {
     if (!postId) return;
 
     getPostDetail(postId)
-      .then((res) => {
-        setPost(res.data);
-      })
+      .then((res) => setPost(res.data))
       .catch((e) => {
         if (e?.code === "POST-E-005") {
           alert("게시글을 찾을 수 없습니다.");
@@ -108,6 +111,19 @@ export default function PostDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [postId, router]);
+
+  /* ================= 좋아요 로컬 캐시 ================= */
+
+  useEffect(() => {
+    if (!postId) return;
+    const stored = localStorage.getItem(`post-liked-${postId}`);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (stored != null) setLikedOverride(stored === "true");
+  }, [postId]);
+
+  const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
+
+  /* ================= 댓글 ================= */
 
   useEffect(() => {
     if (!postId) return;
@@ -128,6 +144,8 @@ export default function PostDetailPage() {
       .catch(() => {});
   }, [postId]);
 
+  /* ================= 내 정보 ================= */
+
   useEffect(() => {
     authFetch(`${API_BASE_URL}/api/members/me`, {
       method: "GET",
@@ -137,170 +155,113 @@ export default function PostDetailPage() {
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (!json) return;
-        const rawProfile = json.data?.profile ?? {};
+        const profile = json.data?.profile ?? {};
         setMe({
-          id: rawProfile.memberId ?? rawProfile.id ?? rawProfile.userId,
-          nickname: rawProfile.nickname,
+          id: profile.memberId ?? profile.id,
+          nickname: profile.nickname,
+          profileImageUrl: profile.profileImageUrl ?? getCachedProfileImage(),
         });
       })
       .catch(() => {});
   }, []);
 
+  /* ================= 댓글 핸들러 ================= */
+
   const handleCreateComment = async (content: string) => {
     if (!postId) return;
 
-    try {
-      const newComment = await createComment({
-        postId,
-        content,
-      });
+    const newComment = await createComment({ postId, content });
 
-      setComments((prev) => [
-        {
-          id: newComment.id,
-          content: newComment.content,
-          createdAt: newComment.createdAt,
-          nickname: me?.nickname ?? "나",
-          authorId: me?.id,
-          isMine: true,
-        },
-        ...prev,
-      ]);
-      setPost((prev) => {
-        if (!prev?.aggregate) return prev;
-        return {
-          ...prev,
-          aggregate: {
-            ...prev.aggregate,
-            commentCount: (prev.aggregate.commentCount ?? 0) + 1,
-          },
-        };
-      });
-    } catch (e: unknown) {
-      const error = e as { code?: string };
+    setComments((prev) => [
+      {
+        id: newComment.id,
+        content: newComment.content,
+        createdAt: newComment.createdAt,
+        nickname: me?.nickname ?? "나",
+        authorId: me?.id,
+        profileImageUrl: me?.profileImageUrl ?? null,
+        isMine: true,
+      },
+      ...prev,
+    ]);
 
-      switch (error.code) {
-        case "COMMENT-E-001":
-          alert("댓글 내용을 입력해주세요.");
-          break;
-        case "COMMENT-E-002":
-          alert("댓글은 최대 200자까지 입력할 수 있습니다.");
-          break;
-        case "POST-E-005":
-          alert("게시글을 찾을 수 없습니다.");
-          break;
-        case "AUTH-E-002":
-          alert("로그인이 필요합니다.");
-          router.replace("/login");
-          break;
-        default:
-          alert("댓글 작성에 실패했습니다.");
-      }
-    }
+    setPost((prev) =>
+      prev
+        ? {
+            ...prev,
+            aggregate: {
+              ...prev.aggregate,
+              commentCount: prev.aggregate.commentCount + 1,
+            },
+          }
+        : prev,
+    );
   };
 
   const handleUpdateComment = async (id: number, content: string) => {
     if (!postId) return;
-
-    try {
-      await updateComment({ postId, commentId: id, content });
-      setComments((prev) =>
-        prev.map((comment) =>
-          comment.id === id ? { ...comment, content } : comment,
-        ),
-      );
-    } catch (e: unknown) {
-      const error = e as { code?: string };
-
-      switch (error.code) {
-        case "COMMENT-E-001":
-          alert("댓글 내용을 입력해주세요.");
-          break;
-        case "COMMENT-E-002":
-          alert("댓글은 최대 200자까지 입력할 수 있습니다.");
-          break;
-        case "AUTH-E-002":
-          alert("로그인이 필요합니다.");
-          router.replace("/login");
-          break;
-        default:
-          alert("댓글 수정에 실패했습니다.");
-      }
-    }
+    await updateComment({ postId, commentId: id, content });
+    setComments((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, content } : c)),
+    );
   };
 
   const handleDeleteComment = async (id: number) => {
     if (!postId) return;
+    await deleteComment({ postId, commentId: id });
 
-    try {
-      await deleteComment({ postId, commentId: id });
-      setComments((prev) => prev.filter((comment) => comment.id !== id));
-      setPost((prev) => {
-        if (!prev?.aggregate) return prev;
-        const nextCount = Math.max(
-          0,
-          (prev.aggregate.commentCount ?? 0) - 1,
-        );
-        return {
-          ...prev,
-          aggregate: {
-            ...prev.aggregate,
-            commentCount: nextCount,
-          },
-        };
-      });
-    } catch (e: unknown) {
-      const error = e as { code?: string };
-
-      switch (error.code) {
-        case "AUTH-E-002":
-          alert("로그인이 필요합니다.");
-          router.replace("/login");
-          break;
-        default:
-          alert("댓글 삭제에 실패했습니다.");
-      }
-    }
+    setComments((prev) => prev.filter((c) => c.id !== id));
+    setPost((prev) =>
+      prev
+        ? {
+            ...prev,
+            aggregate: {
+              ...prev.aggregate,
+              commentCount: Math.max(0, prev.aggregate.commentCount - 1),
+            },
+          }
+        : prev,
+    );
   };
+
+  /* ================= 렌더 ================= */
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-t-transparent" />
       </div>
     );
   }
-  if (!post) return null;
 
-  const author = post.author ?? {
-    nickname: "",
-    profileImageUrl: null,
-  };
+  if (!post) return null;
 
   return (
     <div className="min-h-screen px-4 py-4">
       <PostHeader
-        author={author}
+        author={post.author}
         createdAt={post.createdAt}
         isMine={isMine}
-        onEdit={() => {
-          if (!postId) return;
-          router.push(`/post/edit/${postId}`);
-        }}
+        onEdit={() => router.push(`/post/edit/${postId}`)}
         onDelete={() => setDeleteOpen(true)}
       />
 
       <PostImageCarousel images={sortedImageUrls} />
 
       <PostContent
-        content={post.content ?? ""}
-        likeCount={post.aggregate?.likeCount ?? 0}
-        commentCount={post.aggregate?.commentCount ?? 0}
+        postId={postId}
+        content={post.content}
+        likeCount={post.aggregate.likeCount}
+        commentCount={post.aggregate.commentCount}
+        isLiked={effectiveLiked}
+        onLikedChange={(next) => {
+          setLikedOverride(next);
+          localStorage.setItem(`post-liked-${postId}`, String(next));
+        }}
       />
 
-      <div className="mt-8 border-t border-[#e5e5e5] pt-6">
+      <div className="mt-8 border-t pt-6">
         <CommentInput onSubmit={handleCreateComment} />
-
         <CommentList
           comments={comments}
           onDelete={handleDeleteComment}
@@ -315,15 +276,10 @@ export default function PostDetailPage() {
         onClose={() => setDeleteOpen(false)}
         onConfirm={async () => {
           if (!postId) return;
-          try {
-            await deletePost(postId);
-            router.replace("/home");
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          } catch (e) {
-            alert("게시글 삭제에 실패했습니다.");
-          } finally {
-            setDeleteOpen(false);
-          }
+          await deletePost(postId);
+          router.replace(
+            searchParams.get("from") === "profile" ? "/profile" : "/home",
+          );
         }}
       />
     </div>

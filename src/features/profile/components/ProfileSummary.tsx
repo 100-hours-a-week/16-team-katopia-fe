@@ -6,6 +6,7 @@ type Profile = {
   gender: "male" | "female" | null;
   height: number | null;
   weight: number | null;
+  style?: string[] | null;
 };
 
 export default function ProfileSummary({
@@ -17,9 +18,11 @@ export default function ProfileSummary({
 }) {
   if (loading || !profile) return null;
 
-  const { nickname, profileImageUrl, gender, height, weight } = profile;
+  const { nickname, profileImageUrl, gender, height, weight, style } = profile;
 
   const hasBodyInfo = height != null || weight != null;
+  const styles = (style ?? []).filter(Boolean);
+  const hasStyle = styles.length > 0;
 
   return (
     <section className="flex flex-col items-center py-16">
@@ -62,6 +65,12 @@ export default function ProfileSummary({
           {height != null && <span>{height}cm</span>}
           {height != null && weight != null && <span> · </span>}
           {weight != null && <span>{weight}kg</span>}
+        </p>
+      )}
+
+      {hasStyle && (
+        <p className="mt-2 text-xs text-gray-600">
+          {styles.join(" · ")}
         </p>
       )}
     </section>

@@ -21,6 +21,11 @@ import {
   isRemoteUrl,
   setCachedProfileImage,
 } from "@/src/features/profile/utils/profileImageCache";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
 
 /* =========================
    Constants
@@ -217,11 +222,33 @@ export default function ProfileEditPage() {
     }
 
     try {
+      let uploadedProfileUrl: string | undefined;
+
+      if (!removeImage && imageFile) {
+        const extension = getFileExtension(imageFile);
+        if (!extension) {
+          throw new Error("지원하지 않는 이미지 확장자입니다.");
+        }
+
+        const [presigned] = await requestUploadPresign("PROFILE", [
+          extension,
+        ]);
+        await uploadToPresignedUrl(
+          presigned.uploadUrl,
+          imageFile,
+          imageFile.type,
+        );
+        uploadedProfileUrl = presigned.accessUrl;
+        setCachedProfileImage(uploadedProfileUrl);
+      }
+
       const profileImageUrl = removeImage
         ? null
-        : preview && isRemoteUrl(preview)
-          ? preview
-          : undefined;
+        : uploadedProfileUrl
+          ? uploadedProfileUrl
+          : preview && isRemoteUrl(preview)
+            ? preview
+            : undefined;
 
       await updateProfile({
         nickname: trimmedNickname || undefined,
@@ -272,8 +299,8 @@ export default function ProfileEditPage() {
       return;
     }
 
-    const resizeToDataUrl = (target: File) =>
-      new Promise<string>((resolve, reject) => {
+    const resizeToSquareJpeg = (target: File) =>
+      new Promise<{ dataUrl: string; file: File }>((resolve, reject) => {
         const img = new window.Image();
         const objectUrl = URL.createObjectURL(target);
 
@@ -303,7 +330,12 @@ export default function ProfileEditPage() {
                 return;
               }
               const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
+              reader.onloadend = () => {
+                const jpegFile = new File([blob], "profile.jpg", {
+                  type: "image/jpeg",
+                });
+                resolve({ dataUrl: reader.result as string, file: jpegFile });
+              };
               reader.onerror = () => reject(new Error("이미지 읽기 실패"));
               reader.readAsDataURL(blob);
             },
@@ -320,11 +352,12 @@ export default function ProfileEditPage() {
         img.src = objectUrl;
       });
 
-    setImageFile(file); // 🔥 핵심
     setImageError(null);
     setRemoveImage(false);
-    resizeToDataUrl(file)
-      .then((dataUrl) => {
+    setImageFile(null);
+    resizeToSquareJpeg(file)
+      .then(({ dataUrl, file: resizedFile }) => {
+        setImageFile(resizedFile);
         setPreview(dataUrl);
         setCachedProfileImage(dataUrl);
       })

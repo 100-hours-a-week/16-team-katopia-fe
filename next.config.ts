@@ -3,9 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
+      // 기존 테스트용
       {
         protocol: "https",
         hostname: "picsum.photos",
+      },
+
+      // 🔥 FITCHECK 이미지 (CloudFront)
+      {
+        protocol: "https",
+        hostname: "df1ez4kkj7703.cloudfront.net",
+        pathname: "/**",
       },
     ],
   },

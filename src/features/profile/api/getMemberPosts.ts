@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 export type MemberPostItem = {
   id: number;
@@ -15,7 +16,11 @@ export type GetMemberPostsResponse = {
 /** 🔹 API raw response item */
 type RawMemberPost = {
   id: number;
-  imageUrls: string | string[];
+  imageUrls:
+    | string
+    | string[]
+    | { imageUrl?: string; accessUrl?: string; url?: string }
+    | { imageUrl?: string; accessUrl?: string; url?: string }[];
   createdAt: string;
 };
 
@@ -44,9 +49,7 @@ export async function getMemberPosts(params: {
 
   const posts: MemberPostItem[] = (json.data.posts ?? []).map(
     (post: RawMemberPost) => {
-      const imageUrl = Array.isArray(post.imageUrls)
-        ? post.imageUrls[0]
-        : post.imageUrls;
+      const imageUrl = normalizeImageUrls(post.imageUrls)[0] ?? "";
 
       return {
         id: post.id,
