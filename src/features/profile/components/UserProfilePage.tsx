@@ -48,6 +48,7 @@ export default function UserProfilePage({ userId }: Props) {
   const [postsHasMore, setPostsHasMore] = useState(true);
   const postsObserverRef = useRef<IntersectionObserver | null>(null);
   const postsSentinelRef = useRef<HTMLDivElement | null>(null);
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   useEffect(() => {
     if (Number.isNaN(memberId)) return;
@@ -129,6 +130,7 @@ export default function UserProfilePage({ userId }: Props) {
     setPosts([]);
     setPostsCursor(null);
     setPostsHasMore(true);
+    setHasScrolled(false);
   }, [memberId]);
 
   useEffect(() => {
@@ -143,7 +145,7 @@ export default function UserProfilePage({ userId }: Props) {
     postsObserverRef.current?.disconnect();
     postsObserverRef.current = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && hasScrolled) {
           loadMorePosts();
         }
       },
@@ -151,7 +153,15 @@ export default function UserProfilePage({ userId }: Props) {
     );
     postsObserverRef.current.observe(node);
     return () => postsObserverRef.current?.disconnect();
-  }, [postsHasMore, loadMorePosts]);
+  }, [postsHasMore, loadMorePosts, hasScrolled]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 0) setHasScrolled(true);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   /* ================= Loading / Error ================= */
 

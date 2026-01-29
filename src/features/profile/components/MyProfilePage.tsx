@@ -42,6 +42,7 @@ export default function MyProfilePage() {
   const [postsHasMore, setPostsHasMore] = useState(true);
   const postsObserverRef = useRef<IntersectionObserver | null>(null);
   const postsSentinelRef = useRef<HTMLDivElement | null>(null);
+  const [hasScrolled, setHasScrolled] = useState(false);
 
   /* -------------------------
      내 정보 조회
@@ -137,6 +138,7 @@ export default function MyProfilePage() {
     setPosts([]);
     setPostsCursor(null);
     setPostsHasMore(true);
+    setHasScrolled(false);
   }, [profile?.userId]);
 
   useEffect(() => {
@@ -151,7 +153,7 @@ export default function MyProfilePage() {
     postsObserverRef.current?.disconnect();
     postsObserverRef.current = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && hasScrolled) {
           loadMorePosts();
         }
       },
@@ -159,7 +161,15 @@ export default function MyProfilePage() {
     );
     postsObserverRef.current.observe(node);
     return () => postsObserverRef.current?.disconnect();
-  }, [postsHasMore, loadMorePosts]);
+  }, [postsHasMore, loadMorePosts, hasScrolled]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 0) setHasScrolled(true);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleToggleMenu = () => setMenuOpen((prev) => !prev);
   const handleCloseMenu = () => setMenuOpen(false);
