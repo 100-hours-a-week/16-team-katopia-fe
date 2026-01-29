@@ -10,9 +10,10 @@ export default function SearchItem({ src, postId }: Props) {
   return (
     <Link
       href={`/post/${postId}`}
-      className="relative aspect-[3/4] bg-gray-100 overflow-hidden block"
+      className="relative aspect-3/4 bg-gray-100 overflow-hidden block"
     >
       {hasImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
           alt="검색 이미지"
