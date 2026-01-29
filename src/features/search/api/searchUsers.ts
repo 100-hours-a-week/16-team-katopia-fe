@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken } from "@/src/lib/auth";
+import { authFetch } from "@/src/lib/auth";
 
 export type SearchUserItem = {
   id: number;
@@ -30,17 +30,10 @@ export async function searchUsers(params: {
   if (params.weight) searchParams.set("weight", String(params.weight));
   if (params.gender) searchParams.set("gender", params.gender);
 
-  const token = getAccessToken();
-  const headers: HeadersInit = {};
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  const res = await fetch(
+  const res = await authFetch(
     `${API_BASE_URL}/api/search/users?${searchParams.toString()}`,
     {
       method: "GET",
-      headers,
       credentials: "include",
       cache: "no-store",
     },
@@ -53,6 +46,9 @@ export async function searchUsers(params: {
   console.log(result);
 
   if (!res.ok) {
+    if (res.status === 401) {
+      return { members: [], nextCursor: null };
+    }
     throw result;
   }
 

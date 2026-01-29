@@ -31,7 +31,12 @@ export function useInfinitePostGrid() {
           }))
           .filter((p) => p.imageUrl);
 
-        setItems((prev) => [...prev, ...mapped]);
+        setItems((prev) => {
+          const map = new Map<number, GridPost>();
+          prev.forEach((item) => map.set(item.id, item));
+          mapped.forEach((item) => map.set(item.id, item));
+          return Array.from(map.values());
+        });
         setNextCursor(data.nextCursor ?? null);
         setHasMore(!!data.nextCursor);
       })

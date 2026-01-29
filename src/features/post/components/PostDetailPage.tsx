@@ -66,6 +66,17 @@ function normalizePostImageUrls(value: PostImageItem[] | undefined): string[] {
     .filter(Boolean) as string[];
 }
 
+function dedupeComments(items: CommentItem[]) {
+  const seen = new Set<number>();
+  const next: CommentItem[] = [];
+  for (const item of items) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    next.push(item);
+  }
+  return next;
+}
+
 /* ================= 페이지 ================= */
 
 export default function PostDetailPage() {
@@ -130,16 +141,15 @@ export default function PostDetailPage() {
 
     getComments(postId, { size: 30 })
       .then((res) => {
-        setComments(
-          res.comments.map((comment) => ({
-            id: comment.id,
-            content: comment.content,
-            createdAt: comment.createdAt,
-            nickname: comment.author.nickname,
-            profileImageUrl: comment.author.profileImageUrl ?? null,
-            authorId: comment.author.id,
-          })),
-        );
+        const mapped = res.comments.map((comment) => ({
+          id: comment.id,
+          content: comment.content,
+          createdAt: comment.createdAt,
+          nickname: comment.author.nickname,
+          profileImageUrl: comment.author.profileImageUrl ?? null,
+          authorId: comment.author.id,
+        }));
+        setComments(dedupeComments(mapped));
       })
       .catch(() => {});
   }, [postId]);
@@ -172,18 +182,20 @@ export default function PostDetailPage() {
 
     const newComment = await createComment({ postId, content });
 
-    setComments((prev) => [
-      {
-        id: newComment.id,
-        content: newComment.content,
-        createdAt: newComment.createdAt,
-        nickname: me?.nickname ?? "나",
-        authorId: me?.id,
-        profileImageUrl: me?.profileImageUrl ?? null,
-        isMine: true,
-      },
-      ...prev,
-    ]);
+    setComments((prev) =>
+      dedupeComments([
+        {
+          id: newComment.id,
+          content: newComment.content,
+          createdAt: newComment.createdAt,
+          nickname: me?.nickname ?? "나",
+          authorId: me?.id,
+          profileImageUrl: me?.profileImageUrl ?? null,
+          isMine: true,
+        },
+        ...prev,
+      ]),
+    );
 
     setPost((prev) =>
       prev

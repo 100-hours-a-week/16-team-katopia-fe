@@ -1,13 +1,25 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { API_BASE_URL } from "@/src/config/api";
-import { authFetch, issueAccessToken, isLoggedOutFlag } from "@/src/lib/auth";
+import {
+  authFetch,
+  issueAccessToken,
+  isLoggedOutFlag,
+  isAuthInvalidated,
+} from "@/src/lib/auth";
 
 type AuthContextValue = {
   isAuthenticated: boolean;
   ready: boolean;
   setAuthenticated: (value: boolean) => void;
+  authInvalidated: boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -27,16 +39,22 @@ export default function AuthProvider({
 }) {
   const [ready, setReady] = useState(false);
   const [isAuthenticated, setAuthenticated] = useState(false);
+  const [authInvalidated, setAuthInvalidated] = useState(false);
 
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
         if (isLoggedOutFlag()) {
           setAuthenticated(false);
+          setAuthInvalidated(false);
           return;
         }
-        const token = await issueAccessToken(); // RT → AT
-        console.log("issued access token", token);
+        if (isAuthInvalidated()) {
+          setAuthenticated(false);
+          setAuthInvalidated(true);
+          return;
+        }
+        await issueAccessToken(); // RT → AT
 
         // 토큰 발급이 되더라도 실제 로그인 상태인지 한 번 더 확인합니다.
         const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {
@@ -56,10 +74,20 @@ export default function AuthProvider({
     bootstrapAuth();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleInvalid = () => {
+      setAuthenticated(false);
+      setAuthInvalidated(true);
+    };
+    window.addEventListener("auth:invalid", handleInvalid);
+    return () => window.removeEventListener("auth:invalid", handleInvalid);
+  }, []);
+
   // ✅ Hook은 return 위에서 항상 호출
   const value = useMemo(
-    () => ({ isAuthenticated, ready, setAuthenticated }),
-    [isAuthenticated, ready],
+    () => ({ isAuthenticated, ready, setAuthenticated, authInvalidated }),
+    [isAuthenticated, ready, authInvalidated],
   );
 
   // ✅ return은 Hook 이후에만
