@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type ProfilePostGridProps = {
   posts: {
     id: number;
@@ -45,11 +47,7 @@ export default function ProfilePostGrid({
           }
           className="relative aspect-[3/4] overflow-hidden bg-gray-100"
         >
-          <img
-            src={post.imageUrl}
-            alt=""
-            className="h-full w-full object-cover"
-          />
+          <Image src={post.imageUrl} alt="" fill className="object-cover" />
         </a>
       ))}
     </div>
