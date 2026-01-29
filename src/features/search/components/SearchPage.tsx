@@ -219,7 +219,7 @@ export default function SearchPage() {
       ) : (
         <>
           <SearchGrid posts={gridPosts} loading={gridLoading} />
-          {gridHasMore && <div ref={observeGrid} />}
+          {gridHasMore && <div ref={observeGrid} className="h-24" />}
         </>
       )}
     </div>

@@ -52,6 +52,7 @@ export function useInfinitePostGrid(params?: Params) {
     inFlightRef.current = true;
     setLoading(true);
 
+    const prevCursor = cursorRef.current;
     try {
       const afterForMember =
         cursorRef.current != null ? String(cursorRef.current) : undefined;
@@ -88,6 +89,10 @@ export function useInfinitePostGrid(params?: Params) {
         return Array.from(map.values());
       });
 
+      if (data.nextCursor === prevCursor) {
+        setHasMore(false);
+        return;
+      }
       setNextCursor(data.nextCursor ?? null);
       setHasMore(data.nextCursor != null);
     } catch (e) {
