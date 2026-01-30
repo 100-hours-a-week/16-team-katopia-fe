@@ -129,8 +129,12 @@ export default function SignupStep1() {
      Submit Button Disabled
   ------------------------- */
   const isSubmitDisabled = useMemo(
-    () => !!errors.nickname || !hasNicknameValue,
-    [errors.nickname, hasNicknameValue],
+    () =>
+      !!errors.nickname ||
+      !hasNicknameValue ||
+      !isNicknameVerified ||
+      !duplicateSuccess,
+    [errors.nickname, hasNicknameValue, isNicknameVerified, duplicateSuccess],
   );
 
   /* -------------------------

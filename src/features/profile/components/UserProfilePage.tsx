@@ -8,6 +8,7 @@ import { authFetch } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
 import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileSummary from "./ProfileSummary";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 interface Props {
   userId: string;
@@ -39,6 +40,7 @@ export default function UserProfilePage({ userId }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const memberId = Number(userId);
+  const { ready, isAuthenticated } = useAuth();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,11 +54,13 @@ export default function UserProfilePage({ userId }: Props) {
     memberId,
     size: 30,
     mode: "member",
+    enabled: ready && isAuthenticated,
   });
 
   /* ================= 프로필 ================= */
 
   useEffect(() => {
+    if (!ready || !isAuthenticated) return;
     if (Number.isNaN(memberId)) return;
 
     const fetchProfile = async () => {
@@ -97,11 +101,22 @@ export default function UserProfilePage({ userId }: Props) {
     };
 
     fetchProfile();
-  }, [memberId]);
+  }, [memberId, ready, isAuthenticated]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!isAuthenticated) {
+      router.replace("/home");
+    }
+  }, [ready, isAuthenticated, router]);
 
   /* ================= 게시글 ================= */
 
   /* ================= UI ================= */
+
+  if (!ready || !isAuthenticated) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -124,12 +139,7 @@ export default function UserProfilePage({ userId }: Props) {
       {/* 뒤로가기 */}
       <button
         onClick={() => {
-          const q = searchParams.get("q");
-          const tab = searchParams.get("tab") ?? "account";
-          const qs = new URLSearchParams();
-          if (tab) qs.set("tab", tab);
-          if (q) qs.set("q", q);
-          router.push(`/search?${qs.toString()}`);
+          router.back();
         }}
       >
         <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />

@@ -78,13 +78,6 @@ export default function CommentItem({
 
   const handleProfileClick = () => {
     if (comment.authorId == null) return;
-    if (
-      currentUserId != null &&
-      String(comment.authorId) === String(currentUserId)
-    ) {
-      router.push("/profile");
-      return;
-    }
     router.push(`/profile/${comment.authorId}`);
   };
 

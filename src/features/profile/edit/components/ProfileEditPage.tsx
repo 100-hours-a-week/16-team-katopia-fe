@@ -115,7 +115,7 @@ type FormValues = z.infer<typeof schema>;
 export default function ProfileEditPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { ready } = useAuth(); // 🔥 핵심
+  const { ready, isAuthenticated } = useAuth(); // 🔥 핵심
 
   /* ---------- State ---------- */
   const [preview, setPreview] = useState<string | null>(null);
@@ -172,40 +172,51 @@ export default function ProfileEditPage() {
   ========================= */
 
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || !isAuthenticated) return;
 
     const fetchProfile = async () => {
-      const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
-        credentials: "include",
-      });
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
+          credentials: "include",
+        });
 
-      if (!res.ok) return;
+        if (!res.ok) return;
 
-      const json = await res.json();
-      const profile = json.data.profile;
+        const json = await res.json();
+        const profile = json.data.profile;
 
-      // console.log("Fetched profile:", profile);
+        // console.log("Fetched profile:", profile);
 
-      reset({
-        nickname: profile.nickname ?? "",
-        gender: profile.gender === "F" ? "FEMALE" : "MALE",
-        height: profile.height ? String(profile.height) : "",
-        weight: profile.weight ? String(profile.weight) : "",
-        enableRealtimeNotification: profile.enableRealtimeNotification ?? true,
-        styles: profile.style?.map((s: string) => ENUM_TO_STYLE[s] ?? s) ?? [],
-      });
+        reset({
+          nickname: profile.nickname ?? "",
+          gender: profile.gender === "F" ? "FEMALE" : "MALE",
+          height: profile.height ? String(profile.height) : "",
+          weight: profile.weight ? String(profile.weight) : "",
+          enableRealtimeNotification: profile.enableRealtimeNotification ?? true,
+          styles: profile.style?.map((s: string) => ENUM_TO_STYLE[s] ?? s) ?? [],
+        });
 
-      setInitialNickname(profile.nickname ?? null);
-      if (profile.profileImageUrl) {
-        setCachedProfileImage(profile.profileImageUrl);
+        setInitialNickname(profile.nickname ?? null);
+        if (profile.profileImageUrl) {
+          setCachedProfileImage(profile.profileImageUrl);
+        }
+        const cachedImage = getCachedProfileImage();
+        setPreview(profile.profileImageUrl ?? cachedImage);
+        setRemoveImage(false);
+      } catch {
+        // ignore (handled by auth guard)
       }
-      const cachedImage = getCachedProfileImage();
-      setPreview(profile.profileImageUrl ?? cachedImage);
-      setRemoveImage(false);
     };
 
     fetchProfile();
-  }, [ready, reset]);
+  }, [ready, isAuthenticated, reset]);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!isAuthenticated) {
+      router.replace("/home");
+    }
+  }, [ready, isAuthenticated, router]);
 
   /* =========================
      Submit
@@ -388,6 +399,10 @@ export default function ProfileEditPage() {
     setValue("styles", [...styles, style]);
     setStyleError(null);
   };
+
+  if (!ready || !isAuthenticated) {
+    return null;
+  }
 
   return (
     <>

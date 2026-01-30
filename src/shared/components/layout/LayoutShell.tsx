@@ -24,6 +24,7 @@ export default function LayoutShell({ children }: Props) {
   const hasAlertedRef = useRef(false);
   const isPendingSignup = searchParams.get("status") === "PENDING";
   const isActiveLogin = searchParams.get("status") === "ACTIVE";
+  const isProfilePath = pathname?.startsWith("/profile") ?? false;
 
   useEffect(() => {
     if (!authInvalidated) return;
@@ -46,7 +47,9 @@ export default function LayoutShell({ children }: Props) {
     !isAuthenticated &&
     !isPendingSignup &&
     !LOGIN_GUARD_EXCLUDED_PATHS.includes(pathname ?? "") &&
-    (authInvalidated || LOGIN_GUARD_PATHS.includes(pathname ?? ""));
+    (authInvalidated ||
+      LOGIN_GUARD_PATHS.includes(pathname ?? "") ||
+      isProfilePath);
 
   return (
     <>
