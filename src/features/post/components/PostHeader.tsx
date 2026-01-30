@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type Author = {
-  id?: number | null;
+  id?: number | string | null;
   nickname: string;
   profileImageUrl?: string | null;
   gender?: "M" | "F" | null;
