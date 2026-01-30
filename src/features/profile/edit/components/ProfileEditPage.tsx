@@ -128,6 +128,10 @@ export default function ProfileEditPage() {
   const [styleError, setStyleError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [initialNickname, setInitialNickname] = useState<string | null>(null);
+  const [initialGender, setInitialGender] = useState<"MALE" | "FEMALE">("MALE");
+  const [initialHeight, setInitialHeight] = useState<string>("");
+  const [initialWeight, setInitialWeight] = useState<string>("");
+  const [initialStyles, setInitialStyles] = useState<string[]>([]);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -161,6 +165,8 @@ export default function ProfileEditPage() {
   const nickname = watch("nickname");
   const styles = watch("styles");
   const selectedGender = watch("gender");
+  const heightValue = watch("height") ?? "";
+  const weightValue = watch("weight") ?? "";
   const trimmedNickname = nickname?.trim();
   const canCheckDuplicate =
     Boolean(trimmedNickname) && trimmedNickname !== initialNickname;
@@ -207,6 +213,12 @@ export default function ProfileEditPage() {
         });
 
         setInitialNickname(profile.nickname ?? null);
+        setInitialGender(profile.gender === "F" ? "FEMALE" : "MALE");
+        setInitialHeight(profile.height ? String(profile.height) : "");
+        setInitialWeight(profile.weight ? String(profile.weight) : "");
+        setInitialStyles(
+          profile.style?.map((s: string) => ENUM_TO_STYLE[s] ?? s) ?? [],
+        );
         if (profile.profileImageUrl) {
           setCachedProfileImage(profile.profileImageUrl);
         }
@@ -427,7 +439,17 @@ export default function ProfileEditPage() {
     return null;
   }
 
-  const hasChanges = isDirty || Boolean(imageFile) || removeImage;
+  const normalizedStyles = [...styles].sort().join("|");
+  const normalizedInitialStyles = [...initialStyles].sort().join("|");
+  const hasChanges =
+    Boolean(imageFile) ||
+    removeImage ||
+    (trimmedNickname ?? "") !== (initialNickname ?? "") ||
+    selectedGender !== initialGender ||
+    (heightValue ?? "") !== (initialHeight ?? "") ||
+    (weightValue ?? "") !== (initialWeight ?? "") ||
+    normalizedStyles !== normalizedInitialStyles ||
+    isDirty;
 
   return (
     <>
@@ -492,7 +514,7 @@ export default function ProfileEditPage() {
               <button
                 type="button"
                 aria-label="프로필 이미지 삭제"
-                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-lg font-semibold text-black shadow"
+                className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-lg font-semibold text-black shadow transition-colors hover:bg-gray-100"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -572,8 +594,8 @@ export default function ProfileEditPage() {
         {/* Height / Weight */}
         <section className="px-4">
           <BodyInfoSection
-            heightValue={watch("height") ?? ""}
-            weightValue={watch("weight") ?? ""}
+            heightValue={heightValue}
+            weightValue={weightValue}
             onHeightChange={(value) => handleNumericChange("height", value)}
             onWeightChange={(value) => handleNumericChange("weight", value)}
             weightInputRef={weightInputRef}
