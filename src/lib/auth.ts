@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "@/src/config/api";
 /* =======================
  * Auth State (Module Scope)
  * ======================= */
@@ -98,9 +99,10 @@ export function notifyAuthInvalid() {
  * Issue Access Token (RT → AT)
  * ======================= */
 
-import { API_BASE_URL } from "@/src/config/api";
-
 export async function issueAccessToken() {
+  if (isLoggedOutFlag()) {
+    throw new Error("LOGGED_OUT");
+  }
   // 🔐 재발급은 반드시 단일 Promise
   if (refreshPromise) return refreshPromise;
 
@@ -147,6 +149,9 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
   // 🔴 이미 세션 종료 상태면 요청 자체 차단
   if (authInvalidated) {
     throw new Error("AUTH_INVALID");
+  }
+  if (isLoggedOutFlag()) {
+    throw new Error("LOGGED_OUT");
   }
 
   let token = getAccessToken();
