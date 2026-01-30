@@ -256,13 +256,18 @@ export default function SignupStep2() {
         await issueAccessToken();
         setAuthenticated(true);
 
-        await updateProfile({
-          nickname,
-          gender,
-          height: data.height ? Number(data.height) : null,
-          weight: data.weight ? Number(data.weight) : null,
-          style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
-        });
+        const hasOptionalInputs =
+          Boolean(data.height) || Boolean(data.weight) || styles.length > 0;
+
+        if (hasOptionalInputs) {
+          await updateProfile({
+            nickname,
+            gender,
+            height: data.height ? Number(data.height) : null,
+            weight: data.weight ? Number(data.weight) : null,
+            style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
+          });
+        }
 
         try {
           window.localStorage.removeItem("signup-nickname");
