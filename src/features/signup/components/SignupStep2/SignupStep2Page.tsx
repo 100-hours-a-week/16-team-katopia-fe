@@ -261,6 +261,7 @@ export default function SignupStep2() {
 
         if (hasOptionalInputs) {
           await updateProfile({
+            nickname,
             gender,
             height: data.height ? Number(data.height) : null,
             weight: data.weight ? Number(data.weight) : null,
