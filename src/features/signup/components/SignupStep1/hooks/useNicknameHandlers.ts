@@ -57,18 +57,24 @@ export function useNicknameHandlers<T extends FieldValues>(
         if (!res.ok) throw new Error();
 
         const payload = (await res.json()) as {
-          data?: { isDuplicated?: boolean };
+          data?: { isAvailable?: boolean };
         };
 
-        if (payload.data?.isDuplicated) {
+        if (payload.data?.isAvailable === true) {
+          setIsNicknameVerified(true);
+          setDuplicateSuccess("사용 가능한 닉네임입니다.");
+          return true;
+        }
+
+        if (payload.data?.isAvailable) {
           setIsNicknameVerified(false);
           setDuplicateError("이미 사용 중인 닉네임입니다.");
           return false;
         }
 
-        setIsNicknameVerified(true);
-        setDuplicateSuccess("사용 가능한 닉네임입니다.");
-        return true;
+        setIsNicknameVerified(false);
+        setDuplicateError("닉네임 형식을 확인해주세요.");
+        return false;
       } catch {
         setIsNicknameVerified(false);
         setDuplicateError("닉네임 중복 검사에 실패했습니다.");
