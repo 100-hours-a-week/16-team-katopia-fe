@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type Author = {
+  id?: number | null;
   nickname: string;
   profileImageUrl?: string | null;
   gender?: "M" | "F" | null;
@@ -73,9 +74,8 @@ export default function PostHeader({
   };
 
   const handleProfileClick = () => {
-    if (isMine) {
-      router.push("/profile");
-      return;
+    if (author.id != null) {
+      router.push(`/profile/${author.id}`);
     }
   };
 
@@ -103,7 +103,7 @@ export default function PostHeader({
             {menuOpen && (
               <div
                 ref={menuRef}
-                className="absolute right-0 top-7 z-50 w-[92px] overflow-hidden rounded-md border-2 border-black bg-white text-xs"
+                className="absolute right-0 top-7 z-50 w-23 overflow-hidden rounded-md border-2 border-black bg-white text-xs"
               >
                 <button
                   type="button"
@@ -157,19 +157,13 @@ export default function PostHeader({
 
         <div className="flex-1">
           <p className="text-sm font-semibold">{author.nickname}</p>
-          {((author.heightCm ?? author.height) || 0) > 0 ||
-          ((author.weightKg ?? author.weight) || 0) > 0 ? (
+          {(author.height || 0) > 0 || (author.weight || 0) > 0 ? (
             <p className="text-xs text-muted-foreground">
-              {((author.heightCm ?? author.height) || 0) > 0
-                ? `${author.heightCm ?? author.height}cm`
-                : ""}
-              {((author.heightCm ?? author.height) || 0) > 0 &&
-              ((author.weightKg ?? author.weight) || 0) > 0
+              {(author.height || 0) > 0 ? `${author.height}cm` : ""}
+              {(author.height || 0) > 0 && (author.weight || 0) > 0
                 ? " · "
                 : ""}
-              {((author.weightKg ?? author.weight) || 0) > 0
-                ? `${author.weightKg ?? author.weight}kg`
-                : ""}
+              {(author.weight || 0) > 0 ? `${author.weight}kg` : ""}
             </p>
           ) : null}
         </div>
