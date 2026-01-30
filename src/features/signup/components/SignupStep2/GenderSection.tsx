@@ -11,7 +11,7 @@ type Props = {
 const GenderSection = memo(({ register, error }: Props) => (
   <div className="mt-10">
     <p className="mb-2 font-medium text-[13px]">
-      성별<span className="text-red-500">*</span>
+      성별 <span className="text-red-500 text-[16px]">*</span>
     </p>
 
     <div className="flex justify-center gap-12">

@@ -29,7 +29,7 @@ const TermsSection = memo(
           onCheckedChange={(v) => onPrivacyChange(!!v)}
           className="border-[#121212] bg-white data-[state=checked]:bg-black"
         />
-        <span className="text-[13px]">개인정보 처리방침</span>
+        <span className="text-[13px]">[필수] 개인정보 처리방침</span>
         <button
           type="button"
           onClick={onShowPrivacy}
@@ -45,7 +45,7 @@ const TermsSection = memo(
           onCheckedChange={(v) => onTermsChange(!!v)}
           className="border-[#121212] bg-white data-[state=checked]:bg-black"
         />
-        <span className="text-[13px]">서비스 이용 약관</span>
+        <span className="text-[13px]">[필수] 서비스 이용 약관</span>
         <button
           type="button"
           onClick={onShowTerms}
