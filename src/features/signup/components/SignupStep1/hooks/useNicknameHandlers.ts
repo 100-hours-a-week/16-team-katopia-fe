@@ -12,6 +12,7 @@ export function useNicknameHandlers<T extends FieldValues>(
   const [hasNicknameValue, setHasNicknameValue] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [duplicateSuccess, setDuplicateSuccess] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   const handleNicknameChangeCapture = useCallback(
     (e: React.FormEvent<HTMLInputElement>) => {
@@ -30,6 +31,8 @@ export function useNicknameHandlers<T extends FieldValues>(
 
   const handleDuplicateCheck = useCallback(
     async (nickname: string) => {
+      if (isChecking) return false;
+      setIsChecking(true);
       setDuplicateError(null);
       setDuplicateSuccess(null);
 
@@ -38,6 +41,7 @@ export function useNicknameHandlers<T extends FieldValues>(
       if (!isValid) {
         setIsNicknameVerified(false);
         setDuplicateError("닉네임 형식을 확인해주세요.");
+        setIsChecking(false);
         return false;
       }
 
@@ -63,25 +67,29 @@ export function useNicknameHandlers<T extends FieldValues>(
         if (payload.data?.isAvailable === true) {
           setIsNicknameVerified(true);
           setDuplicateSuccess("사용 가능한 닉네임입니다.");
+          setIsChecking(false);
           return true;
         }
 
         if (payload.data?.isAvailable) {
           setIsNicknameVerified(false);
           setDuplicateError("이미 사용 중인 닉네임입니다.");
+          setIsChecking(false);
           return false;
         }
 
         setIsNicknameVerified(false);
         setDuplicateError("닉네임 형식을 확인해주세요.");
+        setIsChecking(false);
         return false;
       } catch {
         setIsNicknameVerified(false);
         setDuplicateError("닉네임 중복 검사에 실패했습니다.");
+        setIsChecking(false);
         return false;
       }
     },
-    [trigger, nicknamePath],
+    [trigger, nicknamePath, isChecking],
   );
 
   return {
@@ -89,6 +97,7 @@ export function useNicknameHandlers<T extends FieldValues>(
     hasNicknameValue,
     duplicateError,
     duplicateSuccess,
+    isChecking,
     handleNicknameChangeCapture,
     handleDuplicateCheck,
   };

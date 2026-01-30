@@ -176,6 +176,7 @@ export default function ProfileEditPage() {
     isNicknameVerified,
     duplicateError,
     duplicateSuccess,
+    isChecking,
     handleNicknameChangeCapture,
     handleDuplicateCheck,
   } = useNicknameHandlers<FormValues>(trigger, "nickname");
@@ -551,7 +552,7 @@ export default function ProfileEditPage() {
               if (!nickname) return;
               handleDuplicateCheck(nickname); // 🔥 반드시 nickname 전달
             }}
-            disableDuplicateCheck={!canCheckDuplicate}
+            disableDuplicateCheck={!canCheckDuplicate || isChecking}
           />
         </section>
 

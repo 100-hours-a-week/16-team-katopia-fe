@@ -11,6 +11,7 @@ type Props = {
   duplicateError: string | null;
   duplicateSuccess: string | null;
   onDuplicateCheck: (nickname: string) => boolean | void | Promise<boolean>;
+  disableDuplicateCheck?: boolean;
 };
 
 const NicknameField = memo(
@@ -22,6 +23,7 @@ const NicknameField = memo(
     duplicateError,
     duplicateSuccess,
     onDuplicateCheck,
+    disableDuplicateCheck,
   }: Props) => {
     const [overLimit, setOverLimit] = useState(false);
 
@@ -60,14 +62,14 @@ const NicknameField = memo(
             className="placeholder:text-[12px] text-[12px]"
           />
 
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onDuplicateCheck(nickname)}
-            disabled={!nickname}
-          >
-            중복 확인
-          </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onDuplicateCheck(nickname)}
+          disabled={disableDuplicateCheck ?? !nickname}
+        >
+          중복 확인
+        </Button>
         </div>
 
         {/* 🔥 헬퍼 텍스트 우선순위 */}
