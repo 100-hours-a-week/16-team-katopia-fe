@@ -265,6 +265,7 @@ export default function SignupStep2() {
             gender,
             height: data.height ? Number(data.height) : null,
             weight: data.weight ? Number(data.weight) : null,
+            enableRealtimeNotification: true,
             style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
           });
         }
