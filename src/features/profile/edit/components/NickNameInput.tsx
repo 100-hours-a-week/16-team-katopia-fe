@@ -12,6 +12,7 @@ type Props = {
   duplicateError: string | null;
   duplicateSuccess: string | null;
   onDuplicateCheck: () => void;
+  disableDuplicateCheck?: boolean;
 };
 
 const NicknameInput = memo(
@@ -22,6 +23,7 @@ const NicknameInput = memo(
     duplicateError,
     duplicateSuccess,
     onDuplicateCheck,
+    disableDuplicateCheck,
   }: Props) => (
     <div className="mt-10">
       <label className="mb-1 block text-sm font-medium">닉네임</label>
@@ -37,7 +39,12 @@ const NicknameInput = memo(
           placeholder="닉네임을 입력해주세요."
           className="placeholder:text-[12px] text-[12px]"
         />
-        <Button type="button" variant="outline" onClick={onDuplicateCheck}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onDuplicateCheck}
+          disabled={disableDuplicateCheck}
+        >
           중복 확인
         </Button>
       </div>

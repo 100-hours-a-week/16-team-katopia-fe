@@ -192,8 +192,10 @@ export default function ProfileEditPage() {
           gender: profile.gender === "F" ? "FEMALE" : "MALE",
           height: profile.height ? String(profile.height) : "",
           weight: profile.weight ? String(profile.weight) : "",
-          enableRealtimeNotification: profile.enableRealtimeNotification ?? true,
-          styles: profile.style?.map((s: string) => ENUM_TO_STYLE[s] ?? s) ?? [],
+          enableRealtimeNotification:
+            profile.enableRealtimeNotification ?? true,
+          styles:
+            profile.style?.map((s: string) => ENUM_TO_STYLE[s] ?? s) ?? [],
         });
 
         setInitialNickname(profile.nickname ?? null);
@@ -241,9 +243,7 @@ export default function ProfileEditPage() {
           throw new Error("지원하지 않는 이미지 확장자입니다.");
         }
 
-        const [presigned] = await requestUploadPresign("PROFILE", [
-          extension,
-        ]);
+        const [presigned] = await requestUploadPresign("PROFILE", [extension]);
         await uploadToPresignedUrl(
           presigned.uploadUrl,
           imageFile,
@@ -534,7 +534,7 @@ export default function ProfileEditPage() {
                   className="w-[80px] text-right text-[13px]
           placeholder:text-right
           placeholder:text-[13px]
-          placeholder:!text-[#d9d9d9]"
+          placeholder:text-[#d9d9d9]!"
                   onChange={(e) => handleNumericChange(e, "height")}
                 />
                 <span className="text-sm text-muted-foreground">cm</span>
@@ -555,7 +555,7 @@ export default function ProfileEditPage() {
                   className="w-[80px] text-right text-[13px]
           placeholder:text-right
           placeholder:text-[13px]
-          placeholder:!text-[#d9d9d9]"
+          placeholder:text-[#d9d9d9]!"
                   onChange={(e) => handleNumericChange(e, "weight")}
                 />
                 <span className="text-sm text-muted-foreground">kg</span>
