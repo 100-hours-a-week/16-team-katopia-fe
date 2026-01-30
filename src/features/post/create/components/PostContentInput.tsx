@@ -15,6 +15,7 @@ export default function PostContentInput() {
         placeholder="내용을 입력해주세요."
         className="w-full border p-3 text-[13px] rounded-[5px] focus:outline-none focus:border-black focus:border resize-none"
         rows={5}
+        maxLength={200}
       />
 
       <div className="mt-1 text-right text-[11px] text-muted-foreground">
