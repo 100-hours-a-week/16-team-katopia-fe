@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type Profile = {
   nickname: string;
@@ -19,6 +20,7 @@ export default function ProfileSummary({
   if (loading || !profile) return null;
 
   const { nickname, profileImageUrl, gender, height, weight, style } = profile;
+  const resolvedProfileImageUrl = resolveMediaUrl(profileImageUrl);
 
   const hasBodyInfo = height != null || weight != null;
   const styles = (style ?? []).filter(Boolean);
@@ -28,9 +30,9 @@ export default function ProfileSummary({
     <section className="flex flex-col items-center py-16">
       {/* Avatar */}
       <div className="mb-4 h-24 w-24 rounded-full bg-gray-200 relative overflow-hidden flex items-center justify-center">
-        {profileImageUrl ? (
+        {resolvedProfileImageUrl ? (
           <Image
-            src={profileImageUrl}
+            src={resolvedProfileImageUrl}
             alt="profile"
             fill
             sizes="96px"

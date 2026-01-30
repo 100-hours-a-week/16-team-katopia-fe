@@ -101,10 +101,16 @@ export default function PostDetailPage() {
   );
 
   const isMine = useMemo(() => {
-    if (!post?.author || !me?.id) return false;
+    if (!post?.author) return false;
     const authorId =
       post.author.memberId ?? post.author.id ?? post.author.userId;
-    return String(authorId) === String(me.id);
+    if (authorId != null && me?.id != null) {
+      return String(authorId) === String(me.id);
+    }
+    if (post.author.nickname && me?.nickname) {
+      return post.author.nickname === me.nickname;
+    }
+    return false;
   }, [post, me]);
 
   /* ================= 게시글 ================= */
@@ -166,8 +172,9 @@ export default function PostDetailPage() {
       .then((json) => {
         if (!json) return;
         const profile = json.data?.profile ?? {};
+        const memberId = json.data?.id ?? profile.memberId ?? profile.id;
         setMe({
-          id: profile.memberId ?? profile.id,
+          id: memberId,
           nickname: profile.nickname,
           profileImageUrl: profile.profileImageUrl ?? getCachedProfileImage(),
         });

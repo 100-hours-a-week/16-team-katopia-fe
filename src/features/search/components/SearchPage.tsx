@@ -11,13 +11,7 @@ import SearchAccountList from "./SearchAccountList";
 
 import { useInfinitePostGrid } from "../hooks/useInfinitePostGrid";
 import { searchUsers, SearchUserItem } from "../api/searchUsers";
-import { searchPosts } from "../api/searchPosts";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-
-type GridPost = {
-  id: number;
-  imageUrl: string;
-};
 
 export default function SearchPage() {
   const router = useRouter();
@@ -48,7 +42,9 @@ export default function SearchPage() {
     loading: gridLoading,
     hasMore: gridHasMore,
     observe: observeGrid,
-  } = useInfinitePostGrid();
+  } = useInfinitePostGrid({
+    enabled: ready && isAuthenticated,
+  });
 
   /* -------------------------
      계정 검색 결과
@@ -57,10 +53,22 @@ export default function SearchPage() {
   const [accountLoading, setAccountLoading] = useState(false);
 
   /* -------------------------
-     게시글 검색 결과
+     게시글 검색 결과 (무한 스크롤)
   ------------------------- */
-  const [postResults, setPostResults] = useState<GridPost[]>([]);
-  const [postLoading, setPostLoading] = useState(false);
+  const {
+    items: postResults,
+    loading: postLoading,
+    hasMore: postHasMore,
+    observe: observePosts,
+  } = useInfinitePostGrid({
+    mode: "search",
+    query,
+    enabled:
+      ready &&
+      isAuthenticated &&
+      activeTab === "게시글/해시태그" &&
+      query.trim().length >= 2,
+  });
 
   const handleFocus = useCallback(() => {
     setIsSearching(true);
@@ -108,40 +116,6 @@ export default function SearchPage() {
         setAccountResults([]);
       })
       .finally(() => setAccountLoading(false));
-  }, [activeTab, trimmedQuery]);
-
-  /* -------------------------
-     게시글/해시태그 검색 API
-  ------------------------- */
-  useEffect(() => {
-    if (activeTab !== "게시글/해시태그") return;
-
-    if (trimmedQuery.length < 2) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPostResults([]);
-      return;
-    }
-
-    setPostLoading(true);
-
-    searchPosts({
-      query: trimmedQuery,
-      size: 18,
-    })
-      .then((data) => {
-        const mapped = data.posts
-          .map((post) => ({
-            id: post.id,
-            imageUrl: post.imageUrls?.[0],
-          }))
-          .filter((p): p is GridPost => Boolean(p.imageUrl));
-
-        setPostResults(mapped);
-      })
-      .catch(() => {
-        setPostResults([]);
-      })
-      .finally(() => setPostLoading(false));
   }, [activeTab, trimmedQuery]);
 
   const shouldShowAccounts = activeTab === "계정" && trimmedQuery.length >= 2;
@@ -210,8 +184,11 @@ export default function SearchPage() {
 
           {/* 게시글 / 해시태그 검색 */}
           {shouldShowPosts &&
-            (postResults.length > 0 ? (
-              <SearchGrid posts={postResults} loading={postLoading} />
+            (postResults.length > 0 || postLoading ? (
+              <>
+                <SearchGrid posts={postResults} loading={postLoading} />
+                {postHasMore && <div ref={observePosts} className="h-24" />}
+              </>
             ) : (
               shouldShowPostEmpty && <SearchResultEmpty query={query} />
             ))}
@@ -219,7 +196,7 @@ export default function SearchPage() {
       ) : (
         <>
           <SearchGrid posts={gridPosts} loading={gridLoading} />
-          {gridHasMore && <div ref={observeGrid} />}
+          {gridHasMore && <div ref={observeGrid} className="h-24" />}
         </>
       )}
     </div>

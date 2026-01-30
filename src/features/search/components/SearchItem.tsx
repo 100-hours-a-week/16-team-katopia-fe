@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 type Props = {
   src: string;
@@ -13,12 +14,12 @@ export default function SearchItem({ src, postId }: Props) {
       className="relative aspect-3/4 bg-gray-100 overflow-hidden block"
     >
       {hasImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={src}
           alt="검색 이미지"
-          className="h-full w-full object-cover"
-          loading="lazy"
+          fill
+          className="object-cover"
+          sizes="(max-width: 768px) 33vw, 200px"
         />
       ) : null}
     </Link>

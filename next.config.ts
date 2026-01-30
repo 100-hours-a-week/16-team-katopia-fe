@@ -15,6 +15,17 @@ const nextConfig: NextConfig = {
         hostname: "df1ez4kkj7703.cloudfront.net",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "dygyjag00bi04.cloudfront.net",
+        pathname: "/**",
+      },
+      // 🔥 FITCHECK 프로필 이미지 (API 도메인)
+      {
+        protocol: "https",
+        hostname: "fitcheck.kr",
+        pathname: "/**",
+      },
     ],
   },
 };

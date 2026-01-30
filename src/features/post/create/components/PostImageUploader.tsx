@@ -1,8 +1,22 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 type PreviewItem = {
   id: string;
@@ -16,8 +30,55 @@ const ACCEPT =
 
 const toBlobUrl = (file: File) => URL.createObjectURL(file);
 
+function SortablePreview({
+  item,
+  onRemove,
+}: {
+  item: PreviewItem;
+  onRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden touch-none"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+
+      <button
+        type="button"
+        aria-label="사진 삭제"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onRemove();
+        }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+        }}
+        className="absolute right-2 top-2 bg-white rounded-full p-1 hover:scale-110 transition-transform"
+      >
+        <Image src="/icons/delete.svg" alt="" width={32} height={32} />
+      </button>
+    </div>
+  );
+}
+
 export default function PostImageUploader() {
   const { control, setError, clearErrors } = useFormContext();
+  const content = useWatch({ name: "content" }) as string | undefined;
+  const watchedImages = useWatch({ name: "images" }) as File[] | undefined;
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [overLimitMessage, setOverLimitMessage] = useState<string | null>(null);
 
@@ -25,6 +86,10 @@ export default function PostImageUploader() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const canAddMore = previews.length < MAX_FILES;
+  const shouldShowImageHelper =
+    (content?.trim()?.length ?? 0) > 0 && (watchedImages?.length ?? 0) === 0;
+  const previewIds = useMemo(() => previews.map((preview) => preview.id), [previews]);
+  const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
     return () => {
@@ -33,11 +98,7 @@ export default function PostImageUploader() {
   }, [previews]);
 
   const removePreviewByIndex = useCallback(
-    (
-      index: number,
-      onChange: (v: File[]) => void,
-      currentFiles: File[],
-    ) => {
+    (index: number, onChange: (v: File[]) => void, currentFiles: File[]) => {
       setPreviews((prev) => {
         const next = [...prev];
         const removed = next.splice(index, 1);
@@ -120,63 +181,65 @@ export default function PostImageUploader() {
 
             {/* Preview 영역 */}
             <div className="mt-2.5 overflow-x-auto">
-              <div className="flex gap-3 snap-x snap-mandatory">
-                {previews.map((item, index) => (
-                  <div
-                    key={item.id}
-                    className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.url}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
-
-                    <button
-                      type="button"
-                      aria-label="사진 삭제"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        removePreviewByIndex(
-                          index,
-                          field.onChange,
-                          currentFiles,
-                        );
-                      }}
-                      className="absolute right-2 top-2 bg-white rounded-full p-1 hover:scale-110 transition-transform"
-                    >
-                      <Image
-                        src="/icons/delete.svg"
-                        alt=""
-                        width={32}
-                        height={32}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={(event) => {
+                  const { active, over } = event;
+                  if (!over || active.id === over.id) return;
+                  const oldIndex = previews.findIndex(
+                    (item) => item.id === active.id,
+                  );
+                  const newIndex = previews.findIndex(
+                    (item) => item.id === over.id,
+                  );
+                  if (oldIndex < 0 || newIndex < 0) return;
+                  setPreviews((prev) => arrayMove(prev, oldIndex, newIndex));
+                  const nextFiles = arrayMove(currentFiles, oldIndex, newIndex);
+                  field.onChange(nextFiles);
+                }}
+              >
+                <SortableContext
+                  items={previewIds}
+                  strategy={horizontalListSortingStrategy}
+                >
+                  <div className="flex gap-3 snap-x snap-mandatory">
+                    {previews.map((item, index) => (
+                      <SortablePreview
+                        key={item.id}
+                        item={item}
+                        onRemove={() =>
+                          removePreviewByIndex(
+                            index,
+                            field.onChange,
+                            currentFiles,
+                          )
+                        }
                       />
-                    </button>
-                  </div>
-                ))}
+                    ))}
 
-                {canAddMore && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      fileInputRef.current?.click();
-                    }}
-                    className="h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
-                    aria-label="사진 추가"
-                  >
-                    <Image
-                      src="/icons/upload.svg"
-                      alt=""
-                      width={24}
-                      height={24}
-                    />
-                  </button>
-                )}
-              </div>
+                    {canAddMore && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                        className="h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
+                        aria-label="사진 추가"
+                      >
+                        <Image
+                          src="/icons/upload.svg"
+                          alt=""
+                          width={24}
+                          height={24}
+                        />
+                      </button>
+                    )}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
 
             {/* Error UI */}
@@ -191,6 +254,14 @@ export default function PostImageUploader() {
                 {overLimitMessage}
               </p>
             )}
+
+            {shouldShowImageHelper &&
+              !fieldState.error &&
+              !overLimitMessage && (
+                <p className="text-red-500 text-[12px] mt-2">
+                  이미지는 최소 1장 이상 업로드해야 합니다.
+                </p>
+              )}
           </div>
         );
       }}

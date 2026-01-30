@@ -36,6 +36,12 @@ export default function PostContent({
     }
   }, [isLiked, likeCount]);
 
+  const formatCount = (value: number) => {
+    if (value < 1000) return String(value);
+    const formatted = (value / 1000).toFixed(1);
+    return `${formatted.endsWith(".0") ? formatted.slice(0, -2) : formatted}k`;
+  };
+
   const handleToggleLike = async () => {
     if (liking) return;
     setLiking(true);
@@ -122,7 +128,7 @@ export default function PostContent({
 
         <div className="flex items-center gap-1.5">
           <Image src="/icons/comment.svg" alt="댓글" width={25} height={25} />
-          <span className="text-[12px]">{commentCount}</span>
+          <span className="text-[12px]">{formatCount(commentCount)}</span>
         </div>
       </div>
 

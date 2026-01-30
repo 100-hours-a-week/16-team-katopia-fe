@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type Author = {
   nickname: string;
@@ -50,6 +51,33 @@ export default function PostHeader({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
+
+  const formatDateTime = (value: string) => {
+    const date = new Date(value.endsWith("Z") ? value : `${value}Z`);
+    if (Number.isNaN(date.getTime())) return "";
+
+    const formatter = new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+
+    const parts = formatter.formatToParts(date);
+    const map = new Map(parts.map((p) => [p.type, p.value]));
+
+    return `${map.get("year")}.${map.get("month")}.${map.get("day")} ${map.get("hour")}:${map.get("minute")}`;
+  };
+
+  const handleProfileClick = () => {
+    if (isMine) {
+      router.push("/profile");
+      return;
+    }
+  };
 
   return (
     <div className="mb-4">
@@ -108,10 +136,15 @@ export default function PostHeader({
 
       {/* 작성자 */}
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full overflow-hidden bg-muted flex items-center justify-center">
-          {author.profileImageUrl ? (
+        <button
+          type="button"
+          onClick={handleProfileClick}
+          className="h-10 w-10 rounded-full overflow-hidden bg-muted flex items-center justify-center"
+          aria-label={`${author.nickname} 프로필 보기`}
+        >
+          {resolveMediaUrl(author.profileImageUrl) ? (
             <Image
-              src={author.profileImageUrl}
+              src={resolveMediaUrl(author.profileImageUrl) as string}
               alt={author.nickname}
               width={40}
               height={40}
@@ -120,22 +153,29 @@ export default function PostHeader({
           ) : (
             <Image src="/icons/user.svg" alt="유저" width={20} height={20} />
           )}
-        </div>
+        </button>
 
         <div className="flex-1">
           <p className="text-sm font-semibold">{author.nickname}</p>
-          <p className="text-xs text-muted-foreground">
-            {(author.heightCm ?? author.height)
-              ? `${author.heightCm ?? author.height}cm`
-              : ""}
-            {(author.weightKg ?? author.weight)
-              ? ` · ${author.weightKg ?? author.weight}kg`
-              : ""}
-          </p>
+          {((author.heightCm ?? author.height) ||
+            (author.weightKg ?? author.weight)) && (
+            <p className="text-xs text-muted-foreground">
+              {(author.heightCm ?? author.height)
+                ? `${author.heightCm ?? author.height}cm`
+                : ""}
+              {(author.heightCm ?? author.height) &&
+              (author.weightKg ?? author.weight)
+                ? " · "
+                : ""}
+              {(author.weightKg ?? author.weight)
+                ? `${author.weightKg ?? author.weight}kg`
+                : ""}
+            </p>
+          )}
         </div>
 
         <p className="text-xs text-muted-foreground">
-          {new Date(createdAt).toLocaleDateString()}
+          {formatDateTime(createdAt)}
         </p>
       </div>
     </div>

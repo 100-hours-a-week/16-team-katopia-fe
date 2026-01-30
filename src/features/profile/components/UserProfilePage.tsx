@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
-import { getMemberPosts } from "../api/getMemberPosts";
+import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
 import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileSummary from "./ProfileSummary";
 
@@ -42,8 +42,19 @@ export default function UserProfilePage({ userId }: Props) {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [posts, setPosts] = useState<{ id: number; imageUrl: string }[]>([]);
-  const [postsLoading, setPostsLoading] = useState(false);
+
+  const {
+    items: posts,
+    loading: postsLoading,
+    hasMore: postsHasMore,
+    observe: observePosts,
+  } = useInfinitePostGrid({
+    memberId,
+    size: 30,
+    mode: "member",
+  });
+
+  /* ================= 프로필 ================= */
 
   useEffect(() => {
     if (Number.isNaN(memberId)) return;
@@ -55,9 +66,7 @@ export default function UserProfilePage({ userId }: Props) {
           cache: "no-store",
         });
 
-        if (!res.ok) {
-          throw new Error("프로필 조회 실패");
-        }
+        if (!res.ok) throw new Error("프로필 조회 실패");
 
         const json = await res.json();
         const apiProfile: ApiProfile | undefined = json.data?.profile;
@@ -67,7 +76,6 @@ export default function UserProfilePage({ userId }: Props) {
           return;
         }
 
-        // ✅ API → UI용 모델 변환
         setProfile({
           nickname: apiProfile.nickname,
           profileImageUrl: apiProfile.profileImageUrl,
@@ -81,8 +89,7 @@ export default function UserProfilePage({ userId }: Props) {
           weight: apiProfile.weightKg,
           style: apiProfile.style ?? [],
         });
-      } catch (err) {
-        console.error(err);
+      } catch {
         setProfile(null);
       } finally {
         setLoading(false);
@@ -92,29 +99,13 @@ export default function UserProfilePage({ userId }: Props) {
     fetchProfile();
   }, [memberId]);
 
-  useEffect(() => {
-    if (Number.isNaN(memberId)) return;
+  /* ================= 게시글 ================= */
 
-    setPostsLoading(true);
-    getMemberPosts({ memberId, size: 30 })
-      .then((data) => {
-        const mapped = data.posts
-          .map((post) => ({
-            id: post.id,
-            imageUrl: post.imageUrl,
-          }))
-          .filter((post) => !!post.imageUrl);
-        setPosts(mapped);
-      })
-      .catch(() => setPosts([]))
-      .finally(() => setPostsLoading(false));
-  }, [memberId]);
-
-  /* ================= Loading / Error ================= */
+  /* ================= UI ================= */
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-black border-t-transparent" />
       </div>
     );
@@ -127,8 +118,6 @@ export default function UserProfilePage({ userId }: Props) {
       </div>
     );
   }
-
-  /* ================= Render ================= */
 
   return (
     <div className="min-h-screen px-4 py-4">
@@ -146,10 +135,10 @@ export default function UserProfilePage({ userId }: Props) {
         <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
       </button>
 
-      {/* 프로필 (마이프로필과 동일 컴포넌트 사용) */}
       <ProfileSummary profile={profile} loading={false} />
 
       <ProfilePostGrid posts={posts} loading={postsLoading} />
+      {postsHasMore && <div ref={observePosts} className="h-24" />}
     </div>
   );
 }

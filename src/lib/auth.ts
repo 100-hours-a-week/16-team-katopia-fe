@@ -1,6 +1,17 @@
+/* =======================
+ * Auth State (Module Scope)
+ * ======================= */
+
 let accessToken: string | null = null;
 let authInvalidated = false;
+let refreshPromise: Promise<string> | null = null;
+
 const LOGOUT_FLAG_KEY = "katopia.loggedOut";
+const HAS_LOGGED_IN_KEY = "katopia.hasLoggedIn";
+
+/* =======================
+ * Access Token
+ * ======================= */
 
 export function setAccessToken(token: string) {
   accessToken = token;
@@ -14,6 +25,10 @@ export function clearAccessToken() {
   accessToken = null;
 }
 
+/* =======================
+ * Local / Session Storage
+ * ======================= */
+
 export function setLoggedOutFlag(value: boolean) {
   if (typeof window === "undefined") return;
   try {
@@ -22,9 +37,7 @@ export function setLoggedOutFlag(value: boolean) {
     } else {
       window.localStorage.removeItem(LOGOUT_FLAG_KEY);
     }
-  } catch {
-    // ignore storage errors
-  }
+  } catch {}
 }
 
 export function isLoggedOutFlag() {
@@ -36,78 +49,150 @@ export function isLoggedOutFlag() {
   }
 }
 
+export function setHasLoggedInFlag() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(HAS_LOGGED_IN_KEY, "1");
+  } catch {}
+}
+
+export function hasLoggedInFlag() {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(HAS_LOGGED_IN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/* =======================
+ * Auth Invalid State
+ * ======================= */
+
 export function isAuthInvalidated() {
   return authInvalidated;
 }
 
 export function notifyAuthInvalid() {
   if (authInvalidated) return;
+
+  // 로그인 리다이렉트 중이면 중복 이벤트 방지
+  if (typeof window !== "undefined") {
+    try {
+      if (window.sessionStorage.getItem("katopia.loginRedirect") === "1") {
+        return;
+      }
+    } catch {}
+  }
+
   authInvalidated = true;
   clearAccessToken();
   setLoggedOutFlag(true);
+
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent("auth:invalid"));
   }
 }
 
+/* =======================
+ * Issue Access Token (RT → AT)
+ * ======================= */
+
+import { API_BASE_URL } from "@/src/config/api";
+
 export async function issueAccessToken() {
-  const res = await fetch("https://dev.fitcheck.kr/api/auth/tokens", {
-    method: "POST",
-    credentials: "include", // 🔥 Refresh Token 쿠키 포함
-  });
+  // 🔐 재발급은 반드시 단일 Promise
+  if (refreshPromise) return refreshPromise;
 
-  if (!res.ok) {
-    if (res.status === 401) {
+  refreshPromise = (async () => {
+    const res = await fetch(`${API_BASE_URL}/api/auth/tokens`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
       notifyAuthInvalid();
+      throw new Error("RT expired");
     }
-    throw new Error("Access Token 발급 실패");
+
+    const json = await res.json();
+    const token = json.data?.accessToken;
+
+    if (!token) {
+      notifyAuthInvalid();
+      throw new Error("No access token");
+    }
+
+    setAccessToken(token);
+    setLoggedOutFlag(false);
+    setHasLoggedInFlag();
+
+    return token;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
   }
-
-  const json = await res.json();
-  const token = json.data?.accessToken;
-
-  if (!token) {
-    throw new Error("Access Token 없음");
-  }
-
-  console.log("access token issued", token);
-  setAccessToken(token);
-  authInvalidated = false;
-  setLoggedOutFlag(false);
-  return token;
 }
+
+/* =======================
+ * authFetch
+ * ======================= */
 
 type AuthFetchInit = RequestInit & { skipAuthRefresh?: boolean };
 
 export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
+  // 🔴 이미 세션 종료 상태면 요청 자체 차단
   if (authInvalidated) {
-    return new Response(null, { status: 401, statusText: "Unauthorized" });
-  }
-  let token = getAccessToken();
-  if (!token) {
-    try {
-      token = await issueAccessToken();
-    } catch {
-      notifyAuthInvalid();
-      token = null;
-    }
+    throw new Error("AUTH_INVALID");
   }
 
-  const doFetch = (bearer?: string) => {
+  let token = getAccessToken();
+
+  // AT 없으면 1회 재발급
+  if (!token && !init.skipAuthRefresh) {
+    token = await issueAccessToken(); // 실패 시 throw
+  }
+
+  const makeHeaders = (bearer?: string) => {
     const headers = new Headers(init.headers || {});
     if (bearer) {
       headers.set("Authorization", `Bearer ${bearer}`);
     }
-    return fetch(input, {
-      ...init,
-      headers,
-      credentials: init.credentials ?? "include",
-    });
+    return headers;
   };
 
-  const res = await doFetch(token ?? undefined);
-  if (res.status === 401 && !init.skipAuthRefresh) {
-    notifyAuthInvalid();
+  // 1차 요청
+  let res = await fetch(input, {
+    ...init,
+    headers: makeHeaders(token ?? undefined),
+    credentials: init.credentials ?? "include",
+  });
+
+  if (res.status !== 401 || init.skipAuthRefresh) {
+    return res;
   }
-  return res;
+
+  // 🔁 AT 만료 → 1회만 재발급 후 재시도
+  try {
+    const refreshed = await issueAccessToken();
+
+    res = await fetch(input, {
+      ...init,
+      headers: makeHeaders(refreshed),
+      credentials: init.credentials ?? "include",
+    });
+
+    if (res.status === 401) {
+      notifyAuthInvalid();
+      throw new Error("AUTH_INVALID");
+    }
+
+    return res;
+  } catch {
+    notifyAuthInvalid();
+    throw new Error("AUTH_INVALID");
+  }
 }
