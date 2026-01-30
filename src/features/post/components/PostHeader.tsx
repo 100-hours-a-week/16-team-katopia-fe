@@ -157,21 +157,21 @@ export default function PostHeader({
 
         <div className="flex-1">
           <p className="text-sm font-semibold">{author.nickname}</p>
-          {((author.heightCm ?? author.height) ||
-            (author.weightKg ?? author.weight)) && (
+          {((author.heightCm ?? author.height) || 0) > 0 ||
+          ((author.weightKg ?? author.weight) || 0) > 0 ? (
             <p className="text-xs text-muted-foreground">
-              {(author.heightCm ?? author.height)
+              {((author.heightCm ?? author.height) || 0) > 0
                 ? `${author.heightCm ?? author.height}cm`
                 : ""}
-              {(author.heightCm ?? author.height) &&
-              (author.weightKg ?? author.weight)
+              {((author.heightCm ?? author.height) || 0) > 0 &&
+              ((author.weightKg ?? author.weight) || 0) > 0
                 ? " · "
                 : ""}
-              {(author.weightKg ?? author.weight)
+              {((author.weightKg ?? author.weight) || 0) > 0
                 ? `${author.weightKg ?? author.weight}kg`
                 : ""}
             </p>
-          )}
+          ) : null}
         </div>
 
         <p className="text-xs text-muted-foreground">

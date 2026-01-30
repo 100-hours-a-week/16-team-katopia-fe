@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import type { UseFormRegisterReturn } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,40 +24,61 @@ const NicknameInput = memo(
     duplicateSuccess,
     onDuplicateCheck,
     disableDuplicateCheck,
-  }: Props) => (
-    <div className="mt-10">
-      <label className="mb-1 block text-sm font-medium">닉네임</label>
+  }: Props) => {
+    const [overLimit, setOverLimit] = useState(false);
 
-      <p className="mb-2 text-xs text-muted-foreground">
-        2자 이상 20자 이하, 특수문자(._)만 사용 가능
-      </p>
+    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const stripped = event.currentTarget.value.replace(/\s/g, "");
+      if (stripped.length > 20) {
+        event.currentTarget.value = stripped.slice(0, 20);
+        setOverLimit(true);
+      } else {
+        event.currentTarget.value = stripped;
+        setOverLimit(false);
+      }
+      register.onChange(event);
+    };
 
-      <div className="flex gap-2">
-        <Input
-          {...register}
-          onChangeCapture={onChangeCapture}
-          placeholder="닉네임을 입력해주세요."
-          className="placeholder:text-[12px] text-[12px]"
-        />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onDuplicateCheck}
-          disabled={disableDuplicateCheck}
-        >
-          중복 확인
-        </Button>
-      </div>
+    return (
+      <div className="mt-10">
+        <label className="mb-1 block text-sm font-medium">닉네임</label>
+
+        <p className="mb-2 text-xs text-muted-foreground">
+          2자 이상 20자 이하, 특수문자(._)만 사용 가능
+        </p>
+
+        <div className="flex gap-2">
+          <Input
+            {...register}
+            onChange={handleChange}
+            onChangeCapture={onChangeCapture}
+            placeholder="닉네임을 입력해주세요."
+            className="placeholder:text-[12px] text-[12px]"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onDuplicateCheck}
+            disabled={disableDuplicateCheck}
+          >
+            중복 확인
+          </Button>
+        </div>
 
       {duplicateError ? (
         <p className="mt-2 text-[11px] text-red-500">{duplicateError}</p>
       ) : duplicateSuccess ? (
         <p className="mt-2 text-[11px] text-green-600">{duplicateSuccess}</p>
+      ) : overLimit ? (
+        <p className="mt-2 text-[11px] text-red-500">
+          닉네임은 20자 이하여야 합니다.
+        </p>
       ) : (
         error && <p className="mt-2 text-[11px] text-red-500">{error}</p>
       )}
-    </div>
-  ),
+      </div>
+    );
+  },
 );
 
 NicknameInput.displayName = "NicknameInput";
