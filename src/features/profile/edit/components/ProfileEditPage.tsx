@@ -1,13 +1,11 @@
 "use client";
 
-import type { ChangeEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
@@ -16,6 +14,8 @@ import { authFetch } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep1/hooks/useNicknameHandlers";
 import NicknameInput from "./NickNameInput";
+import ProfileEditCancelModal from "./ProfileEditCancelModal";
+import BodyInfoSection from "@/src/features/signup/components/SignupStep2/BodyInfoSection";
 import {
   getCachedProfileImage,
   isRemoteUrl,
@@ -122,12 +122,17 @@ export default function ProfileEditPage() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
+  const [heightError, setHeightError] = useState<string | null>(null);
+  const [weightError, setWeightError] = useState<string | null>(null);
 
   const [styleError, setStyleError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [initialNickname, setInitialNickname] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const weightInputRef = useRef<HTMLInputElement | null>(null);
 
   /* ---------- Form ---------- */
   const {
@@ -137,7 +142,7 @@ export default function ProfileEditPage() {
     watch,
     trigger,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: "onChange",
@@ -156,6 +161,9 @@ export default function ProfileEditPage() {
   const nickname = watch("nickname");
   const styles = watch("styles");
   const selectedGender = watch("gender");
+  const trimmedNickname = nickname?.trim();
+  const canCheckDuplicate =
+    Boolean(trimmedNickname) && trimmedNickname !== initialNickname;
 
   /* ---------- Nickname Duplicate Logic ---------- */
   const {
@@ -295,13 +303,28 @@ export default function ProfileEditPage() {
     return String(Math.min(num, 300));
   };
 
-  const handleNumericChange = (
-    e: ChangeEvent<HTMLInputElement>,
-    field: "height" | "weight",
-  ) => {
-    const sanitized = sanitizeNumericInput(e.target.value);
-    e.target.value = sanitized;
+  const handleNumericChange = (field: "height" | "weight", raw: string) => {
+    const sanitized = sanitizeNumericInput(raw);
     setValue(field, sanitized);
+    if (!sanitized) {
+      if (field === "height") setHeightError(null);
+      if (field === "weight") setWeightError(null);
+      return;
+    }
+    const parsed = parseInt(sanitized, 10);
+    if (field === "height") {
+      if (parsed < 100 || parsed > 300) {
+        setHeightError("키는 100~300 사이로 입력해주세요.");
+      } else {
+        setHeightError(null);
+      }
+    } else {
+      if (parsed < 20 || parsed > 300) {
+        setWeightError("몸무게는 20~300 사이로 입력해주세요.");
+      } else {
+        setWeightError(null);
+      }
+    }
   };
 
   const handleImageChange = (file: File) => {
@@ -404,6 +427,8 @@ export default function ProfileEditPage() {
     return null;
   }
 
+  const hasChanges = isDirty || Boolean(imageFile) || removeImage;
+
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)} className="min-h-screen bg-white">
@@ -412,7 +437,13 @@ export default function ProfileEditPage() {
           <button
             type="button"
             aria-label="뒤로가기"
-            onClick={() => router.back()}
+            onClick={() => {
+              if (hasChanges) {
+                setShowCancelModal(true);
+                return;
+              }
+              router.back();
+            }}
           >
             <Image
               src="/icons/back.svg"
@@ -422,14 +453,31 @@ export default function ProfileEditPage() {
             />
           </button>
           <h1 className="text-[14px] font-semibold">프로필 수정</h1>
-          <button type="submit" className="text-[14px] font-semibold">
+          <button
+            type="submit"
+            disabled={!hasChanges}
+            className={`text-[14px] font-semibold ${
+              hasChanges ? "text-black" : "text-gray-300"
+            }`}
+          >
             완료
           </button>
         </header>
 
         {/* Image */}
         <div className="flex flex-col items-center py-6">
-          <label className="relative flex h-40 w-40 cursor-pointer items-center justify-center rounded-full bg-gray-200">
+          <div
+            className="relative flex h-40 w-40 cursor-pointer items-center justify-center rounded-full bg-gray-200"
+            onClick={() => fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
+          >
             {preview ? (
               <Image
                 src={preview}
@@ -455,6 +503,7 @@ export default function ProfileEditPage() {
               </button>
             )}
             <input
+              ref={fileInputRef}
               type="file"
               hidden
               accept="image/*"
@@ -462,7 +511,7 @@ export default function ProfileEditPage() {
                 e.target.files && handleImageChange(e.target.files[0])
               }
             />
-          </label>
+          </div>
           {imageError && (
             <p className="mt-2 text-sm text-red-500">{imageError}</p>
           )}
@@ -480,6 +529,7 @@ export default function ProfileEditPage() {
               if (!nickname) return;
               handleDuplicateCheck(nickname); // 🔥 반드시 nickname 전달
             }}
+            disableDuplicateCheck={!canCheckDuplicate}
           />
         </section>
 
@@ -520,48 +570,16 @@ export default function ProfileEditPage() {
         </section>
 
         {/* Height / Weight */}
-        <section className="flex px-4">
-          <div className="mx-auto mt-6 flex items-center justify-center gap-12">
-            {/* 키 */}
-            <div>
-              <label className="mb-1 block text-[13px] font-medium">키</label>
-              <div className="inline-flex items-center gap-2">
-                <Input
-                  {...register("height")}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="예: 176"
-                  className="w-[80px] text-right text-[13px]
-          placeholder:text-right
-          placeholder:text-[13px]
-          placeholder:text-[#d9d9d9]!"
-                  onChange={(e) => handleNumericChange(e, "height")}
-                />
-                <span className="text-sm text-muted-foreground">cm</span>
-              </div>
-            </div>
-
-            {/* 몸무게 */}
-            <div>
-              <label className="mb-1 block text-[13px] font-medium">
-                몸무게
-              </label>
-              <div className="inline-flex items-center gap-2">
-                <Input
-                  {...register("weight")}
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  placeholder="예: 68"
-                  className="w-[80px] text-right text-[13px]
-          placeholder:text-right
-          placeholder:text-[13px]
-          placeholder:text-[#d9d9d9]!"
-                  onChange={(e) => handleNumericChange(e, "weight")}
-                />
-                <span className="text-sm text-muted-foreground">kg</span>
-              </div>
-            </div>
-          </div>
+        <section className="px-4">
+          <BodyInfoSection
+            heightValue={watch("height") ?? ""}
+            weightValue={watch("weight") ?? ""}
+            onHeightChange={(value) => handleNumericChange("height", value)}
+            onWeightChange={(value) => handleNumericChange("weight", value)}
+            weightInputRef={weightInputRef}
+            heightError={heightError}
+            weightError={weightError}
+          />
         </section>
 
         {/* Styles */}
@@ -617,6 +635,12 @@ export default function ProfileEditPage() {
           </div>
         )}
       </form>
+
+      <ProfileEditCancelModal
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={() => router.back()}
+      />
 
       <style jsx global>{`
         @keyframes toastFadeIn {
