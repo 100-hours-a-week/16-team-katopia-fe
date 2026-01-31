@@ -20,7 +20,7 @@ import {
   TERMS_OF_SERVICE_TEXT,
 } from "../constants/policies";
 import { API_BASE_URL } from "@/src/config/api";
-import { issueAccessToken } from "@/src/lib/auth";
+import { authFetch, issueAccessToken } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
 import {
@@ -273,11 +273,24 @@ export default function SignupStep2() {
         }
 
         let signupProfileImageUrl: string | null = null;
+        let signupProfileImageData: string | null = null;
         try {
-          const dataUrl =
-            window.localStorage.getItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
-          if (dataUrl) {
-            const res = await fetch(dataUrl);
+          signupProfileImageData = window.localStorage.getItem(
+            SIGNUP_PROFILE_IMAGE_DATA_KEY,
+          );
+        } catch {
+          signupProfileImageData = null;
+        }
+
+        const hasOptionalInputs =
+          Boolean(data.height) ||
+          Boolean(data.weight) ||
+          styles.length > 0 ||
+          Boolean(signupProfileImageData);
+
+        if (signupProfileImageData) {
+          try {
+            const res = await fetch(signupProfileImageData);
             const blob = await res.blob();
             const file = new File([blob], "profile.jpg", { type: blob.type });
             const extension = getFileExtension(file);
@@ -293,19 +306,18 @@ export default function SignupStep2() {
               file.type,
             );
             signupProfileImageUrl = presigned.accessUrl;
+          } catch (err) {
+            alert(
+              err instanceof Error
+                ? err.message
+                : "프로필 이미지 업로드에 실패했습니다.",
+            );
+            return;
           }
-        } catch {
-          signupProfileImageUrl = null;
         }
 
-        const hasOptionalInputs =
-          Boolean(data.height) ||
-          Boolean(data.weight) ||
-          styles.length > 0 ||
-          Boolean(signupProfileImageUrl);
-
         if (hasOptionalInputs) {
-          await updateProfile({
+          const payload = {
             nickname,
             gender,
             profileImageUrl: signupProfileImageUrl || undefined,
@@ -313,7 +325,12 @@ export default function SignupStep2() {
             weight: data.weight ? Number(data.weight) : null,
             enableRealtimeNotification: true,
             style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
+          };
+          console.log("[signup] PATCH /api/members request", payload);
+          await updateProfile({
+            ...payload,
           });
+          console.log("[signup] PATCH /api/members response logged above");
         }
 
         try {
@@ -321,6 +338,20 @@ export default function SignupStep2() {
           window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
         } catch {
           // ignore storage errors
+        }
+
+        try {
+          const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {
+            method: "GET",
+            cache: "no-store",
+          });
+          const meBody = await meRes
+            .clone()
+            .json()
+            .catch(() => null);
+          console.log("[signup] GET /api/members/me response", meBody);
+        } catch (err) {
+          console.log("[signup] GET /api/members/me failed", err);
         }
 
         router.replace("/home");
