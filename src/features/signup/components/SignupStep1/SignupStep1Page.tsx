@@ -94,6 +94,7 @@ export default function SignupStep1() {
     hasNicknameValue,
     duplicateError,
     duplicateSuccess,
+    isChecking,
     handleNicknameChangeCapture,
     handleDuplicateCheck,
   } = useNicknameHandlers(trigger, "nickname");
@@ -162,6 +163,7 @@ export default function SignupStep1() {
         duplicateError={duplicateError}
         duplicateSuccess={duplicateSuccess}
         onDuplicateCheck={handleDuplicateCheck}
+        disableDuplicateCheck={!nickname || isChecking}
       />
 
       <SubmitButton disabled={isSubmitDisabled} />

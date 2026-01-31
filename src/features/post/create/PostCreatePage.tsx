@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -25,6 +25,8 @@ import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
 export default function PostCreatePage() {
   const router = useRouter();
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { ready, isAuthenticated } = useAuth();
 
   useEffect(() => {
@@ -33,6 +35,14 @@ export default function PostCreatePage() {
       router.replace("/home");
     }
   }, [isAuthenticated, ready, router]);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   const methods = useForm<PostCreateValues>({
     resolver: zodResolver(postCreateSchema),
@@ -84,8 +94,11 @@ export default function PostCreatePage() {
       const postId = res.data.id;
       console.log("게시글이 성공적으로 등록되었어요.");
       console.log(postId);
-      // router.replace("/home"); 원래는 home으로 가게 하는게 맞음. ver2에서 홈화면 구현하면서 바꿀 예정
-      router.replace("/search");
+      setToastMessage("게시글 작성이 완료되었습니다.");
+      toastTimerRef.current = setTimeout(() => {
+        // router.replace("/home"); 원래는 home으로 가게 하는게 맞음. ver2에서 홈화면 구현하면서 바꿀 예정
+        router.replace("/search");
+      }, 1200);
     } catch (e) {
       /**
        * 서버 에러 코드별 분기
@@ -144,7 +157,28 @@ export default function PostCreatePage() {
           onConfirm={() => router.back()}
           onClose={() => setShowCancelModal(false)}
         />
+
+        {toastMessage && (
+          <div className="fixed bottom-25 left-1/2 z-[100] -translate-x-1/2 px-4">
+            <div
+              className="min-w-[260px] rounded-full border border-black bg-gray-100 px-8 py-3 text-center text-base font-semibold text-black shadow-lg"
+              style={{ animation: "toastFadeIn 250ms ease-out forwards" }}
+            >
+              {toastMessage}
+            </div>
+          </div>
+        )}
       </PostFormLayout>
+      <style jsx global>{`
+        @keyframes toastFadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </FormProvider>
   );
 }

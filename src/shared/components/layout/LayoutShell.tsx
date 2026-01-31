@@ -42,6 +42,11 @@ export default function LayoutShell({ children }: Props) {
     alert("인증 정보가 유효하지 않습니다. 다시 로그인해주세요.");
   }, [authInvalidated]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.body.style.backgroundColor = "#ffffff";
+  }, [pathname]);
+
   const shouldLock =
     ready &&
     !isAuthenticated &&
@@ -54,7 +59,7 @@ export default function LayoutShell({ children }: Props) {
   return (
     <>
       <div
-        className={`mx-auto min-h-screen w-full max-w-97.5 bg-white ${
+        className={`mx-auto min-h-screen w-full max-w-97.5 bg-[#ffffff] ${
           hideBottomNav ? "" : "pb-20"
         }`}
       >

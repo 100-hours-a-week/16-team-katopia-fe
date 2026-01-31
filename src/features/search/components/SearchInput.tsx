@@ -2,7 +2,7 @@
 
 // 리렌더링 최소화 해야됌. 지금 레전드 불필요한 리렌더링 발생함.
 
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 
@@ -15,6 +15,25 @@ interface Props {
 }
 
 function SearchInput({ value, onChange, onFocus, onBack, isSearching }: Props) {
+  const [overLimit, setOverLimit] = useState(false);
+
+  useEffect(() => {
+    if (value.length <= 20) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOverLimit(false);
+    }
+  }, [value]);
+
+  const handleChange = (nextValue: string) => {
+    if (nextValue.length > 20) {
+      onChange(nextValue.slice(0, 20));
+      setOverLimit(true);
+      return;
+    }
+    setOverLimit(false);
+    onChange(nextValue);
+  };
+
   return (
     <div className="mb-4 flex items-center gap-3">
       {/* 검색 입력창 */}
@@ -28,10 +47,14 @@ function SearchInput({ value, onChange, onFocus, onBack, isSearching }: Props) {
       >
         <Input
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           onFocus={onFocus}
           placeholder="검색"
-          className="pl-10 pr-8 h-11 text-[13px] focus-visible:ring-0 focus-visible:border-black placeholder:text-[#c4c4c4]"
+          className={`pl-10 pr-8 h-11 text-[13px] focus-visible:ring-0 placeholder:text-[#c4c4c4] ${
+            overLimit
+              ? "border-red-500 focus-visible:border-red-500"
+              : "focus-visible:border-black"
+          }`}
         />
 
         {/* 검색 아이콘 */}
