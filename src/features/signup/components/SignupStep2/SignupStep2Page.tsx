@@ -50,6 +50,8 @@ const STYLE_TO_ENUM: Record<string, string> = {
   Y2K: "Y2K",
 };
 
+const SIGNUP_PROFILE_IMAGE_KEY = "katopia.signupProfileImageUrl";
+
 /* =========================
    Component
 ========================= */
@@ -265,13 +267,25 @@ export default function SignupStep2() {
           // ignore storage errors
         }
 
+        let signupProfileImageUrl: string | null = null;
+        try {
+          signupProfileImageUrl =
+            window.localStorage.getItem(SIGNUP_PROFILE_IMAGE_KEY);
+        } catch {
+          signupProfileImageUrl = null;
+        }
+
         const hasOptionalInputs =
-          Boolean(data.height) || Boolean(data.weight) || styles.length > 0;
+          Boolean(data.height) ||
+          Boolean(data.weight) ||
+          styles.length > 0 ||
+          Boolean(signupProfileImageUrl);
 
         if (hasOptionalInputs) {
           await updateProfile({
             nickname,
             gender,
+            profileImageUrl: signupProfileImageUrl || undefined,
             height: data.height ? Number(data.height) : null,
             weight: data.weight ? Number(data.weight) : null,
             enableRealtimeNotification: true,
@@ -281,6 +295,7 @@ export default function SignupStep2() {
 
         try {
           window.localStorage.removeItem("signup-nickname");
+          window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_KEY);
         } catch {
           // ignore storage errors
         }
