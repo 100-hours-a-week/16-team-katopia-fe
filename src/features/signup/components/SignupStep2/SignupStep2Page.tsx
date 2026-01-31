@@ -20,9 +20,14 @@ import {
   TERMS_OF_SERVICE_TEXT,
 } from "../constants/policies";
 import { API_BASE_URL } from "@/src/config/api";
-import { issueAccessToken } from "@/src/lib/auth";
+import { authFetch, issueAccessToken } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
 
 /* =========================
    Schema & Types
@@ -49,6 +54,8 @@ const STYLE_TO_ENUM: Record<string, string> = {
   스포티: "SPORTY",
   Y2K: "Y2K",
 };
+
+const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
 
 /* =========================
    Component
@@ -107,11 +114,7 @@ export default function SignupStep2() {
      Height / Weight
   ------------------------- */
   const handleNumericChange = useCallback(
-    (
-      field: "height" | "weight",
-      raw: string,
-      focusNext?: () => void,
-    ) => {
+    (field: "height" | "weight", raw: string, focusNext?: () => void) => {
       const digits = raw.replace(/\D/g, "").slice(0, 3);
 
       if (!digits) {
@@ -233,7 +236,7 @@ export default function SignupStep2() {
           return;
         }
 
-        const gender = data.gender === "male" ? "M" : "F";
+        const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
         const res = await fetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
@@ -256,27 +259,103 @@ export default function SignupStep2() {
         await issueAccessToken();
         setAuthenticated(true);
 
-        const hasOptionalInputs =
-          Boolean(data.height) || Boolean(data.weight) || styles.length > 0;
-
-        if (hasOptionalInputs) {
-          await updateProfile({
-            nickname,
-            gender,
-            height: data.height ? Number(data.height) : null,
-            weight: data.weight ? Number(data.weight) : null,
-            enableRealtimeNotification: true,
-            style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
-          });
-        }
-
         try {
-          window.localStorage.removeItem("signup-nickname");
+          window.localStorage.setItem(
+            "katopia.signupWelcome",
+            `환영합니다. ${nickname} 님!`,
+          );
         } catch {
           // ignore storage errors
         }
 
+        let signupProfileImageUrl: string | null = null;
+        let signupProfileImageData: string | null = null;
+        try {
+          signupProfileImageData = window.localStorage.getItem(
+            SIGNUP_PROFILE_IMAGE_DATA_KEY,
+          );
+        } catch {
+          signupProfileImageData = null;
+        }
+
+        const hasOptionalInputs =
+          Boolean(data.height) ||
+          Boolean(data.weight) ||
+          styles.length > 0 ||
+          Boolean(signupProfileImageData);
+
+        if (signupProfileImageData) {
+          try {
+            const res = await fetch(signupProfileImageData);
+            const blob = await res.blob();
+            const tempFile = new File([blob], "profile", { type: blob.type });
+            const extension = getFileExtension(tempFile);
+            if (!extension) {
+              throw new Error("지원하지 않는 이미지 확장자입니다.");
+            }
+            const file = new File([blob], `profile.${extension}`, {
+              type: blob.type,
+            });
+            const [presigned] = await requestUploadPresign("PROFILE", [
+              extension,
+            ]);
+            await uploadToPresignedUrl(presigned.uploadUrl, file, file.type);
+            signupProfileImageUrl = presigned.accessUrl;
+          } catch (err) {
+            alert(
+              err instanceof Error
+                ? err.message
+                : "프로필 이미지 업로드에 실패했습니다.",
+            );
+            return;
+          }
+        }
+
+        if (hasOptionalInputs) {
+          const payload = {
+            nickname,
+            gender,
+            profileImageUrl: signupProfileImageUrl || undefined,
+            height: data.height ? Number(data.height) : null,
+            weight: data.weight ? Number(data.weight) : null,
+            enableRealtimeNotification: true,
+            style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
+          };
+          console.log("[signup] PATCH /api/members request", payload);
+          try {
+            await updateProfile({ ...payload });
+          } catch (err) {
+            const message =
+              err instanceof Error ? err.message : "프로필 업데이트 실패";
+            console.error("[signup] PATCH /api/members failed", err);
+            alert(message);
+            return;
+          }
+        }
+
+        try {
+          window.localStorage.removeItem("signup-nickname");
+          window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
+        } catch {
+          // ignore storage errors
+        }
+
+        try {
+          const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {
+            method: "GET",
+            cache: "no-store",
+          });
+          const meBody = await meRes
+            .clone()
+            .json()
+            .catch(() => null);
+          console.log("[signup] GET /api/members/me response", meBody);
+        } catch (err) {
+          console.log("[signup] GET /api/members/me failed", err);
+        }
+
         router.replace("/home");
+        return;
       } catch (err) {
         console.error(err);
         alert("회원가입 중 오류가 발생했습니다.");

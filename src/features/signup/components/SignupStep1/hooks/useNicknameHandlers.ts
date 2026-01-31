@@ -62,16 +62,20 @@ export function useNicknameHandlers<T extends FieldValues>(
 
         const payload = (await res.json()) as {
           data?: { isAvailable?: boolean };
+          isAvailable?: boolean;
         };
 
-        if (payload.data?.isAvailable === true) {
+        const isAvailable =
+          payload.data?.isAvailable ?? payload.isAvailable ?? null;
+
+        if (isAvailable === true) {
           setIsNicknameVerified(true);
           setDuplicateSuccess("사용 가능한 닉네임입니다.");
           setIsChecking(false);
           return true;
         }
 
-        if (payload.data?.isAvailable) {
+        if (isAvailable === false) {
           setIsNicknameVerified(false);
           setDuplicateError("이미 사용 중인 닉네임입니다.");
           setIsChecking(false);

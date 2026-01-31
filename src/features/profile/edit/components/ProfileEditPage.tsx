@@ -95,7 +95,7 @@ const schema = z.object({
         });
       }
 
-      if (!/^[a-zA-Z0-9._가-힣]+$/.test(value)) {
+      if (!/^[a-zA-Z0-9._\p{Script=Hangul}]+$/u.test(value)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "특수문자는 ( . _ ) 만 사용할 수 있습니다.",
