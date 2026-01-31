@@ -135,6 +135,7 @@ export default function ProfileEditPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const weightInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -241,6 +242,27 @@ export default function ProfileEditPage() {
     }
   }, [ready, isAuthenticated, router]);
 
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  const showToast = (message: string, durationMs = 2000) => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    setToastMessage(message);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, durationMs);
+  };
+
   /* =========================
      Submit
   ========================= */
@@ -251,7 +273,7 @@ export default function ProfileEditPage() {
       trimmedNickname && trimmedNickname !== initialNickname;
 
     if (isNicknameChanged && !isNicknameVerified) {
-      setToastMessage("닉네임 중복 확인이 필요합니다.");
+      showToast("닉네임 중복 확인이 필요합니다.");
       return;
     }
 
@@ -295,13 +317,13 @@ export default function ProfileEditPage() {
       // 🔥 캐시 무효화 → 마이프로필 즉시 반영
       queryClient.invalidateQueries({ queryKey: ["me"] });
 
-      setToastMessage("수정이 완료되었습니다.");
+      showToast("수정이 완료되었습니다.");
       redirectTimerRef.current = setTimeout(
         () => router.push("/profile"),
         1500,
       );
     } catch (e) {
-      setToastMessage(
+      showToast(
         e instanceof Error ? e.message : "프로필 수정에 실패했습니다.",
       );
     }
