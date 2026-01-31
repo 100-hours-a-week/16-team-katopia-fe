@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import {
   DndContext,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -51,7 +52,7 @@ function SortablePreview({
       style={style}
       {...attributes}
       {...listeners}
-      className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden touch-none"
+      className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
@@ -89,7 +90,14 @@ export default function PostImageUploader() {
   const shouldShowImageHelper =
     (content?.trim()?.length ?? 0) > 0 && (watchedImages?.length ?? 0) === 0;
   const previewIds = useMemo(() => previews.map((preview) => preview.id), [previews]);
-  const sensors = useSensors(useSensor(PointerSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 },
+    }),
+  );
 
   useEffect(() => {
     return () => {
@@ -180,7 +188,7 @@ export default function PostImageUploader() {
             />
 
             {/* Preview 영역 */}
-            <div className="mt-2.5 overflow-x-auto">
+            <div className="mt-2.5 overflow-x-auto touch-pan-x">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
@@ -203,7 +211,7 @@ export default function PostImageUploader() {
                   items={previewIds}
                   strategy={horizontalListSortingStrategy}
                 >
-                  <div className="flex gap-3 snap-x snap-mandatory">
+                  <div className="flex gap-3 snap-x snap-mandatory touch-pan-x">
                     {previews.map((item, index) => (
                       <SortablePreview
                         key={item.id}
