@@ -114,11 +114,7 @@ export default function SignupStep2() {
      Height / Weight
   ------------------------- */
   const handleNumericChange = useCallback(
-    (
-      field: "height" | "weight",
-      raw: string,
-      focusNext?: () => void,
-    ) => {
+    (field: "height" | "weight", raw: string, focusNext?: () => void) => {
       const digits = raw.replace(/\D/g, "").slice(0, 3);
 
       if (!digits) {
@@ -240,7 +236,7 @@ export default function SignupStep2() {
           return;
         }
 
-        const gender = data.gender === "male" ? "M" : "F";
+        const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
         const res = await fetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
@@ -300,11 +296,7 @@ export default function SignupStep2() {
             const [presigned] = await requestUploadPresign("PROFILE", [
               extension,
             ]);
-            await uploadToPresignedUrl(
-              presigned.uploadUrl,
-              file,
-              file.type,
-            );
+            await uploadToPresignedUrl(presigned.uploadUrl, file, file.type);
             signupProfileImageUrl = presigned.accessUrl;
           } catch (err) {
             alert(
@@ -327,10 +319,15 @@ export default function SignupStep2() {
             style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
           };
           console.log("[signup] PATCH /api/members request", payload);
-          await updateProfile({
-            ...payload,
-          });
-          console.log("[signup] PATCH /api/members response logged above");
+          try {
+            await updateProfile({ ...payload });
+          } catch (err) {
+            const message =
+              err instanceof Error ? err.message : "프로필 업데이트 실패";
+            console.error("[signup] PATCH /api/members failed", err);
+            alert(message);
+            return;
+          }
         }
 
         try {
@@ -439,7 +436,6 @@ export default function SignupStep2() {
       >
         완료
       </Button>
-
     </form>
   );
 }
