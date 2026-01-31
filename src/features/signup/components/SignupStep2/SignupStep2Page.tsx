@@ -23,6 +23,11 @@ import { API_BASE_URL } from "@/src/config/api";
 import { issueAccessToken } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
 
 /* =========================
    Schema & Types
@@ -50,7 +55,7 @@ const STYLE_TO_ENUM: Record<string, string> = {
   Y2K: "Y2K",
 };
 
-const SIGNUP_PROFILE_IMAGE_KEY = "katopia.signupProfileImageUrl";
+const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
 
 /* =========================
    Component
@@ -269,8 +274,26 @@ export default function SignupStep2() {
 
         let signupProfileImageUrl: string | null = null;
         try {
-          signupProfileImageUrl =
-            window.localStorage.getItem(SIGNUP_PROFILE_IMAGE_KEY);
+          const dataUrl =
+            window.localStorage.getItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
+          if (dataUrl) {
+            const res = await fetch(dataUrl);
+            const blob = await res.blob();
+            const file = new File([blob], "profile.jpg", { type: blob.type });
+            const extension = getFileExtension(file);
+            if (!extension) {
+              throw new Error("지원하지 않는 이미지 확장자입니다.");
+            }
+            const [presigned] = await requestUploadPresign("PROFILE", [
+              extension,
+            ]);
+            await uploadToPresignedUrl(
+              presigned.uploadUrl,
+              file,
+              file.type,
+            );
+            signupProfileImageUrl = presigned.accessUrl;
+          }
         } catch {
           signupProfileImageUrl = null;
         }
@@ -295,7 +318,7 @@ export default function SignupStep2() {
 
         try {
           window.localStorage.removeItem("signup-nickname");
-          window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_KEY);
+          window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
         } catch {
           // ignore storage errors
         }

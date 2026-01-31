@@ -1,11 +1,5 @@
 import { useCallback, useState, type ChangeEvent } from "react";
-import {
-  requestUploadPresign,
-  uploadToPresignedUrl,
-} from "@/src/features/upload/api/presignUpload";
-import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
-
-const SIGNUP_PROFILE_IMAGE_KEY = "katopia.signupProfileImageUrl";
+const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
 
 export function useProfileImage() {
   const [preview, setPreview] = useState<string | null>(null);
@@ -22,25 +16,22 @@ export function useProfileImage() {
       e.target.value = "";
 
       try {
-        const extension = getFileExtension(file);
-        if (!extension) {
-          throw new Error("지원하지 않는 이미지 확장자입니다.");
-        }
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error("이미지 읽기 실패"));
+          reader.readAsDataURL(file);
+        });
 
-        const [presigned] = await requestUploadPresign("PROFILE", [extension]);
-        await uploadToPresignedUrl(presigned.uploadUrl, file, file.type);
         try {
-          window.localStorage.setItem(
-            SIGNUP_PROFILE_IMAGE_KEY,
-            presigned.accessUrl,
-          );
+          window.localStorage.setItem(SIGNUP_PROFILE_IMAGE_DATA_KEY, dataUrl);
         } catch {
           // ignore storage errors
         }
-        setPreview(presigned.accessUrl);
+        setPreview(dataUrl);
       } catch (err) {
         setImageError(
-          err instanceof Error ? err.message : "이미지 업로드 실패",
+          err instanceof Error ? err.message : "이미지 처리 실패",
         );
       }
     },
@@ -51,7 +42,7 @@ export function useProfileImage() {
     setPreview(null);
     setImageError(null);
     try {
-      window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_KEY);
+      window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
     } catch {
       // ignore storage errors
     }
