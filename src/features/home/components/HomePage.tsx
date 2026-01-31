@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import AppHeader from "@/src/shared/components/layout/AppHeader";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 export default function HomePage() {
@@ -10,6 +10,8 @@ export default function HomePage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   useAuth();
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isActiveState = searchParams.get("STATE") === "ACTIVE";
   const isPendingSignup = searchParams.get("status") === "PENDING";
 
@@ -26,6 +28,26 @@ export default function HomePage() {
     if (!isPendingSignup) return;
     router.replace("/signup/step1");
   }, [isPendingSignup, router]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const message = window.localStorage.getItem("katopia.signupWelcome");
+      if (!message) return;
+      window.localStorage.removeItem("katopia.signupWelcome");
+      setToastMessage(message);
+      toastTimerRef.current = setTimeout(() => {
+        setToastMessage(null);
+      }, 1200);
+    } catch {
+      // ignore storage errors
+    }
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -47,6 +69,27 @@ export default function HomePage() {
           </p>
         </div>
       </main>
+
+      {toastMessage && (
+        <div className="fixed bottom-25 left-1/2 z-[100] -translate-x-1/2 px-4">
+          <div
+            className="min-w-[260px] rounded-full border border-black bg-gray-100 px-8 py-3 text-center text-base font-semibold text-black shadow-lg"
+            style={{ animation: "toastFadeIn 250ms ease-out forwards" }}
+          >
+            {toastMessage}
+          </div>
+        </div>
+      )}
     </div>
+    <style jsx global>{`
+      @keyframes toastFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    `}</style>
   );
 }

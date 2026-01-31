@@ -256,6 +256,15 @@ export default function SignupStep2() {
         await issueAccessToken();
         setAuthenticated(true);
 
+        try {
+          window.localStorage.setItem(
+            "katopia.signupWelcome",
+            `환영합니다. ${nickname} 님!`,
+          );
+        } catch {
+          // ignore storage errors
+        }
+
         const hasOptionalInputs =
           Boolean(data.height) || Boolean(data.weight) || styles.length > 0;
 
@@ -277,6 +286,7 @@ export default function SignupStep2() {
         }
 
         router.replace("/home");
+        return;
       } catch (err) {
         console.error(err);
         alert("회원가입 중 오류가 발생했습니다.");
@@ -360,6 +370,7 @@ export default function SignupStep2() {
       >
         완료
       </Button>
+
     </form>
   );
 }
