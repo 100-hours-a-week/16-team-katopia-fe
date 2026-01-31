@@ -288,11 +288,14 @@ export default function SignupStep2() {
           try {
             const res = await fetch(signupProfileImageData);
             const blob = await res.blob();
-            const file = new File([blob], "profile.jpg", { type: blob.type });
-            const extension = getFileExtension(file);
+            const tempFile = new File([blob], "profile", { type: blob.type });
+            const extension = getFileExtension(tempFile);
             if (!extension) {
               throw new Error("지원하지 않는 이미지 확장자입니다.");
             }
+            const file = new File([blob], `profile.${extension}`, {
+              type: blob.type,
+            });
             const [presigned] = await requestUploadPresign("PROFILE", [
               extension,
             ]);
