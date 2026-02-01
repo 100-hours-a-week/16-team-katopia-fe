@@ -30,6 +30,7 @@ export async function getPostList(params?: {
   );
 
   const result = await res.json();
+  console.log("[posts] getPostList response", result);
 
   if (!res.ok) {
     if (res.status === 401) {
@@ -44,9 +45,12 @@ export async function getPostList(params?: {
     posts: (data.posts ?? []).map((post) => ({
       ...post,
       imageUrls: normalizeImageUrls(
-        post.imageUrls as unknown as
+        ((post as { imageObjectKeys?: unknown; imageObjectKey?: unknown })
+          .imageObjectKeys ??
+          (post as { imageObjectKey?: unknown }).imageObjectKey ??
+          post.imageUrls) as unknown as
           | string[]
-          | { imageUrl?: string; accessUrl?: string; url?: string }[],
+          | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }[],
       ),
     })),
   };

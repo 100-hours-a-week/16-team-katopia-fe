@@ -268,7 +268,7 @@ export default function SignupStep2() {
           // ignore storage errors
         }
 
-        let signupProfileImageUrl: string | null = null;
+        let signupProfileImageObjectKey: string | null = null;
         let signupProfileImageData: string | null = null;
         try {
           signupProfileImageData = window.localStorage.getItem(
@@ -300,7 +300,8 @@ export default function SignupStep2() {
               extension,
             ]);
             await uploadToPresignedUrl(presigned.uploadUrl, file, file.type);
-            signupProfileImageUrl = presigned.accessUrl;
+            signupProfileImageObjectKey =
+              presigned.imageObjectKey.replace(/^\/+/, "");
           } catch (err) {
             alert(
               err instanceof Error
@@ -315,7 +316,7 @@ export default function SignupStep2() {
           const payload = {
             nickname,
             gender,
-            profileImageUrl: signupProfileImageUrl || undefined,
+            profileImageObjectKey: signupProfileImageObjectKey || undefined,
             height: data.height ? Number(data.height) : null,
             weight: data.weight ? Number(data.weight) : null,
             enableRealtimeNotification: true,

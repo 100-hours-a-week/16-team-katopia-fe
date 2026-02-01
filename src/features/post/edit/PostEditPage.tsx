@@ -28,6 +28,7 @@ const postEditSchema = z.object({
 type PostEditValues = z.infer<typeof postEditSchema>;
 
 type ImageUrlItem = {
+  imageObjectKey?: string;
   imageUrl?: string;
   accessUrl?: string;
   url?: string;
@@ -82,7 +83,10 @@ export default function PostEditPage() {
     getPostDetail(postId)
       .then((res) => {
         const data = res.data;
-        const urls = normalizeImageUrls(data?.imageUrls);
+        const urls = normalizeImageUrls(
+          (data as { imageObjectKeys?: unknown })?.imageObjectKeys ??
+            data?.imageUrls,
+        );
 
         setImages(
           urls.map((url, idx) => ({

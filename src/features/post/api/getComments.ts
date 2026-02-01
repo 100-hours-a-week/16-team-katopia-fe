@@ -5,6 +5,7 @@ export type CommentAuthor = {
   id: number | string;
   nickname: string;
   profileImageUrl?: string | null;
+  profileImageObjectKey?: string | null;
 };
 
 export type CommentItemResponse = {

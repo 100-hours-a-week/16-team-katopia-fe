@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type Props = {
   src: string;
@@ -7,7 +8,8 @@ type Props = {
 };
 
 export default function SearchItem({ src, postId }: Props) {
-  const hasImage = !!src && src.startsWith("http");
+  const resolvedSrc = resolveMediaUrl(src);
+  const hasImage = Boolean(resolvedSrc);
   return (
     <Link
       href={`/post/${postId}`}
@@ -15,7 +17,7 @@ export default function SearchItem({ src, postId }: Props) {
     >
       {hasImage ? (
         <Image
-          src={src}
+          src={resolvedSrc as string}
           alt="검색 이미지"
           fill
           className="object-cover"

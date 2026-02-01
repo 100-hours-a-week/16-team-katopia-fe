@@ -78,8 +78,10 @@ export default function MyProfilePage() {
               ? "female"
               : null;
 
-        if (rawProfile.profileImageUrl) {
-          setCachedProfileImage(rawProfile.profileImageUrl);
+        const profileImageKey =
+          rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
+        if (profileImageKey) {
+          setCachedProfileImage(profileImageKey);
         }
 
         const cachedImage = getCachedProfileImage();
@@ -88,7 +90,7 @@ export default function MyProfilePage() {
           userId,
           ...rawProfile,
           gender: normalizedGender,
-          profileImageUrl: rawProfile.profileImageUrl ?? cachedImage,
+          profileImageUrl: profileImageKey ?? cachedImage,
         });
       } catch (err) {
         console.error(err);

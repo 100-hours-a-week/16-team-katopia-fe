@@ -18,9 +18,9 @@ import ProfileEditCancelModal from "./ProfileEditCancelModal";
 import BodyInfoSection from "@/src/features/signup/components/SignupStep2/BodyInfoSection";
 import {
   getCachedProfileImage,
-  isRemoteUrl,
   setCachedProfileImage,
 } from "@/src/features/profile/utils/profileImageCache";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import {
   requestUploadPresign,
   uploadToPresignedUrl,
@@ -132,6 +132,8 @@ export default function ProfileEditPage() {
   const [initialHeight, setInitialHeight] = useState<string>("");
   const [initialWeight, setInitialWeight] = useState<string>("");
   const [initialStyles, setInitialStyles] = useState<string[]>([]);
+  const [currentProfileImageObjectKey, setCurrentProfileImageObjectKey] =
+    useState<string | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -221,11 +223,16 @@ export default function ProfileEditPage() {
         setInitialStyles(
           profile.style?.map((s: string) => ENUM_TO_STYLE[s] ?? s) ?? [],
         );
-        if (profile.profileImageUrl) {
-          setCachedProfileImage(profile.profileImageUrl);
+        const profileImageKey =
+          profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
+        setCurrentProfileImageObjectKey(profileImageKey);
+        if (profileImageKey) {
+          setCachedProfileImage(profileImageKey);
         }
         const cachedImage = getCachedProfileImage();
-        setPreview(profile.profileImageUrl ?? cachedImage);
+        setPreview(
+          resolveMediaUrl(profileImageKey ?? cachedImage ?? undefined),
+        );
         setRemoveImage(false);
       } catch {
         // ignore (handled by auth guard)
@@ -278,7 +285,7 @@ export default function ProfileEditPage() {
     }
 
     try {
-      let uploadedProfileUrl: string | undefined;
+      let uploadedProfileObjectKey: string | undefined;
 
       if (!removeImage && imageFile) {
         const extension = getFileExtension(imageFile);
@@ -292,21 +299,21 @@ export default function ProfileEditPage() {
           imageFile,
           imageFile.type,
         );
-        uploadedProfileUrl = presigned.accessUrl;
-        setCachedProfileImage(uploadedProfileUrl);
+        uploadedProfileObjectKey = presigned.imageObjectKey.replace(/^\/+/, "");
+        setCachedProfileImage(uploadedProfileObjectKey);
+        setCurrentProfileImageObjectKey(uploadedProfileObjectKey);
+        setPreview(resolveMediaUrl(uploadedProfileObjectKey));
       }
 
-      const profileImageUrl = removeImage
+      const profileImageObjectKey = removeImage
         ? null
-        : uploadedProfileUrl
-          ? uploadedProfileUrl
-          : preview && isRemoteUrl(preview)
-            ? preview
-            : undefined;
+        : uploadedProfileObjectKey
+          ? uploadedProfileObjectKey
+          : currentProfileImageObjectKey ?? undefined;
 
       await updateProfile({
         nickname: trimmedNickname || undefined,
-        profileImageUrl, // 🔥 이미 업로드된 URL만 전송
+        profileImageObjectKey,
         gender: data.gender === "MALE" ? "M" : "F",
         height: data.height ? Number(data.height) : null,
         weight: data.weight ? Number(data.weight) : null,
@@ -440,6 +447,7 @@ export default function ProfileEditPage() {
     setImageFile(null);
     setCachedProfileImage(null);
     setRemoveImage(true);
+    setCurrentProfileImageObjectKey(null);
   };
 
   const onToggle = (style: string) => {

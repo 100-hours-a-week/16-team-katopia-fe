@@ -19,6 +19,7 @@ interface Props {
 type ApiProfile = {
   nickname: string;
   profileImageUrl: string | null;
+  profileImageObjectKey?: string | null;
   gender: "M" | "F" | null;
   heightCm: number | null;
   weightKg: number | null;
@@ -82,7 +83,8 @@ export default function UserProfilePage({ userId }: Props) {
 
         setProfile({
           nickname: apiProfile.nickname,
-          profileImageUrl: apiProfile.profileImageUrl,
+          profileImageUrl:
+            apiProfile.profileImageObjectKey ?? apiProfile.profileImageUrl,
           gender:
             apiProfile.gender === "M"
               ? "male"

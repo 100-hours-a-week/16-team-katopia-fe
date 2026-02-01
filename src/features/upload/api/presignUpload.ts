@@ -5,7 +5,7 @@ export type UploadCategory = "PROFILE" | "POST" | "VOTE";
 
 export type PresignFile = {
   uploadUrl: string;
-  accessUrl: string;
+  imageObjectKey: string;
 };
 
 type PresignResponse = {

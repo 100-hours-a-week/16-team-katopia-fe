@@ -3,7 +3,7 @@ import { authFetch } from "@/src/lib/auth";
 
 export type UpdateProfilePayload = {
   nickname?: string;
-  profileImageUrl?: string | null; // ✅ URL만 보냄
+  profileImageObjectKey?: string | null;
   gender: "M" | "F";
   height?: number | null;
   weight?: number | null;
