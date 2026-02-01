@@ -300,7 +300,8 @@ export default function SignupStep2() {
               extension,
             ]);
             await uploadToPresignedUrl(presigned.uploadUrl, file, file.type);
-            signupProfileImageObjectKey = presigned.imageObjectKey;
+            signupProfileImageObjectKey =
+              presigned.imageObjectKey.replace(/^\/+/, "");
           } catch (err) {
             alert(
               err instanceof Error

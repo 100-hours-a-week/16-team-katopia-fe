@@ -88,7 +88,9 @@ export default function PostCreatePage() {
         ),
       );
 
-      const imageObjectKeys = presignedFiles.map((file) => file.imageObjectKey);
+      const imageObjectKeys = presignedFiles.map((file) =>
+        file.imageObjectKey.replace(/^\/+/, ""),
+      );
       const res = await createPost({
         content: data.content,
         imageObjectKeys,

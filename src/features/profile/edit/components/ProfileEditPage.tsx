@@ -299,7 +299,7 @@ export default function ProfileEditPage() {
           imageFile,
           imageFile.type,
         );
-        uploadedProfileObjectKey = presigned.imageObjectKey;
+        uploadedProfileObjectKey = presigned.imageObjectKey.replace(/^\/+/, "");
         setCachedProfileImage(uploadedProfileObjectKey);
         setCurrentProfileImageObjectKey(uploadedProfileObjectKey);
         setPreview(resolveMediaUrl(uploadedProfileObjectKey));
