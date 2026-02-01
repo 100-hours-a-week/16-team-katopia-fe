@@ -51,7 +51,9 @@ export async function getMemberPosts(params: {
     (post: RawMemberPost) => {
       const imageUrl =
         normalizeImageUrls(
-          (post as { imageObjectKeys?: unknown }).imageObjectKeys ??
+          (post as { imageObjectKeys?: unknown; imageObjectKey?: unknown })
+            .imageObjectKeys ??
+            (post as { imageObjectKey?: unknown }).imageObjectKey ??
             post.imageUrls,
         )[0] ?? "";
 

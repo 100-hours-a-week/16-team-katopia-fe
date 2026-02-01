@@ -67,7 +67,9 @@ export async function searchPosts(params: {
     posts: (data.posts ?? []).map((post) => ({
       ...post,
       imageUrls: normalizeImageUrls(
-        ((post as { imageObjectKeys?: unknown }).imageObjectKeys ??
+        ((post as { imageObjectKeys?: unknown; imageObjectKey?: unknown })
+          .imageObjectKeys ??
+          (post as { imageObjectKey?: unknown }).imageObjectKey ??
           post.imageUrls) as unknown as
           | string[]
           | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }[],

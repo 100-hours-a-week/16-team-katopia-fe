@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type ProfilePostGridProps = {
   posts: {
@@ -46,14 +47,16 @@ export default function ProfilePostGrid({
           }
           className="relative aspect-3/4 overflow-hidden bg-gray-100"
         >
-          <Image
-            src={post.imageUrl}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="(max-width: 640px) 33vw, 200px"
-            placeholder="empty"
-          />
+          {resolveMediaUrl(post.imageUrl) && (
+            <Image
+              src={resolveMediaUrl(post.imageUrl) as string}
+              alt=""
+              fill
+              className="object-cover"
+              sizes="(max-width: 640px) 33vw, 200px"
+              placeholder="empty"
+            />
+          )}
         </Link>
       ))}
 

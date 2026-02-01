@@ -98,12 +98,15 @@ export function useInfinitePostGrid(params?: Params) {
 
       const mapped: GridPost[] = rawPosts
         .map((post) => {
-          const normalized = normalizeImageUrls(
-            (post as { imageObjectKeys?: unknown }).imageObjectKeys ??
-              post.imageUrls ??
-              post.imageUrl ??
-              [],
-          );
+          const rawKey =
+            (post as { imageObjectKeys?: unknown; imageObjectKey?: unknown })
+              .imageObjectKeys ??
+            (post as { imageObjectKey?: unknown }).imageObjectKey ??
+            post.imageUrls ??
+            post.imageUrl ??
+            [];
+          console.log("[posts] imageObjectKey raw", rawKey);
+          const normalized = normalizeImageUrls(rawKey);
           return {
             id: post.id,
             imageUrl: normalized[0] ?? "",
