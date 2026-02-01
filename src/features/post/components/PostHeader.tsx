@@ -9,6 +9,7 @@ type Author = {
   id?: number | string | null;
   nickname: string;
   profileImageUrl?: string | null;
+  profileImageObjectKey?: string | null;
   gender?: "M" | "F" | null;
   height?: number | null;
   weight?: number | null;
@@ -142,9 +143,15 @@ export default function PostHeader({
           className="h-10 w-10 rounded-full overflow-hidden bg-muted flex items-center justify-center"
           aria-label={`${author.nickname} 프로필 보기`}
         >
-          {resolveMediaUrl(author.profileImageUrl) ? (
+          {resolveMediaUrl(
+            author.profileImageObjectKey ?? author.profileImageUrl,
+          ) ? (
             <Image
-              src={resolveMediaUrl(author.profileImageUrl) as string}
+              src={
+                resolveMediaUrl(
+                  author.profileImageObjectKey ?? author.profileImageUrl,
+                ) as string
+              }
               alt={author.nickname}
               width={40}
               height={40}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getPostList } from "../../post/api/getPostList";
 import { getMemberPosts } from "../../profile/api/getMemberPosts";
 import { searchPosts } from "../api/searchPosts";
+import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 type GridPost = {
   id: number;
@@ -96,14 +97,18 @@ export function useInfinitePostGrid(params?: Params) {
       const lastRawId = rawPosts[rawCount - 1]?.id ?? null;
 
       const mapped: GridPost[] = rawPosts
-        .map(
-          (post: { id: number; imageUrls?: string[]; imageUrl?: string }) => ({
+        .map((post) => {
+          const normalized = normalizeImageUrls(
+            (post as { imageObjectKeys?: unknown }).imageObjectKeys ??
+              post.imageUrls ??
+              post.imageUrl ??
+              [],
+          );
+          return {
             id: post.id,
-            imageUrl: Array.isArray(post.imageUrls)
-              ? post.imageUrls[0]
-              : (post.imageUrl ?? ""),
-          }),
-        )
+            imageUrl: normalized[0] ?? "",
+          };
+        })
         .filter((p) => Boolean(p.imageUrl));
 
       setItems((prev) => {

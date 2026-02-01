@@ -1,6 +1,9 @@
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
+
 export type ImageUrlValue =
   | string
   | {
+      imageObjectKey?: string | null;
       imageUrl?: string | null;
       accessUrl?: string | null;
       url?: string | null;
@@ -8,8 +11,14 @@ export type ImageUrlValue =
 
 export function pickImageUrl(value: ImageUrlValue | null | undefined) {
   if (!value) return null;
-  if (typeof value === "string") return value;
-  return value.accessUrl ?? value.imageUrl ?? value.url ?? null;
+  if (typeof value === "string") return resolveMediaUrl(value);
+  const raw =
+    value.imageObjectKey ??
+    value.accessUrl ??
+    value.imageUrl ??
+    value.url ??
+    null;
+  return raw ? resolveMediaUrl(raw) : null;
 }
 
 export function normalizeImageUrls(

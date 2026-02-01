@@ -88,8 +88,11 @@ export default function PostCreatePage() {
         ),
       );
 
-      const imageUrls = presignedFiles.map((file) => file.accessUrl);
-      const res = await createPost({ content: data.content, imageUrls });
+      const imageObjectKeys = presignedFiles.map((file) => file.imageObjectKey);
+      const res = await createPost({
+        content: data.content,
+        imageObjectKeys,
+      });
 
       const postId = res.data.id;
       console.log("게시글이 성공적으로 등록되었어요.");

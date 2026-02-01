@@ -18,7 +18,10 @@ import PostImageCarousel from "./PostImageCarousel";
 import PostContent from "./PostContent";
 import CommentInput from "./CommentInput";
 import CommentList, { type Comment as CommentListItem } from "./CommentList";
-import { pickImageUrl } from "@/src/features/upload/utils/normalizeImageUrls";
+import {
+  normalizeImageUrls,
+  pickImageUrl,
+} from "@/src/features/upload/utils/normalizeImageUrls";
 import { getCachedProfileImage } from "@/src/features/profile/utils/profileImageCache";
 
 /* ================= 타입 ================= */
@@ -26,6 +29,7 @@ import { getCachedProfileImage } from "@/src/features/profile/utils/profileImage
 type PostAuthor = {
   nickname: string;
   profileImageUrl?: string | null;
+  profileImageObjectKey?: string | null;
   gender?: "M" | "F" | null;
   height?: number | null;
   weight?: number | null;
@@ -35,6 +39,7 @@ type PostAuthor = {
 };
 
 type PostImageItem = {
+  imageObjectKey?: string;
   imageUrl?: string;
   accessUrl?: string;
   url?: string;
@@ -42,7 +47,8 @@ type PostImageItem = {
 };
 
 type PostDetail = {
-  imageUrls: PostImageItem[];
+  imageUrls?: PostImageItem[] | string[];
+  imageObjectKeys?: PostImageItem[] | string[];
   content: string;
   isLiked: boolean;
   aggregate: {
@@ -57,10 +63,16 @@ type CommentItem = CommentListItem;
 
 /* ================= 유틸 ================= */
 
-function normalizePostImageUrls(value: PostImageItem[] | undefined): string[] {
+function normalizePostImageUrls(
+  value: PostImageItem[] | string[] | undefined,
+): string[] {
   if (!value || value.length === 0) return [];
 
-  return [...value]
+  if (typeof value[0] === "string") {
+    return normalizeImageUrls(value as string[]);
+  }
+
+  return [...(value as PostImageItem[])]
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((img) => pickImageUrl(img))
     .filter(Boolean) as string[];
@@ -96,7 +108,10 @@ export default function PostDetailPage() {
   } | null>(null);
 
   const sortedImageUrls = useMemo(
-    () => normalizePostImageUrls(post?.imageUrls),
+    () =>
+      normalizePostImageUrls(
+        post?.imageObjectKeys ?? post?.imageUrls,
+      ),
     [post],
   );
 
@@ -152,7 +167,10 @@ export default function PostDetailPage() {
           content: comment.content,
           createdAt: comment.createdAt,
           nickname: comment.author.nickname,
-          profileImageUrl: comment.author.profileImageUrl ?? null,
+          profileImageUrl:
+            comment.author.profileImageObjectKey ??
+            comment.author.profileImageUrl ??
+            null,
           authorId: comment.author.id,
         }));
         setComments(dedupeComments(mapped));
@@ -176,7 +194,10 @@ export default function PostDetailPage() {
         setMe({
           id: memberId,
           nickname: profile.nickname,
-          profileImageUrl: profile.profileImageUrl ?? getCachedProfileImage(),
+          profileImageUrl:
+            profile.profileImageObjectKey ??
+            profile.profileImageUrl ??
+            getCachedProfileImage(),
         });
       })
       .catch(() => {});

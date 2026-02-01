@@ -19,8 +19,8 @@ type RawMemberPost = {
   imageUrls:
     | string
     | string[]
-    | { imageUrl?: string; accessUrl?: string; url?: string }
-    | { imageUrl?: string; accessUrl?: string; url?: string }[];
+    | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }
+    | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }[];
   createdAt: string;
 };
 
@@ -49,7 +49,11 @@ export async function getMemberPosts(params: {
 
   const posts: MemberPostItem[] = (json.data.posts ?? []).map(
     (post: RawMemberPost) => {
-      const imageUrl = normalizeImageUrls(post.imageUrls)[0] ?? "";
+      const imageUrl =
+        normalizeImageUrls(
+          (post as { imageObjectKeys?: unknown }).imageObjectKeys ??
+            post.imageUrls,
+        )[0] ?? "";
 
       return {
         id: post.id,

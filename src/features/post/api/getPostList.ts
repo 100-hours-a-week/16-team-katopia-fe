@@ -44,9 +44,10 @@ export async function getPostList(params?: {
     posts: (data.posts ?? []).map((post) => ({
       ...post,
       imageUrls: normalizeImageUrls(
-        post.imageUrls as unknown as
+        ((post as { imageObjectKeys?: unknown }).imageObjectKeys ??
+          post.imageUrls) as unknown as
           | string[]
-          | { imageUrl?: string; accessUrl?: string; url?: string }[],
+          | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }[],
       ),
     })),
   };

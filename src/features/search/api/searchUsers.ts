@@ -1,10 +1,12 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 export type SearchUserItem = {
   id: number;
   nickname: string;
   profileImageUrl: string | null;
+  profileImageObjectKey?: string | null;
 };
 
 export type SearchUsersResponse = {
@@ -52,5 +54,15 @@ export async function searchUsers(params: {
     throw result;
   }
 
-  return result.data;
+  const data = result.data as SearchUsersResponse;
+  return {
+    ...data,
+    members: (data.members ?? []).map((member) => ({
+      ...member,
+      profileImageUrl:
+        resolveMediaUrl(
+          member.profileImageObjectKey ?? member.profileImageUrl ?? null,
+        ) ?? null,
+    })),
+  };
 }
