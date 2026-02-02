@@ -68,17 +68,38 @@ export function useProfileImage() {
         return;
       }
 
-      const localUrl = URL.createObjectURL(file);
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-      previewUrlRef.current = localUrl;
-      setPreview(localUrl);
-      setImageError(null);
-      e.target.value = "";
-
       try {
-        const blob = await resizeAndCompress(file);
+        let sourceForPreview: Blob = file;
+        let sourceForResize: File = file;
+
+        if (
+          file.type === "image/heic" ||
+          file.name.toLowerCase().endsWith(".heic")
+        ) {
+          const converted = await heic2any({
+            blob: file,
+            toType: "image/jpeg",
+            quality: 0.9,
+          });
+          const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+          sourceForPreview = jpegBlob;
+          sourceForResize = new File(
+            [jpegBlob],
+            file.name.replace(/\.heic$/i, ".jpg"),
+            { type: "image/jpeg" },
+          );
+        }
+
+        const previewUrl = URL.createObjectURL(sourceForPreview);
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+        }
+        previewUrlRef.current = previewUrl;
+        setPreview(previewUrl);
+        setImageError(null);
+        e.target.value = "";
+
+        const blob = await resizeAndCompress(sourceForResize);
         const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
         await uploadToPresignedUrl(presigned.uploadUrl, blob, "image/webp");
         const objectKey = presigned.imageObjectKey.replace(/^\/+/, "");
