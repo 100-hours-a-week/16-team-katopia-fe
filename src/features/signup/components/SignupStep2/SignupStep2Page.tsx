@@ -303,12 +303,16 @@ export default function SignupStep2() {
 
         if (hasOptionalInputs) {
           const payload: {
+            nickname: string;
+            gender: "M" | "F";
             profileImageObjectKey?: string;
             height?: number | null;
             weight?: number | null;
             enableRealtimeNotification?: boolean;
             style?: string[];
           } = {
+            nickname,
+            gender,
             enableRealtimeNotification: true,
           };
           if (signupProfileImageObjectKey) {
