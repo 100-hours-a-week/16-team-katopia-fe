@@ -313,7 +313,7 @@ export default function SignupStep2() {
         }
 
         try {
-          const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {
+          const meRes = await authFetch(`${API_BASE_URL}/api/members`, {
             method: "GET",
             cache: "no-store",
           });
@@ -321,9 +321,9 @@ export default function SignupStep2() {
             .clone()
             .json()
             .catch(() => null);
-          console.log("[signup] GET /api/members/me response", meBody);
+          console.log("[signup] GET /api/members response", meBody);
         } catch (err) {
-          console.log("[signup] GET /api/members/me failed", err);
+          console.log("[signup] GET /api/members failed", err);
         }
 
         router.replace("/home");
