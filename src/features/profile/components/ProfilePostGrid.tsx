@@ -45,6 +45,7 @@ export default function ProfilePostGrid({
           href={
             detailQuery ? `/post/${post.id}?${detailQuery}` : `/post/${post.id}`
           }
+          prefetch={false}
           className="relative aspect-3/4 overflow-hidden bg-gray-100"
         >
           {resolveMediaUrl(post.imageUrl) && (

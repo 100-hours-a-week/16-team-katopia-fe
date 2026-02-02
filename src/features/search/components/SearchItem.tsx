@@ -12,6 +12,7 @@ export default function SearchItem({ src, postId }: Props) {
   return (
     <Link
       href={`/post/${postId}`}
+      prefetch={false}
       className="relative aspect-3/4 bg-gray-100 overflow-hidden block"
     >
       {resolvedSrc && (
