@@ -144,15 +144,6 @@ export default function PostDetailPage() {
       .finally(() => setLoading(false));
   }, [postId, router]);
 
-  /* ================= 좋아요 로컬 캐시 ================= */
-
-  useEffect(() => {
-    if (!postId) return;
-    const stored = localStorage.getItem(`post-liked-${postId}`);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored != null) setLikedOverride(stored === "true");
-  }, [postId]);
-
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
 
   /* ================= 댓글 ================= */
@@ -296,7 +287,6 @@ export default function PostDetailPage() {
         isLiked={effectiveLiked}
         onLikedChange={(next) => {
           setLikedOverride(next);
-          localStorage.setItem(`post-liked-${postId}`, String(next));
         }}
       />
 
