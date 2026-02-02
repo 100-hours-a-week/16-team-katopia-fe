@@ -20,9 +20,8 @@ import {
   TERMS_OF_SERVICE_TEXT,
 } from "../constants/policies";
 import { API_BASE_URL } from "@/src/config/api";
-import { authFetch, issueAccessToken } from "@/src/lib/auth";
+import { issueAccessToken } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import { updateProfile } from "@/src/features/profile/api/updateProfile";
 
 /* =========================
    Schema & Types
@@ -314,7 +313,19 @@ export default function SignupStep2() {
           };
           console.log("[signup] PATCH /api/members request", payload);
           try {
-            await updateProfile({ ...payload });
+            const patchRes = await fetch(`${API_BASE_URL}/api/members`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              credentials: "include",
+              body: JSON.stringify(payload),
+            });
+            if (!patchRes.ok) {
+              const error = await patchRes.json().catch(() => null);
+              console.error("[signup] PATCH /api/members failed", error);
+              throw new Error(`프로필 업데이트 실패 (${patchRes.status})`);
+            }
           } catch (err) {
             const message =
               err instanceof Error ? err.message : "프로필 업데이트 실패";
@@ -332,9 +343,10 @@ export default function SignupStep2() {
         }
 
         try {
-          const meRes = await authFetch(`${API_BASE_URL}/api/members`, {
+          const meRes = await fetch(`${API_BASE_URL}/api/members`, {
             method: "GET",
             cache: "no-store",
+            credentials: "include",
           });
           const meBody = await meRes
             .clone()
