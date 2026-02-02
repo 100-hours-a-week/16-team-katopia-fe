@@ -327,18 +327,38 @@ export default function SignupStep2() {
           }
           console.log("[signup] PATCH /api/members request", payload);
           try {
-            const patchRes = await fetch(`${API_BASE_URL}/api/members`, {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              credentials: "include",
-              body: JSON.stringify(payload),
-            });
-            if (!patchRes.ok) {
-              const error = await patchRes.json().catch(() => null);
-              console.error("[signup] PATCH /api/members failed", error);
-              throw new Error(`프로필 업데이트 실패 (${patchRes.status})`);
+            const delay = (ms: number) =>
+              new Promise((resolve) => setTimeout(resolve, ms));
+            const attemptPatch = async () => {
+              const patchRes = await fetch(`${API_BASE_URL}/api/members`, {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                credentials: "include",
+                body: JSON.stringify(payload),
+              });
+              if (!patchRes.ok) {
+                const error = await patchRes.json().catch(() => null);
+                console.error("[signup] PATCH /api/members failed", error);
+                throw new Error(`프로필 업데이트 실패 (${patchRes.status})`);
+              }
+              return patchRes;
+            };
+
+            const delays = [300, 500, 800];
+            for (let i = 0; i <= delays.length; i += 1) {
+              try {
+                if (i > 0) {
+                  await delay(delays[i - 1]);
+                }
+                await attemptPatch();
+                break;
+              } catch (err) {
+                if (i === delays.length) {
+                  throw err;
+                }
+              }
             }
           } catch (err) {
             const message =
