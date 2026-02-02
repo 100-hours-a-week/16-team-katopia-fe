@@ -142,7 +142,7 @@ export default function PostImageUploader() {
 
   return (
     <Controller
-      name="images" // ⭐ string[] (objectKey)
+      name="imageObjectKeys" // ⭐ string[] (objectKey)
       control={control}
       render={({ field }) => {
         const objectKeys = Array.isArray(field.value) ? field.value : [];
