@@ -114,7 +114,7 @@ export default function PostCreatePage() {
             else router.back();
           }}
           formId="post-create-form"
-          submitDisabled={!canSubmit || isSubmitting}
+          submitDisabled={!canSubmit || isSubmitting || Boolean(toastMessage)}
         />
 
         <form
