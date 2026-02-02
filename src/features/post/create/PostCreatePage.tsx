@@ -24,6 +24,7 @@ export default function PostCreatePage() {
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { ready, isAuthenticated } = useAuth();
 
+  /* ---------------- 인증 체크 ---------------- */
   useEffect(() => {
     if (!ready) return;
     if (!isAuthenticated) {
@@ -39,11 +40,12 @@ export default function PostCreatePage() {
     };
   }, []);
 
+  /* ---------------- react-hook-form ---------------- */
   const methods = useForm<PostCreateValues>({
     resolver: zodResolver(postCreateSchema),
     mode: "onChange",
     defaultValues: {
-      images: [],
+      imageObjectKeys: [], // ✅ 수정: images → imageObjectKeys
       content: "",
     },
   });
@@ -54,58 +56,46 @@ export default function PostCreatePage() {
     formState: { isDirty, isSubmitting },
   } = methods;
 
-  const [images, content] = watch(["images", "content"]);
-  const canSubmit = (images?.length ?? 0) > 0 && !!content?.trim();
+  /* ---------------- submit 가능 여부 ---------------- */
+  const [imageObjectKeys, content] = watch([
+    "imageObjectKeys", // ✅ 수정: 기준 필드 통일
+    "content",
+  ]);
+
+  const canSubmit = (imageObjectKeys?.length ?? 0) > 0 && !!content?.trim();
 
   usePostUnsavedGuard(isDirty);
 
+  /* ---------------- submit ---------------- */
   const onSubmit = async (data: PostCreateValues) => {
     try {
       console.log("post create submit", data);
-      if (data.images.some((key) => key.startsWith("pending:"))) {
+
+      // ✅ 수정: pending 상태 체크 대상 통일
+      if (data.imageObjectKeys.some((key) => key.startsWith("pending:"))) {
         throw new Error("이미지 업로드가 완료되지 않았습니다.");
       }
-      const imageObjectKeys = data.images.map((key) =>
+
+      // ✅ 수정: images → imageObjectKeys
+      const imageObjectKeys = data.imageObjectKeys.map((key) =>
         key.replace(/^\/+/, ""),
       );
+
       const res = await createPost({
         content: data.content,
         imageObjectKeys,
       });
 
       const postId = res.data.id;
-      console.log("게시글이 성공적으로 등록되었어요.");
-      console.log(postId);
+      console.log("게시글이 성공적으로 등록되었어요.", postId);
+
       setToastMessage("게시글 작성이 완료되었습니다.");
       toastTimerRef.current = setTimeout(() => {
-        // router.replace("/home"); 원래는 home으로 가게 하는게 맞음. ver2에서 홈화면 구현하면서 바꿀 예정
         router.replace("/search");
       }, 1200);
     } catch (e) {
-      /**
-       * 서버 에러 코드별 분기
-      //  */
-      // const code = e?.code;
-      // switch (code) {
-      //   case "POST-E-001":
-      //     toast.error("본문 내용을 입력해주세요.");
-      //     break;
-      //   case "POST-E-002":
-      //     toast.error("본문은 최대 200자까지 입력할 수 있어요.");
-      //     break;
-      //   case "POST-E-003":
-      //     toast.error("이미지는 최소 1장, 최대 3장까지 등록 가능해요.");
-      //     break;
-      //   case "POST-E-004":
-      //     toast.error("태그는 최소 1개, 최대 20개까지 가능해요.");
-      //     break;
-      //   case "AUTH-E-002":
-      //     toast.error("로그인이 필요합니다.");
-      //     router.replace("/login");
-      //     break;
-      //   default:
-      //     toast.error("게시글 등록에 실패했어요.");
-      // }
+      console.error(e);
+      // TODO: 에러 코드별 토스트 분기
     }
   };
 
@@ -113,6 +103,7 @@ export default function PostCreatePage() {
     console.log("post create invalid", errors);
   };
 
+  /* ---------------- render ---------------- */
   return (
     <FormProvider {...methods}>
       <PostFormLayout>
@@ -151,6 +142,7 @@ export default function PostCreatePage() {
           </div>
         )}
       </PostFormLayout>
+
       <style jsx global>{`
         @keyframes toastFadeIn {
           from {

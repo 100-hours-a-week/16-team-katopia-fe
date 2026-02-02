@@ -74,6 +74,7 @@ function SortablePreview({
   );
 }
 
+/* ---------------- 이미지 리사이징/압축 ---------------- */
 async function resizeAndCompress(
   file: File,
   maxWidth = 1080,
@@ -81,7 +82,7 @@ async function resizeAndCompress(
 ): Promise<Blob> {
   let sourceFile = file;
 
-  // 1️⃣ HEIC → JPEG 변환 (브라우저 호환)
+  // ✅ HEIC → JPEG 변환
   if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
     const converted = await heic2any({
       blob: file,
@@ -89,7 +90,6 @@ async function resizeAndCompress(
       quality: 0.9,
     });
 
-    // heic2any는 Blob | Blob[] 반환 가능
     const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
 
     sourceFile = new File([jpegBlob], file.name.replace(/\.heic$/i, ".jpg"), {
@@ -97,12 +97,11 @@ async function resizeAndCompress(
     });
   }
 
-  // 2️⃣ EXIF 회전 포함 디코딩
+  // ✅ EXIF 회전 반영
   const bitmap = await createImageBitmap(sourceFile, {
     imageOrientation: "from-image",
   });
 
-  // 3️⃣ 리사이징
   const scale = Math.min(1, maxWidth / bitmap.width);
   const canvas = document.createElement("canvas");
   canvas.width = bitmap.width * scale;
@@ -111,7 +110,6 @@ async function resizeAndCompress(
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
-  // 4️⃣ WebP로 최종 압축
   return new Promise((resolve) =>
     canvas.toBlob(
       (blob) => {
@@ -124,12 +122,13 @@ async function resizeAndCompress(
   );
 }
 
+/* ---------------- PostImageUploader ---------------- */
 export default function PostImageUploader() {
   const { control, setError, clearErrors, getValues, setValue } =
     useFormContext();
+
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
 
   const previewIds = useMemo(() => previews.map((p) => p.id), [previews]);
@@ -143,7 +142,7 @@ export default function PostImageUploader() {
 
   return (
     <Controller
-      name="imageObjectKeys" // ⭐ string[] (objectKey)
+      name="imageObjectKeys" // ✅ 기준 필드
       control={control}
       render={({ field }) => {
         const objectKeys = Array.isArray(field.value) ? field.value : [];
@@ -163,7 +162,7 @@ export default function PostImageUploader() {
 
                 const remain = MAX_FILES - previews.length;
                 if (remain <= 0) {
-                  setError("images", {
+                  setError("imageObjectKeys", {
                     type: "manual",
                     message: "최대 3장까지 업로드할 수 있습니다",
                   });
@@ -172,6 +171,7 @@ export default function PostImageUploader() {
 
                 const selected = files.slice(0, remain);
 
+                /* ---------- optimistic preview ---------- */
                 const tempItems: PreviewItem[] = selected.map((file) => {
                   const id = crypto.randomUUID();
                   return {
@@ -183,31 +183,32 @@ export default function PostImageUploader() {
                 });
 
                 setPreviews((prev) => [...prev, ...tempItems]);
-                field.onChange([
-                  ...objectKeys,
-                  ...tempItems.map((item) => item.objectKey),
-                ]);
+
+                // ✅ 수정: imageObjectKeys만 사용
+                setValue(
+                  "imageObjectKeys",
+                  [...objectKeys, ...tempItems.map((i) => i.objectKey)],
+                  { shouldDirty: true, shouldValidate: true },
+                );
 
                 try {
-                  // 1️⃣ 리사이징 / 압축
+                  /* ---------- resize & upload ---------- */
                   const blobs = await Promise.all(
                     selected.map((f) => resizeAndCompress(f)),
                   );
 
-                  // 2️⃣ presign 요청 (POST 카테고리)
                   const presigned = await requestUploadPresign(
                     "POST",
                     blobs.map(() => "webp"),
                   );
 
-                  // 3️⃣ PUT 업로드
                   await Promise.all(
                     presigned.map((p, i) =>
                       uploadToPresignedUrl(p.uploadUrl, blobs[i], "image/webp"),
                     ),
                   );
 
-                  const tempKeyToRealKey = new Map(
+                  const tempToReal = new Map(
                     presigned.map((p, i) => [
                       tempItems[i].objectKey,
                       p.imageObjectKey.replace(/^\/+/, ""),
@@ -215,37 +216,41 @@ export default function PostImageUploader() {
                   );
 
                   setPreviews((prev) =>
-                    prev.map((item) => {
-                      const realKey = tempKeyToRealKey.get(item.objectKey);
-                      return realKey ? { ...item, objectKey: realKey } : item;
-                    }),
+                    prev.map((item) => ({
+                      ...item,
+                      objectKey:
+                        tempToReal.get(item.objectKey) ?? item.objectKey,
+                    })),
                   );
 
-                  const current = (getValues("images") as string[]) ?? [];
+                  const current =
+                    (getValues("imageObjectKeys") as string[]) ?? [];
+
                   setValue(
-                    "images",
-                    current.map((key) => tempKeyToRealKey.get(key) ?? key),
+                    "imageObjectKeys",
+                    current.map((k) => tempToReal.get(k) ?? k),
                     { shouldDirty: true, shouldValidate: true },
                   );
 
-                  clearErrors("images");
+                  clearErrors("imageObjectKeys");
                 } catch (err) {
-                  tempItems.forEach((item) => URL.revokeObjectURL(item.url));
+                  tempItems.forEach((i) => URL.revokeObjectURL(i.url));
                   setPreviews((prev) =>
-                    prev.filter(
-                      (item) =>
-                        !tempItems.some((temp) => temp.id === item.id),
-                    ),
+                    prev.filter((p) => !tempItems.some((t) => t.id === p.id)),
                   );
-                  const current = (getValues("images") as string[]) ?? [];
+
+                  const current =
+                    (getValues("imageObjectKeys") as string[]) ?? [];
+
                   setValue(
-                    "images",
+                    "imageObjectKeys",
                     current.filter(
-                      (key) => !tempItems.some((temp) => temp.objectKey === key),
+                      (k) => !tempItems.some((t) => t.objectKey === k),
                     ),
                     { shouldDirty: true, shouldValidate: true },
                   );
-                  setError("images", {
+
+                  setError("imageObjectKeys", {
                     type: "manual",
                     message:
                       err instanceof Error
@@ -258,7 +263,7 @@ export default function PostImageUploader() {
               }}
             />
 
-            {/* Preview */}
+            {/* ---------- Preview ---------- */}
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -275,7 +280,7 @@ export default function PostImageUploader() {
                 items={previewIds}
                 strategy={horizontalListSortingStrategy}
               >
-                <div className="w-full overflow-x-auto overflow-y-hidden touch-pan-x overscroll-x-contain">
+                <div className="w-full overflow-x-auto overflow-y-hidden touch-pan-x">
                   <div className="flex gap-3 min-w-max">
                     {previews.map((p, i) => (
                       <SortablePreview

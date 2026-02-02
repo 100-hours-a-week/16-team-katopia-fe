@@ -1,10 +1,10 @@
 import { z } from "zod";
 
 export const postCreateSchema = z.object({
-  images: z
+  imageObjectKeys: z // ✅ 수정: images → imageObjectKeys
     .array(z.string())
     .min(1, "이미지는 최소 1장 이상 업로드해야 합니다.")
-    .max(3, "최대 3장까지 업로드할 수 있습니다"),
+    .max(3, "최대 3장까지 업로드할 수 있습니다."),
   content: z
     .string()
     .min(1, "내용을 입력해주세요.")
