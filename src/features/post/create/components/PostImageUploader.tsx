@@ -125,7 +125,8 @@ async function resizeAndCompress(
 }
 
 export default function PostImageUploader() {
-  const { control, setError, clearErrors } = useFormContext();
+  const { control, setError, clearErrors, getValues, setValue } =
+    useFormContext();
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -171,6 +172,22 @@ export default function PostImageUploader() {
 
                 const selected = files.slice(0, remain);
 
+                const tempItems: PreviewItem[] = selected.map((file) => {
+                  const id = crypto.randomUUID();
+                  return {
+                    id,
+                    url: URL.createObjectURL(file),
+                    name: file.name,
+                    objectKey: `pending:${id}`,
+                  };
+                });
+
+                setPreviews((prev) => [...prev, ...tempItems]);
+                field.onChange([
+                  ...objectKeys,
+                  ...tempItems.map((item) => item.objectKey),
+                ]);
+
                 try {
                   // 1️⃣ 리사이징 / 압축
                   const blobs = await Promise.all(
@@ -190,22 +207,44 @@ export default function PostImageUploader() {
                     ),
                   );
 
-                  // 4️⃣ preview + objectKey 저장
-                  const newItems: PreviewItem[] = presigned.map((p, i) => ({
-                    id: crypto.randomUUID(),
-                    url: URL.createObjectURL(blobs[i]),
-                    name: selected[i].name,
-                    objectKey: p.imageObjectKey.replace(/^\/+/, ""),
-                  }));
+                  const tempKeyToRealKey = new Map(
+                    presigned.map((p, i) => [
+                      tempItems[i].objectKey,
+                      p.imageObjectKey.replace(/^\/+/, ""),
+                    ]),
+                  );
 
-                  setPreviews((prev) => [...prev, ...newItems]);
-                  field.onChange([
-                    ...objectKeys,
-                    ...presigned.map((p) => p.imageObjectKey.replace(/^\/+/, "")),
-                  ]);
+                  setPreviews((prev) =>
+                    prev.map((item) => {
+                      const realKey = tempKeyToRealKey.get(item.objectKey);
+                      return realKey ? { ...item, objectKey: realKey } : item;
+                    }),
+                  );
+
+                  const current = (getValues("images") as string[]) ?? [];
+                  setValue(
+                    "images",
+                    current.map((key) => tempKeyToRealKey.get(key) ?? key),
+                    { shouldDirty: true, shouldValidate: true },
+                  );
 
                   clearErrors("images");
                 } catch (err) {
+                  tempItems.forEach((item) => URL.revokeObjectURL(item.url));
+                  setPreviews((prev) =>
+                    prev.filter(
+                      (item) =>
+                        !tempItems.some((temp) => temp.id === item.id),
+                    ),
+                  );
+                  const current = (getValues("images") as string[]) ?? [];
+                  setValue(
+                    "images",
+                    current.filter(
+                      (key) => !tempItems.some((temp) => temp.objectKey === key),
+                    ),
+                    { shouldDirty: true, shouldValidate: true },
+                  );
                   setError("images", {
                     type: "manual",
                     message:

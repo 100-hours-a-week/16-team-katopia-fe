@@ -62,6 +62,9 @@ export default function PostCreatePage() {
   const onSubmit = async (data: PostCreateValues) => {
     try {
       console.log("post create submit", data);
+      if (data.images.some((key) => key.startsWith("pending:"))) {
+        throw new Error("이미지 업로드가 완료되지 않았습니다.");
+      }
       const imageObjectKeys = data.images.map((key) =>
         key.replace(/^\/+/, ""),
       );
