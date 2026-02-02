@@ -302,15 +302,29 @@ export default function SignupStep2() {
         }
 
         if (hasOptionalInputs) {
-          const payload = {
-            nickname,
-            gender,
-            profileImageObjectKey: signupProfileImageObjectKey || undefined,
-            height: data.height ? Number(data.height) : null,
-            weight: data.weight ? Number(data.weight) : null,
+          const payload: {
+            profileImageObjectKey?: string;
+            height?: number | null;
+            weight?: number | null;
+            enableRealtimeNotification?: boolean;
+            style?: string[];
+          } = {
             enableRealtimeNotification: true,
-            style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
           };
+          if (signupProfileImageObjectKey) {
+            payload.profileImageObjectKey = signupProfileImageObjectKey;
+          }
+          if (data.height) {
+            payload.height = Number(data.height);
+          }
+          if (data.weight) {
+            payload.weight = Number(data.weight);
+          }
+          if (styles.length > 0) {
+            payload.style = styles.map(
+              (style) => STYLE_TO_ENUM[style] ?? style,
+            );
+          }
           console.log("[signup] PATCH /api/members request", payload);
           try {
             const patchRes = await fetch(`${API_BASE_URL}/api/members`, {
