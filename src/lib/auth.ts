@@ -173,6 +173,8 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
   console.log("[authFetch] start", {
     input,
     hasToken: Boolean(token),
+    tokenPrefix: token ? token.slice(0, 10) : null,
+    tokenLength: token?.length ?? 0,
     skipAuthRefresh: init.skipAuthRefresh,
   });
 
@@ -191,10 +193,18 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
     return headers;
   };
 
+  const requestHeaders = makeHeaders(token ?? undefined);
+  const authHeader = requestHeaders.get("Authorization") ?? "";
+  console.log("[authFetch] request headers", {
+    input,
+    hasAuthorization: Boolean(authHeader),
+    authHeaderPrefix: authHeader ? authHeader.slice(0, 16) : null,
+    credentials: init.credentials ?? "include",
+  });
   // 1차 요청
   let res = await fetch(input, {
     ...init,
-    headers: makeHeaders(token ?? undefined),
+    headers: requestHeaders,
     credentials: init.credentials ?? "include",
   });
   console.log("[authFetch] response", {
