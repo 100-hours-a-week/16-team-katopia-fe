@@ -51,6 +51,7 @@ export default function LayoutShell({ children }: Props) {
     ready &&
     !isAuthenticated &&
     !isPendingSignup &&
+    !isActiveLogin &&
     !LOGIN_GUARD_EXCLUDED_PATHS.includes(pathname ?? "") &&
     (authInvalidated ||
       LOGIN_GUARD_PATHS.includes(pathname ?? "") ||
