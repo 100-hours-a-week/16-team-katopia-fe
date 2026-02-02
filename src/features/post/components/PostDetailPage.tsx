@@ -304,9 +304,8 @@ export default function PostDetailPage() {
         onConfirm={async () => {
           if (!postId) return;
           await deletePost(postId);
-          router.replace(
-            searchParams.get("from") === "profile" ? "/profile" : "/home",
-          );
+          const from = searchParams.get("from");
+          router.replace(from === "profile" ? "/profile" : "/search");
         }}
       />
     </div>

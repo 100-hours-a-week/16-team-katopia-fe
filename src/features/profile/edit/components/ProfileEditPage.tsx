@@ -555,12 +555,15 @@ export default function ProfileEditPage() {
                 type="button"
                 aria-label="프로필 이미지 삭제"
                 className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-lg font-semibold text-black shadow transition-colors hover:bg-gray-100"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleRemoveImage();
-                }}
-              >
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRemoveImage();
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = "";
+                }
+              }}
+            >
                 ×
               </button>
             )}
@@ -569,9 +572,12 @@ export default function ProfileEditPage() {
               type="file"
               hidden
               accept="image/*"
-              onChange={(e) =>
-                e.target.files && handleImageChange(e.target.files[0])
-              }
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleImageChange(e.target.files[0]);
+                }
+                e.target.value = "";
+              }}
             />
           </div>
           {imageError && (
