@@ -239,15 +239,20 @@ export default function SignupStep2() {
 
         const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
+        const accessToken = await issueAccessToken();
         console.log("[signup] POST /api/members request", {
           nickname,
           gender,
+          hasToken: Boolean(accessToken),
+          tokenLength: accessToken?.length ?? 0,
         });
         const res = await authFetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
           },
+          skipAuthRefresh: true,
           credentials: "include",
           body: JSON.stringify({
             nickname,
