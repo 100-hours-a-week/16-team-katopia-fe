@@ -265,7 +265,7 @@ export default function SignupStep2() {
         }
 
         console.log("[signup] issuing access token after signup");
-        await issueAccessToken();
+        const accessToken = await issueAccessToken();
         console.log("[signup] issued access token");
         setAuthenticated(true);
 
@@ -334,6 +334,7 @@ export default function SignupStep2() {
                 method: "PATCH",
                 headers: {
                   "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
                 },
                 credentials: "include",
                 body: JSON.stringify(payload),
