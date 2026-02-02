@@ -171,7 +171,7 @@ export default function PostDetailPage() {
   /* ================= 내 정보 ================= */
 
   useEffect(() => {
-    authFetch(`${API_BASE_URL}/api/members`, {
+    authFetch(`${API_BASE_URL}/api/members/me`, {
       method: "GET",
       credentials: "include",
       cache: "no-store",

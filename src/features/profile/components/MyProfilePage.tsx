@@ -55,7 +55,7 @@ export default function MyProfilePage() {
 
     const fetchMe = async () => {
       try {
-        const res = await authFetch(`${API_BASE_URL}/api/members`, {
+        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
           method: "GET",
           credentials: "include",
           cache: "no-store",

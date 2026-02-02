@@ -192,7 +192,7 @@ export default function ProfileEditPage() {
 
     const fetchProfile = async () => {
       try {
-        const res = await authFetch(`${API_BASE_URL}/api/members`, {
+        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
           credentials: "include",
         });
 
