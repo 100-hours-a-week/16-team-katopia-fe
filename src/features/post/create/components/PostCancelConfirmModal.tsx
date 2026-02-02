@@ -36,7 +36,7 @@ export default function PostCancelConfirmModal({
     >
       {/* 모달 본문 */}
       <div
-        className="w-[360px] rounded-3xl border-2 border-black bg-white px-6 py-6 text-center"
+        className="w-[360px] rounded-3xl bg-white px-6 py-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Icon */}
@@ -59,14 +59,14 @@ export default function PostCancelConfirmModal({
         <div className="flex gap-4">
           <button
             onClick={onClose}
-            className="flex-1 rounded-full border-2 border-black py-3 text-sm font-semibold"
+            className="flex-1 rounded-full py-3 text-sm font-semibold"
           >
             취소
           </button>
 
           <button
             onClick={onConfirm}
-            className="flex-1 rounded-full border-2 border-black py-3 text-sm font-semibold"
+            className="flex-1 rounded-full py-3 text-sm font-semibold"
           >
             확인
           </button>
