@@ -233,7 +233,7 @@ export default function SignupStep2() {
 
         const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
-        const res = await fetch(`${API_BASE_URL}/api/members`, {
+        const res = await authFetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
