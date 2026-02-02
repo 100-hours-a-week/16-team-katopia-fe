@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -17,19 +17,23 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Controller, useFormContext, useWatch } from "react-hook-form";
+import heic2any from "heic2any";
+import { Controller, useFormContext } from "react-hook-form";
+
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+
+const MAX_FILES = 3;
+const ACCEPT = "image/*";
 
 type PreviewItem = {
   id: string;
-  url: string; // local preview url
+  url: string;
   name: string;
+  objectKey: string;
 };
-
-const MAX_FILES = 3;
-const ACCEPT =
-  ".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic";
-
-const toBlobUrl = (file: File) => URL.createObjectURL(file);
 
 function SortablePreview({
   item,
@@ -41,235 +45,231 @@ function SortablePreview({
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
       {...attributes}
       {...listeners}
-      className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden"
+      className="relative h-[60vh] w-88.75 shrink-0 rounded-xl overflow-hidden bg-gray-200"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+      {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+      <img src={item.url} className="h-full w-full object-cover" />
 
       <button
         type="button"
-        aria-label="사진 삭제"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           onRemove();
         }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-        }}
-        className="absolute right-2 top-2 bg-white rounded-full p-1 hover:scale-110 transition-transform"
+        className="absolute right-2 top-2 bg-white rounded-full p-1"
       >
-        <Image src="/icons/delete.svg" alt="" width={32} height={32} />
+        <Image src="/icons/delete.svg" alt="" width={28} height={28} />
       </button>
     </div>
   );
 }
 
+async function resizeAndCompress(
+  file: File,
+  maxWidth = 1080,
+  quality = 0.8,
+): Promise<Blob> {
+  let sourceFile = file;
+
+  // 1️⃣ HEIC → JPEG 변환 (브라우저 호환)
+  if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
+    const converted = await heic2any({
+      blob: file,
+      toType: "image/jpeg",
+      quality: 0.9,
+    });
+
+    // heic2any는 Blob | Blob[] 반환 가능
+    const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+
+    sourceFile = new File([jpegBlob], file.name.replace(/\.heic$/i, ".jpg"), {
+      type: "image/jpeg",
+    });
+  }
+
+  // 2️⃣ EXIF 회전 포함 디코딩
+  const bitmap = await createImageBitmap(sourceFile, {
+    imageOrientation: "from-image",
+  });
+
+  // 3️⃣ 리사이징
+  const scale = Math.min(1, maxWidth / bitmap.width);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width * scale;
+  canvas.height = bitmap.height * scale;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+  // 4️⃣ WebP로 최종 압축
+  return new Promise((resolve) =>
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) throw new Error("이미지 압축 실패");
+        resolve(blob);
+      },
+      "image/webp",
+      quality,
+    ),
+  );
+}
+
 export default function PostImageUploader() {
   const { control, setError, clearErrors } = useFormContext();
-  const content = useWatch({ name: "content" }) as string | undefined;
-  const watchedImages = useWatch({ name: "images" }) as File[] | undefined;
-  const [previews, setPreviews] = useState<PreviewItem[]>([]);
-  const [overLimitMessage, setOverLimitMessage] = useState<string | null>(null);
-
   const inputId = useId();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const canAddMore = previews.length < MAX_FILES;
-  const shouldShowImageHelper =
-    (content?.trim()?.length ?? 0) > 0 && (watchedImages?.length ?? 0) === 0;
-  const previewIds = useMemo(() => previews.map((preview) => preview.id), [previews]);
+  const [previews, setPreviews] = useState<PreviewItem[]>([]);
+
+  const previewIds = useMemo(() => previews.map((p) => p.id), [previews]);
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 150, tolerance: 5 },
     }),
   );
 
-  useEffect(() => {
-    return () => {
-      previews.forEach((item) => URL.revokeObjectURL(item.url));
-    };
-  }, [previews]);
-
-  const removePreviewByIndex = useCallback(
-    (index: number, onChange: (v: File[]) => void, currentFiles: File[]) => {
-      setPreviews((prev) => {
-        const next = [...prev];
-        const removed = next.splice(index, 1);
-        removed.forEach((r) => URL.revokeObjectURL(r.url));
-        return next;
-      });
-
-      const nextFiles = [...currentFiles];
-      nextFiles.splice(index, 1);
-      onChange(nextFiles);
-    },
-    [],
-  );
-
   return (
     <Controller
-      name="images"
+      name="images" // ⭐ string[] (objectKey)
       control={control}
-      render={({ field, fieldState }) => {
-        const currentFiles = Array.isArray(field.value) ? field.value : [];
+      render={({ field }) => {
+        const objectKeys = Array.isArray(field.value) ? field.value : [];
 
         return (
           <div>
             <input
               id={inputId}
-              ref={fileInputRef}
+              ref={inputRef}
               type="file"
               accept={ACCEPT}
               multiple
-              className="hidden"
-              onChange={async (event) => {
-                const files = event.target.files;
-                if (!files || files.length === 0) return;
+              hidden
+              onChange={async (e) => {
+                const files = Array.from(e.target.files ?? []);
+                if (!files.length) return;
 
-                const remainingSlots = MAX_FILES - currentFiles.length;
-
-                if (remainingSlots <= 0) {
+                const remain = MAX_FILES - previews.length;
+                if (remain <= 0) {
                   setError("images", {
                     type: "manual",
                     message: "최대 3장까지 업로드할 수 있습니다",
                   });
-                  setOverLimitMessage("최대 3장까지 업로드할 수 있습니다.");
-                  event.target.value = "";
                   return;
                 }
 
-                const selectedFiles = Array.from(files).slice(
-                  0,
-                  remainingSlots,
-                );
+                const selected = files.slice(0, remain);
 
-                if (files.length > remainingSlots) {
+                try {
+                  // 1️⃣ 리사이징 / 압축
+                  const blobs = await Promise.all(
+                    selected.map((f) => resizeAndCompress(f)),
+                  );
+
+                  // 2️⃣ presign 요청 (POST 카테고리)
+                  const presigned = await requestUploadPresign(
+                    "POST",
+                    blobs.map(() => "webp"),
+                  );
+
+                  // 3️⃣ PUT 업로드
+                  await Promise.all(
+                    presigned.map((p, i) =>
+                      uploadToPresignedUrl(p.uploadUrl, blobs[i], "image/webp"),
+                    ),
+                  );
+
+                  // 4️⃣ preview + objectKey 저장
+                  const newItems: PreviewItem[] = presigned.map((p, i) => ({
+                    id: crypto.randomUUID(),
+                    url: URL.createObjectURL(blobs[i]),
+                    name: selected[i].name,
+                    objectKey: p.imageObjectKey,
+                  }));
+
+                  setPreviews((prev) => [...prev, ...newItems]);
+                  field.onChange([
+                    ...objectKeys,
+                    ...presigned.map((p) => p.imageObjectKey),
+                  ]);
+
+                  clearErrors("images");
+                } catch (err) {
                   setError("images", {
                     type: "manual",
-                    message: "최대 3장까지 업로드할 수 있습니다",
+                    message:
+                      err instanceof Error
+                        ? err.message
+                        : "이미지 업로드에 실패했습니다.",
                   });
-                  setOverLimitMessage("최대 3장까지 업로드할 수 있습니다.");
-                } else {
-                  clearErrors("images");
-                  setOverLimitMessage(null);
+                } finally {
+                  e.target.value = "";
                 }
-
-                const blobUrls = selectedFiles.map(toBlobUrl);
-
-                const newPreviews: PreviewItem[] = blobUrls.map(
-                  (url, index) => ({
-                    id: crypto.randomUUID(),
-                    url,
-                    name: selectedFiles[index].name,
-                  }),
-                );
-
-                setPreviews((prev) => [...prev, ...newPreviews]);
-
-                // ✅ RHF에는 File[] 저장
-                field.onChange([...currentFiles, ...selectedFiles]);
-                event.target.value = "";
               }}
             />
 
-            {/* Preview 영역 */}
-            <div className="mt-2.5 overflow-x-auto touch-pan-x">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={(event) => {
-                  const { active, over } = event;
-                  if (!over || active.id === over.id) return;
-                  const oldIndex = previews.findIndex(
-                    (item) => item.id === active.id,
-                  );
-                  const newIndex = previews.findIndex(
-                    (item) => item.id === over.id,
-                  );
-                  if (oldIndex < 0 || newIndex < 0) return;
-                  setPreviews((prev) => arrayMove(prev, oldIndex, newIndex));
-                  const nextFiles = arrayMove(currentFiles, oldIndex, newIndex);
-                  field.onChange(nextFiles);
-                }}
+            {/* Preview */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={({ active, over }) => {
+                if (!over || active.id === over.id) return;
+                const oldIndex = previews.findIndex((p) => p.id === active.id);
+                const newIndex = previews.findIndex((p) => p.id === over.id);
+
+                setPreviews((p) => arrayMove(p, oldIndex, newIndex));
+                field.onChange(arrayMove(objectKeys, oldIndex, newIndex));
+              }}
+            >
+              <SortableContext
+                items={previewIds}
+                strategy={horizontalListSortingStrategy}
               >
-                <SortableContext
-                  items={previewIds}
-                  strategy={horizontalListSortingStrategy}
-                >
-                  <div className="flex gap-3 snap-x snap-mandatory touch-pan-x">
-                    {previews.map((item, index) => (
-                      <SortablePreview
-                        key={item.id}
-                        item={item}
-                        onRemove={() =>
-                          removePreviewByIndex(
-                            index,
-                            field.onChange,
-                            currentFiles,
-                          )
-                        }
+                <div className="flex gap-3">
+                  {previews.map((p, i) => (
+                    <SortablePreview
+                      key={p.id}
+                      item={p}
+                      onRemove={() => {
+                        URL.revokeObjectURL(p.url);
+                        setPreviews((prev) =>
+                          prev.filter((_, idx) => idx !== i),
+                        );
+                        field.onChange(
+                          objectKeys.filter((_, idx) => idx !== i),
+                        );
+                      }}
+                    />
+                  ))}
+
+                  {previews.length < MAX_FILES && (
+                    <button
+                      type="button"
+                      onClick={() => inputRef.current?.click()}
+                      className="h-[60vh] w-88.75 rounded-xl bg-gray-200 flex items-center justify-center"
+                    >
+                      <Image
+                        src="/icons/upload.svg"
+                        alt=""
+                        width={24}
+                        height={24}
                       />
-                    ))}
-
-                    {canAddMore && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          fileInputRef.current?.click();
-                        }}
-                        className="h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
-                        aria-label="사진 추가"
-                      >
-                        <Image
-                          src="/icons/upload.svg"
-                          alt=""
-                          width={24}
-                          height={24}
-                        />
-                      </button>
-                    )}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </div>
-
-            {/* Error UI */}
-            {fieldState.error && (
-              <p className="text-red-500 text-[12px] mt-2">
-                {fieldState.error.message}
-              </p>
-            )}
-
-            {overLimitMessage && (
-              <p className="text-red-500 text-[12px] mt-2">
-                {overLimitMessage}
-              </p>
-            )}
-
-            {shouldShowImageHelper &&
-              !fieldState.error &&
-              !overLimitMessage && (
-                <p className="text-red-500 text-[12px] mt-2">
-                  이미지는 최소 1장 이상 업로드해야 합니다.
-                </p>
-              )}
+                    </button>
+                  )}
+                </div>
+              </SortableContext>
+            </DndContext>
           </div>
         );
       }}
