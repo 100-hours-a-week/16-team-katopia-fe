@@ -62,6 +62,12 @@ export function useProfileImage() {
       const file = e.target.files?.[0];
       if (!file) return;
 
+      if (file.size > 30 * 1024 * 1024) {
+        setImageError("최대 이미지 용량은 30MB입니다.");
+        e.target.value = "";
+        return;
+      }
+
       const localUrl = URL.createObjectURL(file);
       if (previewUrlRef.current) {
         URL.revokeObjectURL(previewUrlRef.current);
