@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { API_BASE_URL } from "@/src/config/api";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   authFetch,
   issueAccessToken,
@@ -40,10 +41,20 @@ export default function AuthProvider({
   const [ready, setReady] = useState(false);
   const [isAuthenticated, setAuthenticated] = useState(false);
   const [authInvalidated, setAuthInvalidated] = useState(false);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isPendingSignup =
+    searchParams.get("status") === "PENDING" ||
+    (pathname?.startsWith("/signup") ?? false);
 
   useEffect(() => {
     const bootstrapAuth = async () => {
       try {
+        if (isPendingSignup) {
+          setAuthenticated(false);
+          setAuthInvalidated(false);
+          return;
+        }
         if (isLoggedOutFlag()) {
           setAuthenticated(false);
           setAuthInvalidated(false);
@@ -72,7 +83,7 @@ export default function AuthProvider({
     };
 
     bootstrapAuth();
-  }, []);
+  }, [isPendingSignup]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
