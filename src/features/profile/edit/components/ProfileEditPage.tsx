@@ -16,16 +16,12 @@ import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep
 import NicknameInput from "./NickNameInput";
 import ProfileEditCancelModal from "./ProfileEditCancelModal";
 import BodyInfoSection from "@/src/features/signup/components/SignupStep2/BodyInfoSection";
-import {
-  getCachedProfileImage,
-  setCachedProfileImage,
-} from "@/src/features/profile/utils/profileImageCache";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import {
   requestUploadPresign,
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
-import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
+import heic2any from "heic2any";
 
 /* =========================
    Constants
@@ -120,7 +116,7 @@ export default function ProfileEditPage() {
   /* ---------- State ---------- */
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [heightError, setHeightError] = useState<string | null>(null);
   const [weightError, setWeightError] = useState<string | null>(null);
@@ -139,6 +135,7 @@ export default function ProfileEditPage() {
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const weightInputRef = useRef<HTMLInputElement | null>(null);
 
   /* ---------- Form ---------- */
@@ -226,13 +223,7 @@ export default function ProfileEditPage() {
         const profileImageKey =
           profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
         setCurrentProfileImageObjectKey(profileImageKey);
-        if (profileImageKey) {
-          setCachedProfileImage(profileImageKey);
-        }
-        const cachedImage = getCachedProfileImage();
-        setPreview(
-          resolveMediaUrl(profileImageKey ?? cachedImage ?? undefined),
-        );
+        setPreview(resolveMediaUrl(profileImageKey ?? undefined));
         setRemoveImage(false);
       } catch {
         // ignore (handled by auth guard)
@@ -287,20 +278,14 @@ export default function ProfileEditPage() {
     try {
       let uploadedProfileObjectKey: string | undefined;
 
-      if (!removeImage && imageFile) {
-        const extension = getFileExtension(imageFile);
-        if (!extension) {
-          throw new Error("지원하지 않는 이미지 확장자입니다.");
-        }
-
-        const [presigned] = await requestUploadPresign("PROFILE", [extension]);
+      if (!removeImage && imageBlob) {
+        const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
         await uploadToPresignedUrl(
           presigned.uploadUrl,
-          imageFile,
-          imageFile.type,
+          imageBlob,
+          "image/webp",
         );
         uploadedProfileObjectKey = presigned.imageObjectKey.replace(/^\/+/, "");
-        setCachedProfileImage(uploadedProfileObjectKey);
         setCurrentProfileImageObjectKey(uploadedProfileObjectKey);
         setPreview(resolveMediaUrl(uploadedProfileObjectKey));
       }
@@ -375,77 +360,102 @@ export default function ProfileEditPage() {
       return;
     }
 
-    const resizeToSquareJpeg = (target: File) =>
-      new Promise<{ dataUrl: string; file: File }>((resolve, reject) => {
-        const img = new window.Image();
-        const objectUrl = URL.createObjectURL(target);
+    const resizeAndCompress = async (
+      target: File,
+      maxWidth = 1080,
+      quality = 0.8,
+    ): Promise<Blob> => {
+      let sourceFile = target;
 
-        img.onload = () => {
-          const side = 256;
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            URL.revokeObjectURL(objectUrl);
-            reject(new Error("이미지 처리 실패"));
-            return;
-          }
+      if (
+        target.type === "image/heic" ||
+        target.name.toLowerCase().endsWith(".heic")
+      ) {
+        const converted = await heic2any({
+          blob: target,
+          toType: "image/jpeg",
+          quality: 0.9,
+        });
 
-          const min = Math.min(img.width, img.height);
-          const sx = (img.width - min) / 2;
-          const sy = (img.height - min) / 2;
+        const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
 
-          canvas.width = side;
-          canvas.height = side;
-          ctx.drawImage(img, sx, sy, min, min, 0, 0, side, side);
-          URL.revokeObjectURL(objectUrl);
+        sourceFile = new File(
+          [jpegBlob],
+          target.name.replace(/\.heic$/i, ".jpg"),
+          {
+            type: "image/jpeg",
+          },
+        );
+      }
 
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error("이미지 변환 실패"));
-                return;
-              }
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const jpegFile = new File([blob], "profile.jpg", {
-                  type: "image/jpeg",
-                });
-                resolve({ dataUrl: reader.result as string, file: jpegFile });
-              };
-              reader.onerror = () => reject(new Error("이미지 읽기 실패"));
-              reader.readAsDataURL(blob);
-            },
-            "image/jpeg",
-            0.85,
-          );
-        };
-
-        img.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error("이미지 로드 실패"));
-        };
-
-        img.src = objectUrl;
+      const bitmap = await createImageBitmap(sourceFile, {
+        imageOrientation: "from-image",
       });
+
+      const scale = Math.min(1, maxWidth / bitmap.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width * scale;
+      canvas.height = bitmap.height * scale;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("이미지 처리 실패");
+      }
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      return new Promise((resolve, reject) =>
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("이미지 변환 실패"));
+              return;
+            }
+            resolve(blob);
+          },
+          "image/webp",
+          quality,
+        ),
+      );
+    };
 
     setImageError(null);
     setRemoveImage(false);
-    setImageFile(null);
-    resizeToSquareJpeg(file)
-      .then(({ dataUrl, file: resizedFile }) => {
-        setImageFile(resizedFile);
-        setPreview(dataUrl);
-        setCachedProfileImage(dataUrl);
+    setImageBlob(null);
+
+    const localUrl = URL.createObjectURL(file);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = localUrl;
+    setPreview(localUrl);
+
+    resizeAndCompress(file)
+      .then((blob) => {
+        setImageBlob(blob);
+        const processedUrl = URL.createObjectURL(blob);
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+        }
+        previewUrlRef.current = processedUrl;
+        setPreview(processedUrl);
       })
       .catch((err) => {
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
+        }
+        setPreview(null);
         setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
       });
   };
 
   const handleRemoveImage = () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
     setPreview(null);
-    setImageFile(null);
-    setCachedProfileImage(null);
+    setImageBlob(null);
     setRemoveImage(true);
     setCurrentProfileImageObjectKey(null);
   };
@@ -473,7 +483,7 @@ export default function ProfileEditPage() {
   const normalizedStyles = [...styles].sort().join("|");
   const normalizedInitialStyles = [...initialStyles].sort().join("|");
   const hasChanges =
-    Boolean(imageFile) ||
+    Boolean(imageBlob) ||
     removeImage ||
     (trimmedNickname ?? "") !== (initialNickname ?? "") ||
     selectedGender !== initialGender ||

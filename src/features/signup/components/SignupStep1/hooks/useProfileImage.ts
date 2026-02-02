@@ -1,9 +1,61 @@
-import { useCallback, useState, type ChangeEvent } from "react";
+import { useCallback, useRef, useState, type ChangeEvent } from "react";
+import heic2any from "heic2any";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+
 const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
+
+async function resizeAndCompress(
+  file: File,
+  maxWidth = 1080,
+  quality = 0.8,
+): Promise<Blob> {
+  let sourceFile = file;
+
+  if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
+    const converted = await heic2any({
+      blob: file,
+      toType: "image/jpeg",
+      quality: 0.9,
+    });
+
+    const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+
+    sourceFile = new File([jpegBlob], file.name.replace(/\.heic$/i, ".jpg"), {
+      type: "image/jpeg",
+    });
+  }
+
+  const bitmap = await createImageBitmap(sourceFile, {
+    imageOrientation: "from-image",
+  });
+
+  const scale = Math.min(1, maxWidth / bitmap.width);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width * scale;
+  canvas.height = bitmap.height * scale;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+  return new Promise((resolve) =>
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) throw new Error("이미지 압축 실패");
+        resolve(blob);
+      },
+      "image/webp",
+      quality,
+    ),
+  );
+}
 
 export function useProfileImage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
 
   const handleImageChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -11,25 +63,33 @@ export function useProfileImage() {
       if (!file) return;
 
       const localUrl = URL.createObjectURL(file);
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+      previewUrlRef.current = localUrl;
       setPreview(localUrl);
       setImageError(null);
       e.target.value = "";
 
       try {
-        const reader = new FileReader();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("이미지 읽기 실패"));
-          reader.readAsDataURL(file);
-        });
-
+        const blob = await resizeAndCompress(file);
+        const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
+        await uploadToPresignedUrl(presigned.uploadUrl, blob, "image/webp");
+        const objectKey = presigned.imageObjectKey.replace(/^\/+/, "");
         try {
-          window.localStorage.setItem(SIGNUP_PROFILE_IMAGE_DATA_KEY, dataUrl);
+          window.localStorage.setItem(
+            SIGNUP_PROFILE_IMAGE_DATA_KEY,
+            objectKey,
+          );
         } catch {
           // ignore storage errors
         }
-        setPreview(dataUrl);
       } catch (err) {
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
+        }
+        setPreview(null);
         setImageError(
           err instanceof Error ? err.message : "이미지 처리 실패",
         );
@@ -39,6 +99,10 @@ export function useProfileImage() {
   );
 
   const handleRemoveImage = useCallback(() => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
     setPreview(null);
     setImageError(null);
     try {

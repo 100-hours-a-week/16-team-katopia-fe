@@ -10,10 +10,6 @@ import ProfileLogoutModal from "./ProfileLogoutModal";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch, clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
-import {
-  getCachedProfileImage,
-  setCachedProfileImage,
-} from "@/src/features/profile/utils/profileImageCache";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { withdrawMember } from "@/src/features/profile/api/withdrawMember";
 
@@ -82,17 +78,12 @@ export default function MyProfilePage() {
 
         const profileImageKey =
           rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
-        if (profileImageKey) {
-          setCachedProfileImage(profileImageKey);
-        }
-
-        const cachedImage = getCachedProfileImage();
 
         setProfile({
           userId,
           ...rawProfile,
           gender: normalizedGender,
-          profileImageUrl: profileImageKey ?? cachedImage,
+          profileImageUrl: profileImageKey ?? null,
         });
       } catch (err) {
         console.error(err);

@@ -22,7 +22,6 @@ import {
   normalizeImageUrls,
   pickImageUrl,
 } from "@/src/features/upload/utils/normalizeImageUrls";
-import { getCachedProfileImage } from "@/src/features/profile/utils/profileImageCache";
 
 /* ================= 타입 ================= */
 
@@ -186,9 +185,7 @@ export default function PostDetailPage() {
           id: memberId,
           nickname: profile.nickname,
           profileImageUrl:
-            profile.profileImageObjectKey ??
-            profile.profileImageUrl ??
-            getCachedProfileImage(),
+            profile.profileImageObjectKey ?? profile.profileImageUrl ?? null,
         });
       })
       .catch(() => {});

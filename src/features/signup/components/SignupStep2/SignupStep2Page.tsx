@@ -23,11 +23,6 @@ import { API_BASE_URL } from "@/src/config/api";
 import { authFetch, issueAccessToken } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
-import {
-  requestUploadPresign,
-  uploadToPresignedUrl,
-} from "@/src/features/upload/api/presignUpload";
-import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
 
 /* =========================
    Schema & Types
@@ -285,31 +280,7 @@ export default function SignupStep2() {
           Boolean(signupProfileImageData);
 
         if (signupProfileImageData) {
-          try {
-            const res = await fetch(signupProfileImageData);
-            const blob = await res.blob();
-            const tempFile = new File([blob], "profile", { type: blob.type });
-            const extension = getFileExtension(tempFile);
-            if (!extension) {
-              throw new Error("지원하지 않는 이미지 확장자입니다.");
-            }
-            const file = new File([blob], `profile.${extension}`, {
-              type: blob.type,
-            });
-            const [presigned] = await requestUploadPresign("PROFILE", [
-              extension,
-            ]);
-            await uploadToPresignedUrl(presigned.uploadUrl, file, file.type);
-            signupProfileImageObjectKey =
-              presigned.imageObjectKey.replace(/^\/+/, "");
-          } catch (err) {
-            alert(
-              err instanceof Error
-                ? err.message
-                : "프로필 이미지 업로드에 실패했습니다.",
-            );
-            return;
-          }
+          signupProfileImageObjectKey = signupProfileImageData;
         }
 
         if (hasOptionalInputs) {
