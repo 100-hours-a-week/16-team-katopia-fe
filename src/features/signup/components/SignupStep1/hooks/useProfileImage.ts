@@ -7,35 +7,23 @@ import {
 
 const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
 
+/* ===============================
+ * 이미지 리사이징 + WebP 압축
+ * (HEIC 처리 ❌, JPEG/PNG만 처리)
+ * =============================== */
 async function resizeAndCompress(
   file: File,
   maxWidth = 1080,
   quality = 0.8,
 ): Promise<Blob> {
-  let sourceFile = file;
-
-  if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
-    const converted = await heic2any({
-      blob: file,
-      toType: "image/jpeg",
-      quality: 0.9,
-    });
-
-    const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-
-    sourceFile = new File([jpegBlob], file.name.replace(/\.heic$/i, ".jpg"), {
-      type: "image/jpeg",
-    });
-  }
-
-  const bitmap = await createImageBitmap(sourceFile, {
-    imageOrientation: "from-image",
+  const bitmap = await createImageBitmap(file, {
+    imageOrientation: "from-image", // EXIF 회전 반영
   });
 
   const scale = Math.min(1, maxWidth / bitmap.width);
   const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width * scale;
-  canvas.height = bitmap.height * scale;
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
 
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
@@ -52,6 +40,9 @@ async function resizeAndCompress(
   );
 }
 
+/* ===============================
+ * Profile Image Hook
+ * =============================== */
 export function useProfileImage() {
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -62,6 +53,7 @@ export function useProfileImage() {
       const file = e.target.files?.[0];
       if (!file) return;
 
+      // 30MB 제한
       if (file.size > 30 * 1024 * 1024) {
         setImageError("최대 이미지 용량은 30MB입니다.");
         e.target.value = "";
@@ -72,24 +64,43 @@ export function useProfileImage() {
         let sourceForPreview: Blob = file;
         let sourceForResize: File = file;
 
+        /* ===============================
+         * HEIC → JPEG 변환 (여기서만!)
+         * =============================== */
         if (
           file.type === "image/heic" ||
           file.name.toLowerCase().endsWith(".heic")
         ) {
-          const converted = await heic2any({
-            blob: file,
-            toType: "image/jpeg",
-            quality: 0.9,
-          });
-          const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-          sourceForPreview = jpegBlob;
-          sourceForResize = new File(
-            [jpegBlob],
-            file.name.replace(/\.heic$/i, ".jpg"),
-            { type: "image/jpeg" },
-          );
+          try {
+            const buffer = await file.arrayBuffer(); // ⭐ 핵심
+
+            const blob = new Blob([buffer], { type: file.type });
+            const converted = await heic2any({
+              blob, // ✅ Blob 타입
+              toType: "image/jpeg",
+              quality: 0.9,
+            });
+
+            const jpegBlob = Array.isArray(converted)
+              ? converted[0]
+              : converted;
+
+            sourceForPreview = jpegBlob;
+            sourceForResize = new File(
+              [jpegBlob],
+              file.name.replace(/\.heic$/i, ".jpg"),
+              { type: "image/jpeg" },
+            );
+          } catch {
+            throw new Error(
+              "HEIC 이미지를 처리할 수 없습니다. JPG 또는 PNG로 변환 후 업로드해주세요.",
+            );
+          }
         }
 
+        /* ===============================
+         * Preview URL 생성
+         * =============================== */
         const previewUrl = URL.createObjectURL(sourceForPreview);
         if (previewUrlRef.current) {
           URL.revokeObjectURL(previewUrlRef.current);
@@ -99,17 +110,19 @@ export function useProfileImage() {
         setImageError(null);
         e.target.value = "";
 
+        /* ===============================
+         * 리사이징 + 업로드
+         * =============================== */
         const blob = await resizeAndCompress(sourceForResize);
         const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
         await uploadToPresignedUrl(presigned.uploadUrl, blob, "image/webp");
+
         const objectKey = presigned.imageObjectKey.replace(/^\/+/, "");
+
         try {
-          window.localStorage.setItem(
-            SIGNUP_PROFILE_IMAGE_DATA_KEY,
-            objectKey,
-          );
+          window.localStorage.setItem(SIGNUP_PROFILE_IMAGE_DATA_KEY, objectKey);
         } catch {
-          // ignore storage errors
+          // storage 실패는 무시
         }
       } catch (err) {
         if (previewUrlRef.current) {
@@ -117,9 +130,7 @@ export function useProfileImage() {
           previewUrlRef.current = null;
         }
         setPreview(null);
-        setImageError(
-          err instanceof Error ? err.message : "이미지 처리 실패",
-        );
+        setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
       }
     },
     [],
@@ -135,7 +146,7 @@ export function useProfileImage() {
     try {
       window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
     } catch {
-      // ignore storage errors
+      // ignore
     }
   }, []);
 
