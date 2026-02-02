@@ -3,6 +3,7 @@ import "./globals.css";
 import LayoutShell from "@/src/shared/components/layout/LayoutShell";
 import AuthProvider from "@/src/features/auth/providers/AuthProvider";
 import ReactQueryProvider from "@/src/features/auth/providers/ReactQueryProvider";
+import { Suspense } from "react";
 
 export default function RootLayout({
   children,
@@ -17,9 +18,11 @@ export default function RootLayout({
       >
         {/* 🔥 전역 인증 부트스트랩 */}
         <ReactQueryProvider>
-          <AuthProvider>
-            <LayoutShell>{children}</LayoutShell>
-          </AuthProvider>
+          <Suspense fallback={null}>
+            <AuthProvider>
+              <LayoutShell>{children}</LayoutShell>
+            </AuthProvider>
+          </Suspense>
         </ReactQueryProvider>
       </body>
     </html>
