@@ -9,7 +9,7 @@ type Props = {
 };
 
 const PolicyModal = memo(({ title, content, onClose }: Props) => (
-  <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 px-6">
+  <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 px-6">
     <div className="flex h-[70vh] w-full max-w-md flex-col rounded-xl bg-white p-4 shadow-lg">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-base font-semibold">{title}</h2>

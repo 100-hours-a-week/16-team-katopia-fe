@@ -31,7 +31,7 @@ export default function PostCancelConfirmModal({
   return (
     // 배경 (overlay)
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
       onClick={onClose}
     >
       {/* 모달 본문 */}
@@ -59,14 +59,14 @@ export default function PostCancelConfirmModal({
         <div className="flex gap-4">
           <button
             onClick={onClose}
-            className="flex-1 rounded-full py-3 text-sm font-semibold"
+            className="flex-1 rounded-full border border-black py-3 text-sm font-semibold"
           >
             취소
           </button>
 
           <button
             onClick={onConfirm}
-            className="flex-1 rounded-full py-3 text-sm font-semibold"
+            className="flex-1 rounded-full border border-black py-3 text-sm font-semibold"
           >
             확인
           </button>
