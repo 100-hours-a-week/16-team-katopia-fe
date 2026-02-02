@@ -112,6 +112,9 @@ export default function SignupStep1() {
 
         try {
           window.localStorage.setItem("signup-nickname", data.nickname);
+          if (!preview) {
+            window.localStorage.removeItem("katopia.signupProfileImageData");
+          }
         } catch {
           // ignore storage errors and still proceed
         }
@@ -123,7 +126,7 @@ export default function SignupStep1() {
         alert("회원가입 중 오류가 발생했습니다.");
       }
     },
-    [router, isNicknameVerified, handleDuplicateCheck],
+    [router, isNicknameVerified, handleDuplicateCheck, preview],
   );
 
   /* -------------------------
