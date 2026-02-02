@@ -236,7 +236,7 @@ export default function PostImageUploader() {
                 items={previewIds}
                 strategy={horizontalListSortingStrategy}
               >
-                <div className="flex gap-3">
+                <div className="flex gap-3 overflow-x-auto overflow-y-hidden max-w-full touch-pan-x overscroll-x-contain">
                   {previews.map((p, i) => (
                     <SortablePreview
                       key={p.id}
