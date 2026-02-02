@@ -101,26 +101,33 @@ export function notifyAuthInvalid() {
 
 export async function issueAccessToken() {
   if (isLoggedOutFlag()) {
+    console.log("[issueAccessToken] blocked: loggedOutFlag");
     throw new Error("LOGGED_OUT");
   }
   // 🔐 재발급은 반드시 단일 Promise
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
+    console.log("[issueAccessToken] request /api/auth/tokens start");
     const res = await fetch(`${API_BASE_URL}/api/auth/tokens`, {
       method: "POST",
       credentials: "include",
     });
+    console.log("[issueAccessToken] response", { status: res.status });
 
     if (!res.ok) {
+      const body = await res.clone().json().catch(() => null);
+      console.log("[issueAccessToken] error body", body);
       notifyAuthInvalid();
       throw new Error("RT expired");
     }
 
     const json = await res.json();
+    console.log("[issueAccessToken] success body", json);
     const token = json.data?.accessToken;
 
     if (!token) {
+      console.log("[issueAccessToken] missing accessToken");
       notifyAuthInvalid();
       throw new Error("No access token");
     }
