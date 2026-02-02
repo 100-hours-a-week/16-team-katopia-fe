@@ -4,12 +4,16 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  confirmDisabled?: boolean;
+  confirmLabel?: string;
 };
 
 export default function ProfileWithdrawModal({
   open,
   onClose,
   onConfirm,
+  confirmDisabled = false,
+  confirmLabel = "확인",
 }: Props) {
   if (!open) return null;
 
@@ -42,9 +46,10 @@ export default function ProfileWithdrawModal({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 rounded-full border-2 border-black py-3 text-sm font-semibold"
+            disabled={confirmDisabled}
+            className="flex-1 rounded-full border-2 border-black py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
-            확인
+            {confirmLabel}
           </button>
         </div>
       </div>
