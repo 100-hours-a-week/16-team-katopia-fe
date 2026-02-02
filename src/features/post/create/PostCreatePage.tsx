@@ -8,11 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { postCreateSchema, PostCreateValues } from "./schemas";
 import { usePostUnsavedGuard } from "./hooks/usePostUnsavedGuard";
 import { createPost } from "../api/createPost";
-import {
-  requestUploadPresign,
-  uploadToPresignedUrl,
-} from "@/src/features/upload/api/presignUpload";
-import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 import PostFormLayout from "../PostFormLayout";
@@ -67,29 +62,8 @@ export default function PostCreatePage() {
   const onSubmit = async (data: PostCreateValues) => {
     try {
       console.log("post create submit", data);
-      const extensions = data.images.map((file) => getFileExtension(file));
-      if (extensions.some((ext) => !ext)) {
-        throw new Error("지원하지 않는 이미지 확장자입니다.");
-      }
-
-      const presignedFiles = await requestUploadPresign("POST", extensions);
-      console.log("presign files", presignedFiles);
-      if (presignedFiles.length !== data.images.length) {
-        throw new Error("업로드 URL 개수가 올바르지 않습니다.");
-      }
-
-      await Promise.all(
-        presignedFiles.map((info, index) =>
-          uploadToPresignedUrl(
-            info.uploadUrl,
-            data.images[index],
-            data.images[index].type,
-          ),
-        ),
-      );
-
-      const imageObjectKeys = presignedFiles.map((file) =>
-        file.imageObjectKey.replace(/^\/+/, ""),
+      const imageObjectKeys = data.images.map((key) =>
+        key.replace(/^\/+/, ""),
       );
       const res = await createPost({
         content: data.content,

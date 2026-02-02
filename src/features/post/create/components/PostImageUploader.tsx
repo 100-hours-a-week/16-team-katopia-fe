@@ -195,13 +195,13 @@ export default function PostImageUploader() {
                     id: crypto.randomUUID(),
                     url: URL.createObjectURL(blobs[i]),
                     name: selected[i].name,
-                    objectKey: p.imageObjectKey,
+                    objectKey: p.imageObjectKey.replace(/^\/+/, ""),
                   }));
 
                   setPreviews((prev) => [...prev, ...newItems]);
                   field.onChange([
                     ...objectKeys,
-                    ...presigned.map((p) => p.imageObjectKey),
+                    ...presigned.map((p) => p.imageObjectKey.replace(/^\/+/, "")),
                   ]);
 
                   clearErrors("images");
@@ -236,37 +236,39 @@ export default function PostImageUploader() {
                 items={previewIds}
                 strategy={horizontalListSortingStrategy}
               >
-                <div className="flex gap-3 overflow-x-auto overflow-y-hidden max-w-full touch-pan-x overscroll-x-contain">
-                  {previews.map((p, i) => (
-                    <SortablePreview
-                      key={p.id}
-                      item={p}
-                      onRemove={() => {
-                        URL.revokeObjectURL(p.url);
-                        setPreviews((prev) =>
-                          prev.filter((_, idx) => idx !== i),
-                        );
-                        field.onChange(
-                          objectKeys.filter((_, idx) => idx !== i),
-                        );
-                      }}
-                    />
-                  ))}
-
-                  {previews.length < MAX_FILES && (
-                    <button
-                      type="button"
-                      onClick={() => inputRef.current?.click()}
-                      className="h-[60vh] w-88.75 rounded-xl bg-gray-200 flex items-center justify-center"
-                    >
-                      <Image
-                        src="/icons/upload.svg"
-                        alt=""
-                        width={24}
-                        height={24}
+                <div className="w-full overflow-x-auto overflow-y-hidden touch-pan-x overscroll-x-contain">
+                  <div className="flex gap-3 min-w-max">
+                    {previews.map((p, i) => (
+                      <SortablePreview
+                        key={p.id}
+                        item={p}
+                        onRemove={() => {
+                          URL.revokeObjectURL(p.url);
+                          setPreviews((prev) =>
+                            prev.filter((_, idx) => idx !== i),
+                          );
+                          field.onChange(
+                            objectKeys.filter((_, idx) => idx !== i),
+                          );
+                        }}
                       />
-                    </button>
-                  )}
+                    ))}
+
+                    {previews.length < MAX_FILES && (
+                      <button
+                        type="button"
+                        onClick={() => inputRef.current?.click()}
+                        className="h-[60vh] w-88.75 rounded-xl bg-gray-200 flex items-center justify-center"
+                      >
+                        <Image
+                          src="/icons/upload.svg"
+                          alt=""
+                          width={24}
+                          height={24}
+                        />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </SortableContext>
             </DndContext>
