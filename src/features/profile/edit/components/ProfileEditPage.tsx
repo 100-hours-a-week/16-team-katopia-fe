@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -294,7 +295,7 @@ export default function ProfileEditPage() {
         ? null
         : uploadedProfileObjectKey
           ? uploadedProfileObjectKey
-          : currentProfileImageObjectKey ?? undefined;
+          : (currentProfileImageObjectKey ?? undefined);
 
       await updateProfile({
         nickname: trimmedNickname || undefined,
@@ -315,9 +316,7 @@ export default function ProfileEditPage() {
         1500,
       );
     } catch (e) {
-      showToast(
-        e instanceof Error ? e.message : "프로필 수정에 실패했습니다.",
-      );
+      showToast(e instanceof Error ? e.message : "프로필 수정에 실패했습니다.");
     }
   };
 
@@ -542,11 +541,11 @@ export default function ProfileEditPage() {
             }}
           >
             {preview ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={preview}
                 alt=""
-                fill
-                className="rounded-full object-cover"
+                className="h-full w-full rounded-full object-cover"
               />
             ) : (
               <span className="text-4xl">+</span>
@@ -688,9 +687,9 @@ export default function ProfileEditPage() {
 
         {/* Toast */}
         {toastMessage && (
-          <div className="fixed bottom-25 left-1/2 z-[100] -translate-x-1/2 px-4">
+          <div className="fixed bottom-25 left-1/2 z-100 -translate-x-1/2 px-4">
             <div
-              className="min-w-[260px] rounded-full border border-black bg-gray-100 px-8 py-3 text-center text-base font-semibold text-black shadow-lg"
+              className="min-w-65 rounded-full border border-black bg-gray-100 px-8 py-3 text-center text-base font-semibold text-black shadow-lg"
               style={{ animation: "toastFadeIn 250ms ease-out forwards" }}
             >
               {toastMessage}

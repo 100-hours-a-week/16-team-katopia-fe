@@ -49,7 +49,7 @@ export default function ProfileSummary({
       >
         {nickname}
         {gender && (
-          <span className="ml-1 inline-flex items-center relative top-[4px]">
+          <span className="ml-1 inline-flex items-center relative top-1">
             <Image
               src={gender === "female" ? "/icons/woman.svg" : "/icons/man.svg"}
               alt={gender === "female" ? "여성" : "남성"}
