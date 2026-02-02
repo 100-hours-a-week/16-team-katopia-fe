@@ -205,6 +205,11 @@ export default function SignupStep2() {
   const onSubmit = useCallback(
     async (data: SignupStep2Values) => {
       try {
+        console.log("[signup] submit start", {
+          height: data.height,
+          weight: data.weight,
+          styles,
+        });
         if (!isHeightValid) {
           setHeightError("키는 100~300 사이로 입력해주세요.");
           return;
@@ -226,6 +231,7 @@ export default function SignupStep2() {
         }
 
         if (!nickname) {
+          console.log("[signup] missing nickname");
           alert("닉네임 정보가 없습니다. 다시 시도해주세요.");
           router.replace("/signup/step1");
           return;
@@ -233,6 +239,10 @@ export default function SignupStep2() {
 
         const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
+        console.log("[signup] POST /api/members request", {
+          nickname,
+          gender,
+        });
         const res = await authFetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
           headers: {
@@ -244,14 +254,20 @@ export default function SignupStep2() {
             gender,
           }),
         });
+        console.log("[signup] POST /api/members response", {
+          status: res.status,
+        });
 
         if (!res.ok) {
           const error = await res.json().catch(() => null);
+          console.log("[signup] POST /api/members error body", error);
           console.error(error?.code ?? res.status);
           throw new Error(`회원가입 실패 (${res.status})`);
         }
 
+        console.log("[signup] issuing access token after signup");
         await issueAccessToken();
+        console.log("[signup] issued access token");
         setAuthenticated(true);
 
         try {
@@ -272,6 +288,9 @@ export default function SignupStep2() {
         } catch {
           signupProfileImageData = null;
         }
+        console.log("[signup] profile image objectKey from storage", {
+          hasProfileImage: Boolean(signupProfileImageData),
+        });
 
         const hasOptionalInputs =
           Boolean(data.height) ||
@@ -321,7 +340,10 @@ export default function SignupStep2() {
             .clone()
             .json()
             .catch(() => null);
-          console.log("[signup] GET /api/members response", meBody);
+          console.log("[signup] GET /api/members response", {
+            status: meRes.status,
+            body: meBody,
+          });
         } catch (err) {
           console.log("[signup] GET /api/members failed", err);
         }
@@ -329,7 +351,7 @@ export default function SignupStep2() {
         router.replace("/home");
         return;
       } catch (err) {
-        console.error(err);
+        console.error("[signup] submit failed", err);
         alert("회원가입 중 오류가 발생했습니다.");
       }
     },

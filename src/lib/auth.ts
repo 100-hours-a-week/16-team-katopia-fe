@@ -148,17 +148,32 @@ type AuthFetchInit = RequestInit & { skipAuthRefresh?: boolean };
 export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
   // 🔴 이미 세션 종료 상태면 요청 자체 차단
   if (authInvalidated) {
+    console.log("[authFetch] blocked: authInvalidated", {
+      input,
+      skipAuthRefresh: init.skipAuthRefresh,
+    });
     throw new Error("AUTH_INVALID");
   }
   if (isLoggedOutFlag()) {
+    console.log("[authFetch] blocked: loggedOutFlag", {
+      input,
+      skipAuthRefresh: init.skipAuthRefresh,
+    });
     throw new Error("LOGGED_OUT");
   }
 
   let token = getAccessToken();
+  console.log("[authFetch] start", {
+    input,
+    hasToken: Boolean(token),
+    skipAuthRefresh: init.skipAuthRefresh,
+  });
 
   // AT 없으면 1회 재발급
   if (!token && !init.skipAuthRefresh) {
+    console.log("[authFetch] no token, issuing access token");
     token = await issueAccessToken(); // 실패 시 throw
+    console.log("[authFetch] issued access token", { hasToken: Boolean(token) });
   }
 
   const makeHeaders = (bearer?: string) => {
@@ -175,6 +190,10 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
     headers: makeHeaders(token ?? undefined),
     credentials: init.credentials ?? "include",
   });
+  console.log("[authFetch] response", {
+    input,
+    status: res.status,
+  });
 
   if (res.status !== 401 || init.skipAuthRefresh) {
     return res;
@@ -182,6 +201,7 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
 
   // 🔁 AT 만료 → 1회만 재발급 후 재시도
   try {
+    console.log("[authFetch] 401 received, refreshing token");
     const refreshed = await issueAccessToken();
 
     res = await fetch(input, {
@@ -189,14 +209,20 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
       headers: makeHeaders(refreshed),
       credentials: init.credentials ?? "include",
     });
+    console.log("[authFetch] retry response", {
+      input,
+      status: res.status,
+    });
 
     if (res.status === 401) {
+      console.log("[authFetch] retry 401 -> auth invalid");
       notifyAuthInvalid();
       throw new Error("AUTH_INVALID");
     }
 
     return res;
   } catch {
+    console.log("[authFetch] refresh failed -> auth invalid");
     notifyAuthInvalid();
     throw new Error("AUTH_INVALID");
   }
