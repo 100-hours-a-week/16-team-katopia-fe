@@ -17,6 +17,7 @@ interface Props {
   onUpdate: (id: number, content: string) => void;
   currentUserId?: number | string;
   currentUserNickname?: string;
+  onOverLimit?: () => void;
 }
 
 const PAGE_SIZE = 10;
@@ -27,6 +28,7 @@ export default function CommentList({
   onUpdate,
   currentUserId,
   currentUserNickname,
+  onOverLimit,
 }: Props) {
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Comment[]>([]);
@@ -69,6 +71,7 @@ export default function CommentList({
           onUpdate={onUpdate}
           currentUserId={currentUserId}
           currentUserNickname={currentUserNickname}
+          onOverLimit={onOverLimit}
         />
       ))}
       <div ref={sentinelRef} />

@@ -12,6 +12,7 @@ interface Props {
   onUpdate: (id: number, content: string) => void;
   currentUserId?: number | string;
   currentUserNickname?: string;
+  onOverLimit?: () => void;
 }
 
 export default function CommentItem({
@@ -20,7 +21,9 @@ export default function CommentItem({
   onUpdate,
   currentUserId,
   currentUserNickname,
+  onOverLimit,
 }: Props) {
+  const MAX_COMMENT_LENGTH = 200;
   const router = useRouter();
   const avatarColors = ["#D9D9D9", "#E3DFFC", "#F8E0E0", "#D9F1FF", "#E8F5E9"];
   const color = avatarColors[comment.id % avatarColors.length] ?? "#D9D9D9";
@@ -113,7 +116,15 @@ export default function CommentItem({
           <textarea
             className="w-full resize-none rounded border px-3 py-2 text-[12px] outline-none"
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              const next = event.target.value;
+              if (next.length <= MAX_COMMENT_LENGTH) {
+                setDraft(next);
+                return;
+              }
+              setDraft(next.slice(0, MAX_COMMENT_LENGTH));
+              onOverLimit?.();
+            }}
             rows={1}
             ref={editRef}
           />
