@@ -244,57 +244,11 @@ export default function SignupStep2() {
 
         const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
-        console.log("[signup] POST /api/members request", {
-          nickname,
-          gender,
-        });
-        const res = await fetch(`${API_BASE_URL}/api/members`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            nickname,
-            gender,
-          }),
-        });
-        console.log("[signup] POST /api/members response", {
-          status: res.status,
-        });
-
-        if (!res.ok) {
-          const error = await res.json().catch(() => null);
-          console.log("[signup] POST /api/members error body", error);
-          console.error(error?.code ?? res.status);
-          throw new Error(`회원가입 실패 (${res.status})`);
-        }
-
-        console.log("[signup] issuing access token after signup");
-        const accessToken = await issueAccessToken();
-        console.log("[signup] issued access token");
-        setAuthenticated(true);
-
-        try {
-          window.localStorage.setItem(
-            "katopia.signupWelcome",
-            `환영합니다. ${nickname} 님!`,
-          );
-        } catch {
-          // ignore storage errors
-        }
-
         let signupProfileImageObjectKey: string | null = null;
         const signupProfileImageBlob = getSignupProfileImageBlob();
         console.log("[signup] profile image blob", {
           hasProfileImage: Boolean(signupProfileImageBlob),
         });
-
-        const hasOptionalInputs =
-          Boolean(data.height) ||
-          Boolean(data.weight) ||
-          styles.length > 0 ||
-          Boolean(signupProfileImageBlob);
 
         if (signupProfileImageBlob) {
           try {
@@ -318,77 +272,59 @@ export default function SignupStep2() {
           }
         }
 
-        if (hasOptionalInputs) {
-          const payload: {
-            nickname: string;
-            gender: "M" | "F";
-            profileImageObjectKey?: string;
-            height?: number | null;
-            weight?: number | null;
-            enableRealtimeNotification?: boolean;
-            style?: string[];
-          } = {
-            nickname,
-            gender,
-            enableRealtimeNotification: true,
-          };
-          if (signupProfileImageObjectKey) {
-            payload.profileImageObjectKey = signupProfileImageObjectKey;
-          }
-          if (data.height) {
-            payload.height = Number(data.height);
-          }
-          if (data.weight) {
-            payload.weight = Number(data.weight);
-          }
-          if (styles.length > 0) {
-            payload.style = styles.map(
-              (style) => STYLE_TO_ENUM[style] ?? style,
-            );
-          }
-          console.log("[signup] PATCH /api/members request", payload);
-          try {
-            const delay = (ms: number) =>
-              new Promise((resolve) => setTimeout(resolve, ms));
-            const attemptPatch = async () => {
-              const patchRes = await fetch(`${API_BASE_URL}/api/members`, {
-                method: "PATCH",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${accessToken}`,
-                },
-                credentials: "include",
-                body: JSON.stringify(payload),
-              });
-              if (!patchRes.ok) {
-                const error = await patchRes.json().catch(() => null);
-                console.error("[signup] PATCH /api/members failed", error);
-                throw new Error(`프로필 업데이트 실패 (${patchRes.status})`);
-              }
-              return patchRes;
-            };
+        const payload: {
+          nickname: string;
+          gender: "M" | "F";
+          profileImageObjectKey: string | null;
+          height: number;
+          weight: number;
+          enableRealtimeNotification: boolean;
+          style: string[] | null;
+        } = {
+          nickname,
+          gender,
+          profileImageObjectKey: signupProfileImageObjectKey,
+          height: data.height ? Number(data.height) : 0,
+          weight: data.weight ? Number(data.weight) : 0,
+          enableRealtimeNotification: true,
+          style:
+            styles.length > 0
+              ? styles.map((style) => STYLE_TO_ENUM[style] ?? style)
+              : null,
+        };
 
-            const delays = [300, 500, 800];
-            for (let i = 0; i <= delays.length; i += 1) {
-              try {
-                if (i > 0) {
-                  await delay(delays[i - 1]);
-                }
-                await attemptPatch();
-                break;
-              } catch (err) {
-                if (i === delays.length) {
-                  throw err;
-                }
-              }
-            }
-          } catch (err) {
-            const message =
-              err instanceof Error ? err.message : "프로필 업데이트 실패";
-            console.error("[signup] PATCH /api/members failed", err);
-            alert(message);
-            return;
-          }
+        console.log("[signup] POST /api/members request", payload);
+        const res = await fetch(`${API_BASE_URL}/api/members`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        console.log("[signup] POST /api/members response", {
+          status: res.status,
+        });
+
+        if (!res.ok) {
+          const error = await res.json().catch(() => null);
+          console.log("[signup] POST /api/members error body", error);
+          console.error(error?.code ?? res.status);
+          throw new Error(`회원가입 실패 (${res.status})`);
+        }
+
+        console.log("[signup] issuing access token after signup");
+        await issueAccessToken();
+        console.log("[signup] issued access token");
+        setAuthenticated(true);
+
+        try {
+          window.localStorage.setItem(
+            "katopia.signupWelcome",
+            `환영합니다. ${nickname} 님!`,
+          );
+        } catch {
+          // ignore storage errors
         }
 
         try {
