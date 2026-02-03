@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { deletePost } from "../api/deletePost";
@@ -109,10 +109,7 @@ export default function PostDetailPage() {
   } | null>(null);
 
   const sortedImageUrls = useMemo(
-    () =>
-      normalizePostImageUrls(
-        post?.imageObjectKeys ?? post?.imageUrls,
-      ),
+    () => normalizePostImageUrls(post?.imageObjectKeys ?? post?.imageUrls),
     [post],
   );
 
