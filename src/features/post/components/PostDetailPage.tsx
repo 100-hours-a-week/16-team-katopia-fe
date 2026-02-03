@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { deletePost } from "../api/deletePost";
@@ -100,8 +100,6 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
@@ -141,14 +139,6 @@ export default function PostDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [postId, router]);
-
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-    };
-  }, []);
 
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
 
@@ -199,16 +189,6 @@ export default function PostDetailPage() {
   }, []);
 
   /* ================= 댓글 핸들러 ================= */
-
-  const showToast = (message: string, durationMs = 2000) => {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-    }
-    setToastMessage(message);
-    toastTimerRef.current = setTimeout(() => {
-      setToastMessage(null);
-    }, durationMs);
-  };
 
   const handleCreateComment = async (content: string) => {
     if (!postId) return;
@@ -312,9 +292,6 @@ export default function PostDetailPage() {
           onUpdate={handleUpdateComment}
           currentUserId={me?.id}
           currentUserNickname={me?.nickname}
-          onOverLimit={() =>
-            showToast("댓글은 최대 200자까지 입력할 수 있어요.")
-          }
         />
       </div>
 
@@ -329,28 +306,6 @@ export default function PostDetailPage() {
         }}
       />
 
-      {toastMessage && (
-        <div className="fixed bottom-25 left-1/2 z-100 -translate-x-1/2 px-4">
-          <div
-            className="min-w-65 rounded-full border border-black bg-gray-100 px-8 py-3 text-center text-base font-semibold text-black shadow-lg"
-            style={{ animation: "toastFadeIn 250ms ease-out forwards" }}
-          >
-            {toastMessage}
-          </div>
-        </div>
-      )}
-      <style jsx>{`
-        @keyframes toastFadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }

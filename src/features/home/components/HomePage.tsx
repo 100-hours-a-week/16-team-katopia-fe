@@ -75,7 +75,7 @@ export default function HomePage() {
         {toastMessage && (
           <div className="fixed bottom-25 left-1/2 z-[100] -translate-x-1/2 px-4">
             <div
-              className="min-w-[260px] rounded-full border border-black bg-gray-100 px-8 py-3 text-center text-base font-semibold text-black shadow-lg"
+              className="min-w-[260px] rounded-full bg-gray-100 px-8 py-3 text-center text-base font-semibold text-white shadow-lg"
               style={{ animation: "toastFadeIn 250ms ease-out forwards" }}
             >
               {toastMessage}

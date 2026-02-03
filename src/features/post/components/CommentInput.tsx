@@ -19,6 +19,7 @@ export default function CommentInput({ onSubmit }: Props) {
     if (!trimmed) return;
     onSubmit(trimmed);
     setValue("");
+    setOverLimit(false);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

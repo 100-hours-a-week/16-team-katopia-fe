@@ -12,7 +12,6 @@ interface Props {
   onUpdate: (id: number, content: string) => void;
   currentUserId?: number | string;
   currentUserNickname?: string;
-  onOverLimit?: () => void;
 }
 
 export default function CommentItem({
@@ -21,7 +20,6 @@ export default function CommentItem({
   onUpdate,
   currentUserId,
   currentUserNickname,
-  onOverLimit,
 }: Props) {
   const MAX_COMMENT_LENGTH = 200;
   const router = useRouter();
@@ -123,7 +121,6 @@ export default function CommentItem({
                 return;
               }
               setDraft(next.slice(0, MAX_COMMENT_LENGTH));
-              onOverLimit?.();
             }}
             rows={1}
             ref={editRef}
