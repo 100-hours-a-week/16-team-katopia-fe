@@ -80,12 +80,20 @@ export default function MyProfilePage() {
 
         const profileImageKey =
           rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
+        let locallyRemoved = false;
+        try {
+          locallyRemoved =
+            window.localStorage.getItem("katopia.profileImageRemoved") === "1";
+        } catch {
+          locallyRemoved = false;
+        }
+        const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
 
         setProfile({
           userId,
           ...rawProfile,
           gender: normalizedGender,
-          profileImageUrl: profileImageKey ?? null,
+          profileImageUrl: resolvedProfileImageKey ?? null,
         });
       } catch (err) {
         console.error(err);

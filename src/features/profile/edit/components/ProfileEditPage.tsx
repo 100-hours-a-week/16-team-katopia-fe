@@ -58,6 +58,8 @@ const ENUM_TO_STYLE: Record<string, string> = Object.fromEntries(
   Object.entries(STYLE_TO_ENUM).map(([k, v]) => [v, k]),
 );
 
+const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
+
 /* =========================
    Schema
 ========================= */
@@ -131,6 +133,7 @@ export default function ProfileEditPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewUrlRef = useRef<string | null>(null);
   const weightInputRef = useRef<HTMLInputElement | null>(null);
+  const removedFlagRef = useRef<boolean>(false);
 
   /* ---------- Form ---------- */
   const {
@@ -216,8 +219,17 @@ export default function ProfileEditPage() {
         );
         const profileImageKey =
           profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
-        setCurrentProfileImageObjectKey(profileImageKey);
-        setPreview(resolveMediaUrl(profileImageKey ?? undefined));
+        let locallyRemoved = false;
+        try {
+          locallyRemoved =
+            window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1";
+        } catch {
+          locallyRemoved = false;
+        }
+        removedFlagRef.current = locallyRemoved;
+        const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
+        setCurrentProfileImageObjectKey(resolvedProfileImageKey);
+        setPreview(resolveMediaUrl(resolvedProfileImageKey ?? undefined));
         setRemoveImage(false);
       } catch {
         // ignore (handled by auth guard)
@@ -297,6 +309,18 @@ export default function ProfileEditPage() {
         enableRealtimeNotification: data.enableRealtimeNotification ?? true,
         style: data.styles.map((s) => STYLE_TO_ENUM[s]),
       });
+
+      try {
+        if (removeImage) {
+          window.localStorage.setItem(PROFILE_IMAGE_REMOVED_KEY, "1");
+          removedFlagRef.current = true;
+        } else {
+          window.localStorage.removeItem(PROFILE_IMAGE_REMOVED_KEY);
+          removedFlagRef.current = false;
+        }
+      } catch {
+        // ignore storage errors
+      }
 
       // 🔥 캐시 무효화 → 마이프로필 즉시 반영
       queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -413,6 +437,14 @@ export default function ProfileEditPage() {
     setImageError(null);
     setRemoveImage(false);
     setImageBlob(null);
+    if (removedFlagRef.current) {
+      try {
+        window.localStorage.removeItem(PROFILE_IMAGE_REMOVED_KEY);
+      } catch {
+        // ignore storage errors
+      }
+      removedFlagRef.current = false;
+    }
 
     const localUrl = URL.createObjectURL(file);
     if (previewUrlRef.current) {
