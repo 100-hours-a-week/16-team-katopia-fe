@@ -75,6 +75,11 @@ export default function LayoutShell({ children }: Props) {
       // ignore storage errors
     }
     alert("탈퇴한 사용자입니다. 14일 이후에 가입이 가능합니다.");
+    window.open("", "_self");
+    window.close();
+    if (!window.closed) {
+      window.location.replace("about:blank");
+    }
   }, [isWithdrawnState]);
 
   const shouldLock =
