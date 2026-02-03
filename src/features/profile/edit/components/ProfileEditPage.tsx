@@ -690,7 +690,7 @@ export default function ProfileEditPage() {
         {toastMessage && (
           <div className="fixed bottom-25 left-1/2 z-100 -translate-x-1/2 px-4">
             <div
-              className="min-w-65 rounded-full bg-gray-100 px-8 py-3 text-center text-base font-semibold text-white shadow-lg"
+              className="min-w-65 rounded-full bg-white px-8 py-3 text-center text-base font-semibold text-[#121212] shadow-lg"
               style={{ animation: "toastFadeIn 250ms ease-out forwards" }}
             >
               {toastMessage}
