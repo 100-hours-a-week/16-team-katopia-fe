@@ -19,8 +19,18 @@ type RawMemberPost = {
   imageUrls:
     | string
     | string[]
-    | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }
-    | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }[];
+    | {
+        imageObjectKey?: string;
+        imageUrl?: string;
+        accessUrl?: string;
+        url?: string;
+      }
+    | {
+        imageObjectKey?: string;
+        imageUrl?: string;
+        accessUrl?: string;
+        url?: string;
+      }[];
   createdAt: string;
 };
 

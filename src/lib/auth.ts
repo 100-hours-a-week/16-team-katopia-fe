@@ -116,14 +116,19 @@ export async function issueAccessToken() {
     console.log("[issueAccessToken] response", { status: res.status });
 
     if (!res.ok) {
-      const body = await res.clone().json().catch(() => null);
+      const body = await res
+        .clone()
+        .json()
+        .catch(() => null);
       console.log("[issueAccessToken] error body", body);
       if (typeof window !== "undefined") {
         try {
-          const message =
-            (body as { message?: string } | null)?.message ?? "";
+          const message = (body as { message?: string } | null)?.message ?? "";
           if (message) {
-            window.sessionStorage.setItem("katopia.authInvalidMessage", message);
+            window.sessionStorage.setItem(
+              "katopia.authInvalidMessage",
+              message,
+            );
           } else {
             window.sessionStorage.removeItem("katopia.authInvalidMessage");
           }
@@ -195,7 +200,9 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
   if (!token && !init.skipAuthRefresh) {
     console.log("[authFetch] no token, issuing access token");
     token = await issueAccessToken(); // 실패 시 throw
-    console.log("[authFetch] issued access token", { hasToken: Boolean(token) });
+    console.log("[authFetch] issued access token", {
+      hasToken: Boolean(token),
+    });
   }
 
   const makeHeaders = (bearer?: string) => {

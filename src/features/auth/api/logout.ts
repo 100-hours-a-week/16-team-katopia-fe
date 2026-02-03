@@ -1,5 +1,9 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken, clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
+import {
+  getAccessToken,
+  clearAccessToken,
+  setLoggedOutFlag,
+} from "@/src/lib/auth";
 
 export async function logout() {
   const token = getAccessToken();

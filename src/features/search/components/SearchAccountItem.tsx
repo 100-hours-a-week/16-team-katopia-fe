@@ -11,7 +11,12 @@ interface Props {
   searchQuery?: string;
 }
 
-function SearchAccountItem({ nickname, profileImage, userId, searchQuery }: Props) {
+function SearchAccountItem({
+  nickname,
+  profileImage,
+  userId,
+  searchQuery,
+}: Props) {
   const router = useRouter();
 
   const handleClick = () => {

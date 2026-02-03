@@ -26,7 +26,10 @@ export async function searchPosts(params: {
   const rawQuery = params.query.trim();
   const isHashtagQuery = rawQuery.startsWith("#");
   const normalizedQuery = isHashtagQuery
-    ? (rawQuery.slice(1).trim().match(/^[^#\s]+/)?.[0] ?? "")
+    ? (rawQuery
+        .slice(1)
+        .trim()
+        .match(/^[^#\s]+/)?.[0] ?? "")
     : rawQuery;
   const minLength = isHashtagQuery ? 1 : 2;
   if (normalizedQuery.length < minLength) {
@@ -74,7 +77,12 @@ export async function searchPosts(params: {
           (post as { imageObjectKey?: unknown }).imageObjectKey ??
           post.imageUrls) as unknown as
           | string[]
-          | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }[],
+          | {
+              imageObjectKey?: string;
+              imageUrl?: string;
+              accessUrl?: string;
+              url?: string;
+            }[],
       ),
     })),
   };

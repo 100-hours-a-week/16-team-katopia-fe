@@ -50,7 +50,12 @@ export async function getPostList(params?: {
           (post as { imageObjectKey?: unknown }).imageObjectKey ??
           post.imageUrls) as unknown as
           | string[]
-          | { imageObjectKey?: string; imageUrl?: string; accessUrl?: string; url?: string }[],
+          | {
+              imageObjectKey?: string;
+              imageUrl?: string;
+              accessUrl?: string;
+              url?: string;
+            }[],
       ),
     })),
   };

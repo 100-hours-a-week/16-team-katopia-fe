@@ -122,7 +122,7 @@ export function useInfinitePostGrid(params?: Params) {
       });
 
       const rawNextCursor =
-        data.nextCursor === "" ? null : data.nextCursor ?? null;
+        data.nextCursor === "" ? null : (data.nextCursor ?? null);
       const shouldFallbackCursor =
         !isMemberMode &&
         !isSearchMode &&

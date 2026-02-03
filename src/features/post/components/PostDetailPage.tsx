@@ -305,7 +305,6 @@ export default function PostDetailPage() {
           router.replace(from === "profile" ? "/profile" : "/search");
         }}
       />
-
     </div>
   );
 }

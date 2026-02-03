@@ -62,14 +62,14 @@ const NicknameField = memo(
             className="placeholder:text-[12px] text-[12px]"
           />
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onDuplicateCheck(nickname)}
-          disabled={disableDuplicateCheck ?? !nickname}
-        >
-          중복 확인
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onDuplicateCheck(nickname)}
+            disabled={disableDuplicateCheck ?? !nickname}
+          >
+            중복 확인
+          </Button>
         </div>
 
         {/* 🔥 헬퍼 텍스트 우선순위 */}

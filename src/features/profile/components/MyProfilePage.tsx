@@ -154,9 +154,7 @@ export default function MyProfilePage() {
             setAuthenticated(false);
           } catch (err) {
             const message =
-              err instanceof Error
-                ? err.message
-                : "회원 탈퇴에 실패했습니다.";
+              err instanceof Error ? err.message : "회원 탈퇴에 실패했습니다.";
             alert(message);
           } finally {
             setWithdrawing(false);
