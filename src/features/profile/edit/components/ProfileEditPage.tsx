@@ -366,25 +366,27 @@ export default function ProfileEditPage() {
     ): Promise<Blob> => {
       let sourceFile = target;
 
+      const lowerName = target.name.toLowerCase();
       if (
         target.type === "image/heic" ||
-        target.name.toLowerCase().endsWith(".heic")
+        target.type === "image/heif" ||
+        lowerName.endsWith(".heic") ||
+        lowerName.endsWith(".heif")
       ) {
+        const buffer = await target.arrayBuffer();
+        const heicBlob = new Blob([buffer], {
+          type: target.type || "image/heic",
+        });
         const converted = await heic2any({
-          blob: target,
+          blob: heicBlob,
           toType: "image/jpeg",
           quality: 0.9,
         });
 
         const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
 
-        sourceFile = new File(
-          [jpegBlob],
-          target.name.replace(/\.heic$/i, ".jpg"),
-          {
-            type: "image/jpeg",
-          },
-        );
+        const safeName = target.name.replace(/\.heic$|\.heif$/i, ".jpg");
+        sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
       }
 
       const bitmap = await createImageBitmap(sourceFile, {

@@ -75,14 +75,19 @@ export function useProfileImage() {
         /* ===============================
          * HEIC → JPEG 변환 (여기서만!)
          * =============================== */
+        const lowerName = file.name.toLowerCase();
         if (
           file.type === "image/heic" ||
-          file.name.toLowerCase().endsWith(".heic")
+          file.type === "image/heif" ||
+          lowerName.endsWith(".heic") ||
+          lowerName.endsWith(".heif")
         ) {
           try {
             const buffer = await file.arrayBuffer(); // ⭐ 핵심
 
-            const blob = new Blob([buffer], { type: file.type });
+            const blob = new Blob([buffer], {
+              type: file.type || "image/heic",
+            });
             const converted = await heic2any({
               blob, // ✅ Blob 타입
               toType: "image/jpeg",
@@ -96,7 +101,7 @@ export function useProfileImage() {
             sourceForPreview = jpegBlob;
             sourceForResize = new File(
               [jpegBlob],
-              file.name.replace(/\.heic$/i, ".jpg"),
+              file.name.replace(/\.heic$|\.heif$/i, ".jpg"),
               { type: "image/jpeg" },
             );
           } catch {

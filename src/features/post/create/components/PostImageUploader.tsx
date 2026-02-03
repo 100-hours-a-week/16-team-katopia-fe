@@ -27,6 +27,17 @@ import {
 
 const MAX_FILES = 3;
 const ACCEPT = "image/*";
+const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+  ".heif",
+  ".gif",
+  ".svg",
+]);
 
 type PreviewItem = {
   id: string;
@@ -81,20 +92,28 @@ async function resizeAndCompress(
   quality = 0.8,
 ): Promise<Blob> {
   let sourceFile = file;
-
-  // ✅ HEIC → JPEG 변환
-  if (file.type === "image/heic" || file.name.toLowerCase().endsWith(".heic")) {
+  // ✅ HEIC/HEIF → JPEG 변환
+  const lowerName = file.name.toLowerCase();
+  if (
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    lowerName.endsWith(".heic") ||
+    lowerName.endsWith(".heif")
+  ) {
+    const buffer = await file.arrayBuffer();
+    const heicBlob = new Blob([buffer], {
+      type: file.type || "image/heic",
+    });
     const converted = await heic2any({
-      blob: file,
+      blob: heicBlob,
       toType: "image/jpeg",
       quality: 0.9,
     });
 
     const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
 
-    sourceFile = new File([jpegBlob], file.name.replace(/\.heic$/i, ".jpg"), {
-      type: "image/jpeg",
-    });
+    const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
+    sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
   }
 
   // ✅ EXIF 회전 반영
@@ -124,12 +143,19 @@ async function resizeAndCompress(
 
 /* ---------------- PostImageUploader ---------------- */
 export default function PostImageUploader() {
-  const { control, setError, clearErrors, getValues, setValue } =
-    useFormContext();
+  const {
+    control,
+    setError,
+    clearErrors,
+    getValues,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
 
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
+  const [helperText, setHelperText] = useState<string | null>(null);
 
   const previewIds = useMemo(() => previews.map((p) => p.id), [previews]);
 
@@ -139,6 +165,19 @@ export default function PostImageUploader() {
       activationConstraint: { delay: 150, tolerance: 5 },
     }),
   );
+
+  const getExtension = (name: string) => {
+    const idx = name.lastIndexOf(".");
+    return idx >= 0 ? name.slice(idx).toLowerCase() : "";
+  };
+
+  const isSupportedImageFile = (file: File) => {
+    const ext = getExtension(file.name);
+    if (file.type && !file.type.startsWith("image/")) return false;
+    if (ext && !ALLOWED_EXTENSIONS.has(ext)) return false;
+    if (!file.type && ext) return ALLOWED_EXTENSIONS.has(ext);
+    return true;
+  };
 
   return (
     <Controller
@@ -159,6 +198,7 @@ export default function PostImageUploader() {
               onChange={async (e) => {
                 const files = Array.from(e.target.files ?? []);
                 if (!files.length) return;
+                setHelperText(null);
 
                 const remain = MAX_FILES - previews.length;
                 if (remain <= 0) {
@@ -166,13 +206,40 @@ export default function PostImageUploader() {
                     type: "manual",
                     message: "최대 3장까지 업로드할 수 있습니다",
                   });
+                  setHelperText("최대 3장까지 업로드할 수 있습니다");
                   return;
                 }
 
                 const selected = files.slice(0, remain);
+                const hasOversize = selected.some(
+                  (file) => file.size > MAX_FILE_SIZE,
+                );
+                const hasUnsupported = selected.some(
+                  (file) => !isSupportedImageFile(file),
+                );
+
+                if (hasOversize || hasUnsupported) {
+                  const message = hasOversize
+                    ? "이미지 용량은 최대 30MB까지 가능합니다."
+                    : "지원하지 않는 이미지 형식입니다.";
+                  setError("imageObjectKeys", {
+                    type: "manual",
+                    message,
+                  });
+                  setHelperText(message);
+                }
+
+                const validSelected = selected.filter(
+                  (file) =>
+                    file.size <= MAX_FILE_SIZE && isSupportedImageFile(file),
+                );
+                if (validSelected.length === 0) {
+                  e.target.value = "";
+                  return;
+                }
 
                 /* ---------- optimistic preview ---------- */
-                const tempItems: PreviewItem[] = selected.map((file) => {
+                const tempItems: PreviewItem[] = validSelected.map((file) => {
                   const id = crypto.randomUUID();
                   return {
                     id,
@@ -194,7 +261,7 @@ export default function PostImageUploader() {
                 try {
                   /* ---------- resize & upload ---------- */
                   const blobs = await Promise.all(
-                    selected.map((f) => resizeAndCompress(f)),
+                    validSelected.map((f) => resizeAndCompress(f)),
                   );
 
                   const presigned = await requestUploadPresign(
@@ -233,6 +300,7 @@ export default function PostImageUploader() {
                   );
 
                   clearErrors("imageObjectKeys");
+                  setHelperText(null);
                 } catch (err) {
                   tempItems.forEach((i) => URL.revokeObjectURL(i.url));
                   setPreviews((prev) =>
@@ -257,6 +325,15 @@ export default function PostImageUploader() {
                         ? err.message
                         : "이미지 업로드에 실패했습니다.",
                   });
+                  if (err instanceof Error && /형식|type/i.test(err.message)) {
+                    setHelperText("지원하지 않는 이미지 형식입니다.");
+                  } else {
+                    setHelperText(
+                      err instanceof Error
+                        ? err.message
+                        : "이미지 업로드에 실패했습니다.",
+                    );
+                  }
                 } finally {
                   e.target.value = "";
                 }
@@ -316,6 +393,15 @@ export default function PostImageUploader() {
                 </div>
               </SortableContext>
             </DndContext>
+
+            {(helperText ||
+              (typeof errors.imageObjectKeys?.message === "string" &&
+                errors.imageObjectKeys?.message)) && (
+              <p className="mt-2 text-[11px] text-red-500">
+                {helperText ??
+                  (errors.imageObjectKeys?.message as string | undefined)}
+              </p>
+            )}
           </div>
         );
       }}
