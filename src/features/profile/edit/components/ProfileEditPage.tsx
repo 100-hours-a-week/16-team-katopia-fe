@@ -298,7 +298,7 @@ export default function ProfileEditPage() {
 
       const profileImageObjectKey = removeImage
         ? null
-        : uploadedProfileObjectKey ?? currentProfileImageObjectKey ?? null;
+        : (uploadedProfileObjectKey ?? currentProfileImageObjectKey ?? null);
 
       await updateProfile({
         nickname: trimmedNickname || undefined,
