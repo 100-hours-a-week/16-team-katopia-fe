@@ -39,7 +39,21 @@ export default function LayoutShell({ children }: Props) {
     }
     if (hasAlertedRef.current) return;
     hasAlertedRef.current = true;
-    alert("인증 정보가 유효하지 않습니다. 다시 로그인해주세요.");
+    let message = "인증 정보가 유효하지 않습니다. 다시 로그인해주세요.";
+    if (typeof window !== "undefined") {
+      try {
+        const stored = window.sessionStorage.getItem(
+          "katopia.authInvalidMessage",
+        );
+        if (stored) {
+          message = stored;
+          window.sessionStorage.removeItem("katopia.authInvalidMessage");
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+    alert(message);
   }, [authInvalidated]);
 
   useEffect(() => {

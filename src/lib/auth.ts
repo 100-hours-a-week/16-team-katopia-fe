@@ -118,6 +118,19 @@ export async function issueAccessToken() {
     if (!res.ok) {
       const body = await res.clone().json().catch(() => null);
       console.log("[issueAccessToken] error body", body);
+      if (typeof window !== "undefined") {
+        try {
+          const message =
+            (body as { message?: string } | null)?.message ?? "";
+          if (message) {
+            window.sessionStorage.setItem("katopia.authInvalidMessage", message);
+          } else {
+            window.sessionStorage.removeItem("katopia.authInvalidMessage");
+          }
+        } catch {
+          // ignore storage errors
+        }
+      }
       notifyAuthInvalid();
       throw new Error("RT expired");
     }
