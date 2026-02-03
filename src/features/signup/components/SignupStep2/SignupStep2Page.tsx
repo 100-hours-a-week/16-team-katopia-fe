@@ -276,16 +276,16 @@ export default function SignupStep2() {
           nickname: string;
           gender: "M" | "F";
           profileImageObjectKey: string | null;
-          height: number;
-          weight: number;
+          height: number | null;
+          weight: number | null;
           enableRealtimeNotification: boolean;
           style: string[] | null;
         } = {
           nickname,
           gender,
           profileImageObjectKey: signupProfileImageObjectKey,
-          height: data.height ? Number(data.height) : 0,
-          weight: data.weight ? Number(data.weight) : 0,
+          height: data.height ? Number(data.height) : null,
+          weight: data.weight ? Number(data.weight) : null,
           enableRealtimeNotification: true,
           style:
             styles.length > 0
