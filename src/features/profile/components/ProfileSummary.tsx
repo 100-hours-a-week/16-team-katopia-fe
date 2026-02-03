@@ -31,12 +31,11 @@ export default function ProfileSummary({
       {/* Avatar */}
       <div className="mb-4 h-24 w-24 rounded-full bg-gray-200 relative overflow-hidden flex items-center justify-center">
         {resolvedProfileImageUrl ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={resolvedProfileImageUrl}
             alt="profile"
-            fill
-            sizes="96px"
-            className="object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
           <Image src="/icons/user.svg" alt="profile" width={45} height={45} />
@@ -50,7 +49,7 @@ export default function ProfileSummary({
       >
         {nickname}
         {gender && (
-          <span className="ml-1 inline-flex items-center relative top-[4px]">
+          <span className="ml-1 inline-flex items-center relative top-1">
             <Image
               src={gender === "female" ? "/icons/woman.svg" : "/icons/man.svg"}
               alt={gender === "female" ? "여성" : "남성"}
@@ -71,9 +70,7 @@ export default function ProfileSummary({
       )}
 
       {hasStyle && (
-        <p className="mt-2 text-xs text-gray-600">
-          {styles.join(" · ")}
-        </p>
+        <p className="mt-2 text-xs text-gray-600">{styles.join(" · ")}</p>
       )}
     </section>
   );

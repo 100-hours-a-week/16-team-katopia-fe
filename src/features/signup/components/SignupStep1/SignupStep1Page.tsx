@@ -78,6 +78,7 @@ export default function SignupStep1() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const nickname = watch("nickname");
 
   /* -------------------------

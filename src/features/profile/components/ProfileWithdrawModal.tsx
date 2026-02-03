@@ -4,22 +4,26 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  confirmDisabled?: boolean;
+  confirmLabel?: string;
 };
 
 export default function ProfileWithdrawModal({
   open,
   onClose,
   onConfirm,
+  confirmDisabled = false,
+  confirmLabel = "확인",
 }: Props) {
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
       onClick={onClose}
     >
       <div
-        className="w-[320px] rounded-3xl border-2 border-black bg-white px-6 py-6 text-center"
+        className="w-[320px] rounded-3xl bg-white px-6 py-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
@@ -36,15 +40,16 @@ export default function ProfileWithdrawModal({
         <div className="flex gap-4">
           <button
             onClick={onClose}
-            className="flex-1 rounded-full border-2 border-black py-3 text-sm font-semibold"
+            className="flex-1 rounded-full border border-black py-3 text-sm font-semibold"
           >
             취소
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 rounded-full border-2 border-black py-3 text-sm font-semibold"
+            disabled={confirmDisabled}
+            className="flex-1 rounded-full border border-black py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
           >
-            확인
+            {confirmLabel}
           </button>
         </div>
       </div>

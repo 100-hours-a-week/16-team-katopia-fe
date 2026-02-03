@@ -146,7 +146,8 @@ export default function PostHeader({
           {resolveMediaUrl(
             author.profileImageObjectKey ?? author.profileImageUrl,
           ) ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={
                 resolveMediaUrl(
                   author.profileImageObjectKey ?? author.profileImageUrl,
@@ -155,7 +156,7 @@ export default function PostHeader({
               alt={author.nickname}
               width={40}
               height={40}
-              className="object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             <Image src="/icons/user.svg" alt="유저" width={20} height={20} />

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -17,19 +17,34 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Controller, useFormContext, useWatch } from "react-hook-form";
+import heic2any from "heic2any";
+import { Controller, useFormContext } from "react-hook-form";
+
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+
+const MAX_FILES = 3;
+const ACCEPT = "image/*";
+const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+  ".heif",
+  ".gif",
+  ".svg",
+]);
 
 type PreviewItem = {
   id: string;
-  url: string; // local preview url
+  url: string;
   name: string;
+  objectKey: string;
 };
-
-const MAX_FILES = 3;
-const ACCEPT =
-  ".jpg,.jpeg,.png,.webp,.heic,image/jpeg,image/png,image/webp,image/heic";
-
-const toBlobUrl = (file: File) => URL.createObjectURL(file);
 
 function SortablePreview({
   item,
@@ -41,201 +56,335 @@ function SortablePreview({
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
       {...attributes}
       {...listeners}
-      className="relative h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 overflow-hidden"
+      className="relative h-[60vh] w-88.75 shrink-0 rounded-xl overflow-hidden bg-gray-200"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+      {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
+      <img src={item.url} className="h-full w-full object-cover" />
 
       <button
         type="button"
-        aria-label="사진 삭제"
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
           onRemove();
         }}
-        onPointerDown={(e) => {
-          e.stopPropagation();
-        }}
-        className="absolute right-2 top-2 bg-white rounded-full p-1 hover:scale-110 transition-transform"
+        className="absolute right-2 top-2 bg-white rounded-full p-1"
       >
-        <Image src="/icons/delete.svg" alt="" width={32} height={32} />
+        <Image src="/icons/delete.svg" alt="" width={28} height={28} />
       </button>
     </div>
   );
 }
 
+/* ---------------- 이미지 리사이징/압축 ---------------- */
+async function resizeAndCompress(
+  file: File,
+  maxWidth = 1080,
+  quality = 0.8,
+): Promise<Blob> {
+  let sourceFile = file;
+  const isHeicLike =
+    file.type === "image/heic" ||
+    file.type === "image/heif" ||
+    file.name.toLowerCase().endsWith(".heic") ||
+    file.name.toLowerCase().endsWith(".heif");
+  // ✅ HEIC/HEIF → JPEG 변환
+  if (isHeicLike) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const heicBlob = new Blob([buffer], {
+        type: file.type || "image/heic",
+      });
+      const converted = await heic2any({
+        blob: heicBlob,
+        toType: "image/jpeg",
+        quality: 0.9,
+      });
+
+      const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+
+      const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
+      sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
+    } catch {
+      throw new Error(
+        "HEIC 파일은 업로드할 수 없습니다. JPG/PNG로 변환해주세요.",
+      );
+    }
+  }
+
+  // ✅ EXIF 회전 반영
+  const bitmap = await createImageBitmap(sourceFile, {
+    imageOrientation: "from-image",
+  });
+
+  const scale = Math.min(1, maxWidth / bitmap.width);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width * scale;
+  canvas.height = bitmap.height * scale;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+  return new Promise((resolve) =>
+    canvas.toBlob(
+      (blob) => {
+        if (!blob) throw new Error("이미지 압축 실패");
+        resolve(blob);
+      },
+      "image/webp",
+      quality,
+    ),
+  );
+}
+
+/* ---------------- PostImageUploader ---------------- */
 export default function PostImageUploader() {
-  const { control, setError, clearErrors } = useFormContext();
-  const content = useWatch({ name: "content" }) as string | undefined;
-  const watchedImages = useWatch({ name: "images" }) as File[] | undefined;
-  const [previews, setPreviews] = useState<PreviewItem[]>([]);
-  const [overLimitMessage, setOverLimitMessage] = useState<string | null>(null);
+  const {
+    control,
+    setError,
+    clearErrors,
+    getValues,
+    setValue,
+    formState: { errors },
+  } = useFormContext();
 
   const inputId = useId();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [previews, setPreviews] = useState<PreviewItem[]>([]);
+  const [helperText, setHelperText] = useState<string | null>(null);
 
-  const canAddMore = previews.length < MAX_FILES;
-  const shouldShowImageHelper =
-    (content?.trim()?.length ?? 0) > 0 && (watchedImages?.length ?? 0) === 0;
-  const previewIds = useMemo(() => previews.map((preview) => preview.id), [previews]);
+  const previewIds = useMemo(() => previews.map((p) => p.id), [previews]);
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
       activationConstraint: { delay: 150, tolerance: 5 },
     }),
   );
 
-  useEffect(() => {
-    return () => {
-      previews.forEach((item) => URL.revokeObjectURL(item.url));
-    };
-  }, [previews]);
+  const getExtension = (name: string) => {
+    const idx = name.lastIndexOf(".");
+    return idx >= 0 ? name.slice(idx).toLowerCase() : "";
+  };
 
-  const removePreviewByIndex = useCallback(
-    (index: number, onChange: (v: File[]) => void, currentFiles: File[]) => {
-      setPreviews((prev) => {
-        const next = [...prev];
-        const removed = next.splice(index, 1);
-        removed.forEach((r) => URL.revokeObjectURL(r.url));
-        return next;
-      });
-
-      const nextFiles = [...currentFiles];
-      nextFiles.splice(index, 1);
-      onChange(nextFiles);
-    },
-    [],
-  );
+  const isSupportedImageFile = (file: File) => {
+    const ext = getExtension(file.name);
+    if (file.type && !file.type.startsWith("image/")) return false;
+    if (ext && !ALLOWED_EXTENSIONS.has(ext)) return false;
+    if (!file.type && ext) return ALLOWED_EXTENSIONS.has(ext);
+    return true;
+  };
 
   return (
     <Controller
-      name="images"
+      name="imageObjectKeys" // ✅ 기준 필드
       control={control}
-      render={({ field, fieldState }) => {
-        const currentFiles = Array.isArray(field.value) ? field.value : [];
+      render={({ field }) => {
+        const objectKeys = Array.isArray(field.value) ? field.value : [];
 
         return (
           <div>
             <input
               id={inputId}
-              ref={fileInputRef}
+              ref={inputRef}
               type="file"
               accept={ACCEPT}
               multiple
-              className="hidden"
-              onChange={async (event) => {
-                const files = event.target.files;
-                if (!files || files.length === 0) return;
+              hidden
+              onChange={async (e) => {
+                const files = Array.from(e.target.files ?? []);
+                if (!files.length) return;
+                setHelperText(null);
 
-                const remainingSlots = MAX_FILES - currentFiles.length;
-
-                if (remainingSlots <= 0) {
-                  setError("images", {
+                const remain = MAX_FILES - previews.length;
+                if (remain <= 0) {
+                  setError("imageObjectKeys", {
                     type: "manual",
                     message: "최대 3장까지 업로드할 수 있습니다",
                   });
-                  setOverLimitMessage("최대 3장까지 업로드할 수 있습니다.");
-                  event.target.value = "";
+                  setHelperText("최대 3장까지 업로드할 수 있습니다");
                   return;
                 }
 
-                const selectedFiles = Array.from(files).slice(
-                  0,
-                  remainingSlots,
+                const selected = files.slice(0, remain);
+                const hasOversize = selected.some(
+                  (file) => file.size > MAX_FILE_SIZE,
+                );
+                const hasUnsupported = selected.some(
+                  (file) => !isSupportedImageFile(file),
                 );
 
-                if (files.length > remainingSlots) {
-                  setError("images", {
+                if (hasOversize || hasUnsupported) {
+                  const message = hasOversize
+                    ? "이미지 용량은 최대 30MB까지 가능합니다."
+                    : "지원하지 않는 이미지 형식입니다.";
+                  setError("imageObjectKeys", {
                     type: "manual",
-                    message: "최대 3장까지 업로드할 수 있습니다",
+                    message,
                   });
-                  setOverLimitMessage("최대 3장까지 업로드할 수 있습니다.");
-                } else {
-                  clearErrors("images");
-                  setOverLimitMessage(null);
+                  setHelperText(message);
                 }
 
-                const blobUrls = selectedFiles.map(toBlobUrl);
+                const validSelected = selected.filter(
+                  (file) =>
+                    file.size <= MAX_FILE_SIZE && isSupportedImageFile(file),
+                );
+                if (validSelected.length === 0) {
+                  e.target.value = "";
+                  return;
+                }
 
-                const newPreviews: PreviewItem[] = blobUrls.map(
-                  (url, index) => ({
-                    id: crypto.randomUUID(),
-                    url,
-                    name: selectedFiles[index].name,
-                  }),
+                /* ---------- optimistic preview ---------- */
+                const tempItems: PreviewItem[] = validSelected.map((file) => {
+                  const id = crypto.randomUUID();
+                  return {
+                    id,
+                    url: URL.createObjectURL(file),
+                    name: file.name,
+                    objectKey: `pending:${id}`,
+                  };
+                });
+
+                setPreviews((prev) => [...prev, ...tempItems]);
+
+                // ✅ 수정: imageObjectKeys만 사용
+                setValue(
+                  "imageObjectKeys",
+                  [...objectKeys, ...tempItems.map((i) => i.objectKey)],
+                  { shouldDirty: true, shouldValidate: true },
                 );
 
-                setPreviews((prev) => [...prev, ...newPreviews]);
+                try {
+                  /* ---------- resize & upload ---------- */
+                  const blobs = await Promise.all(
+                    validSelected.map((f) => resizeAndCompress(f)),
+                  );
 
-                // ✅ RHF에는 File[] 저장
-                field.onChange([...currentFiles, ...selectedFiles]);
-                event.target.value = "";
+                  const presigned = await requestUploadPresign(
+                    "POST",
+                    blobs.map(() => "webp"),
+                  );
+
+                  await Promise.all(
+                    presigned.map((p, i) =>
+                      uploadToPresignedUrl(p.uploadUrl, blobs[i], "image/webp"),
+                    ),
+                  );
+
+                  const tempToReal = new Map(
+                    presigned.map((p, i) => [
+                      tempItems[i].objectKey,
+                      p.imageObjectKey.replace(/^\/+/, ""),
+                    ]),
+                  );
+
+                  setPreviews((prev) =>
+                    prev.map((item) => ({
+                      ...item,
+                      objectKey:
+                        tempToReal.get(item.objectKey) ?? item.objectKey,
+                    })),
+                  );
+
+                  const current =
+                    (getValues("imageObjectKeys") as string[]) ?? [];
+
+                  setValue(
+                    "imageObjectKeys",
+                    current.map((k) => tempToReal.get(k) ?? k),
+                    { shouldDirty: true, shouldValidate: true },
+                  );
+
+                  clearErrors("imageObjectKeys");
+                  setHelperText(null);
+                } catch (err) {
+                  tempItems.forEach((i) => URL.revokeObjectURL(i.url));
+                  setPreviews((prev) =>
+                    prev.filter((p) => !tempItems.some((t) => t.id === p.id)),
+                  );
+
+                  const current =
+                    (getValues("imageObjectKeys") as string[]) ?? [];
+
+                  setValue(
+                    "imageObjectKeys",
+                    current.filter(
+                      (k) => !tempItems.some((t) => t.objectKey === k),
+                    ),
+                    { shouldDirty: true, shouldValidate: true },
+                  );
+
+                  setError("imageObjectKeys", {
+                    type: "manual",
+                    message:
+                      err instanceof Error
+                        ? err.message
+                        : "이미지 업로드에 실패했습니다.",
+                  });
+                  if (err instanceof Error && /형식|type/i.test(err.message)) {
+                    setHelperText("지원하지 않는 이미지 형식입니다.");
+                  } else {
+                    setHelperText(
+                      err instanceof Error
+                        ? err.message
+                        : "이미지 업로드에 실패했습니다.",
+                    );
+                  }
+                } finally {
+                  e.target.value = "";
+                }
               }}
             />
 
-            {/* Preview 영역 */}
-            <div className="mt-2.5 overflow-x-auto touch-pan-x">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={(event) => {
-                  const { active, over } = event;
-                  if (!over || active.id === over.id) return;
-                  const oldIndex = previews.findIndex(
-                    (item) => item.id === active.id,
-                  );
-                  const newIndex = previews.findIndex(
-                    (item) => item.id === over.id,
-                  );
-                  if (oldIndex < 0 || newIndex < 0) return;
-                  setPreviews((prev) => arrayMove(prev, oldIndex, newIndex));
-                  const nextFiles = arrayMove(currentFiles, oldIndex, newIndex);
-                  field.onChange(nextFiles);
-                }}
+            {/* ---------- Preview ---------- */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={({ active, over }) => {
+                if (!over || active.id === over.id) return;
+                const oldIndex = previews.findIndex((p) => p.id === active.id);
+                const newIndex = previews.findIndex((p) => p.id === over.id);
+
+                setPreviews((p) => arrayMove(p, oldIndex, newIndex));
+                field.onChange(arrayMove(objectKeys, oldIndex, newIndex));
+              }}
+            >
+              <SortableContext
+                items={previewIds}
+                strategy={horizontalListSortingStrategy}
               >
-                <SortableContext
-                  items={previewIds}
-                  strategy={horizontalListSortingStrategy}
-                >
-                  <div className="flex gap-3 snap-x snap-mandatory touch-pan-x">
-                    {previews.map((item, index) => (
+                <div className="w-full overflow-x-auto overflow-y-hidden touch-pan-x">
+                  <div className="flex gap-3 min-w-max">
+                    {previews.map((p, i) => (
                       <SortablePreview
-                        key={item.id}
-                        item={item}
-                        onRemove={() =>
-                          removePreviewByIndex(
-                            index,
-                            field.onChange,
-                            currentFiles,
-                          )
-                        }
+                        key={p.id}
+                        item={p}
+                        onRemove={() => {
+                          URL.revokeObjectURL(p.url);
+                          setPreviews((prev) =>
+                            prev.filter((_, idx) => idx !== i),
+                          );
+                          field.onChange(
+                            objectKeys.filter((_, idx) => idx !== i),
+                          );
+                        }}
                       />
                     ))}
 
-                    {canAddMore && (
+                    {previews.length < MAX_FILES && (
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          fileInputRef.current?.click();
-                        }}
-                        className="h-[60vh] w-88.75 shrink-0 snap-start rounded-xl bg-gray-200 flex items-center justify-center cursor-pointer hover:bg-gray-300 transition-colors"
-                        aria-label="사진 추가"
+                        onClick={() => inputRef.current?.click()}
+                        className="h-[60vh] w-88.75 rounded-xl bg-gray-200 flex items-center justify-center"
                       >
                         <Image
                           src="/icons/upload.svg"
@@ -246,30 +395,18 @@ export default function PostImageUploader() {
                       </button>
                     )}
                   </div>
-                </SortableContext>
-              </DndContext>
-            </div>
+                </div>
+              </SortableContext>
+            </DndContext>
 
-            {/* Error UI */}
-            {fieldState.error && (
-              <p className="text-red-500 text-[12px] mt-2">
-                {fieldState.error.message}
+            {(helperText ||
+              (typeof errors.imageObjectKeys?.message === "string" &&
+                errors.imageObjectKeys?.message)) && (
+              <p className="mt-2 text-[11px] text-red-500">
+                {helperText ??
+                  (errors.imageObjectKeys?.message as string | undefined)}
               </p>
             )}
-
-            {overLimitMessage && (
-              <p className="text-red-500 text-[12px] mt-2">
-                {overLimitMessage}
-              </p>
-            )}
-
-            {shouldShowImageHelper &&
-              !fieldState.error &&
-              !overLimitMessage && (
-                <p className="text-red-500 text-[12px] mt-2">
-                  이미지는 최소 1장 이상 업로드해야 합니다.
-                </p>
-              )}
           </div>
         );
       }}

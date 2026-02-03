@@ -21,6 +21,7 @@ export default function CommentItem({
   currentUserId,
   currentUserNickname,
 }: Props) {
+  const MAX_COMMENT_LENGTH = 200;
   const router = useRouter();
   const avatarColors = ["#D9D9D9", "#E3DFFC", "#F8E0E0", "#D9F1FF", "#E8F5E9"];
   const color = avatarColors[comment.id % avatarColors.length] ?? "#D9D9D9";
@@ -84,7 +85,7 @@ export default function CommentItem({
   // console.log(comment.authorId);
 
   return (
-    <div className="rounded-[20px] bg-[#f9fafb] p-3">
+    <div className="rounded-4xl bg-[#f9fafb] p-3">
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -99,7 +100,7 @@ export default function CommentItem({
               alt={comment.nickname}
               width={32}
               height={32}
-              className="object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             <Image src="/icons/user.svg" alt="유저" width={18} height={18} />
@@ -109,23 +110,30 @@ export default function CommentItem({
       </div>
 
       {isEditing ? (
-        <div className="mt-0 pl-[40px]">
+        <div className="mt-0 pl-10">
           <textarea
             className="w-full resize-none rounded border px-3 py-2 text-[12px] outline-none"
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              const next = event.target.value;
+              if (next.length <= MAX_COMMENT_LENGTH) {
+                setDraft(next);
+                return;
+              }
+              setDraft(next.slice(0, MAX_COMMENT_LENGTH));
+            }}
             rows={1}
             ref={editRef}
           />
         </div>
       ) : (
-        <p className="mt-0 whitespace-pre-line pl-[40px] text-[12px]">
+        <p className="mt-0 wrap-break-word whitespace-pre-line pl-10 text-[12px]">
           {comment.content}
         </p>
       )}
 
       {isMine && (
-        <div className="mt-2 flex gap-4 pl-[40px] text-xs text-muted-foreground">
+        <div className="mt-2 flex gap-4 pl-10 text-xs text-muted-foreground">
           {isEditing ? (
             <>
               <button type="button" onClick={handleCancel}>

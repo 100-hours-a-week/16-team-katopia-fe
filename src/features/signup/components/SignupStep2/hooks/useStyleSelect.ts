@@ -15,7 +15,9 @@ export function useStyleSelect(max = 2) {
 
         if (prev.length >= max) {
           setError(`스타일은 최대 ${max}개까지 선택 가능합니다.`);
-          timerRef.current && clearTimeout(timerRef.current);
+          if (timerRef.current) {
+            clearTimeout(timerRef.current);
+          }
           timerRef.current = setTimeout(() => setError(null), 2000);
           return prev;
         }

@@ -8,13 +8,10 @@ import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileWithdrawModal from "./ProfileWithdrawModal";
 import ProfileLogoutModal from "./ProfileLogoutModal";
 import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
+import { authFetch, clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
-import {
-  getCachedProfileImage,
-  setCachedProfileImage,
-} from "@/src/features/profile/utils/profileImageCache";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
+import { withdrawMember } from "@/src/features/profile/api/withdrawMember";
 
 type Profile = {
   userId: number;
@@ -29,11 +26,14 @@ type Profile = {
 export default function MyProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { ready, isAuthenticated } = useAuth();
+  const searchParamsKey = searchParams.toString();
+  const { ready, isAuthenticated, setAuthenticated } = useAuth();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawRedirecting, setWithdrawRedirecting] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,17 +80,20 @@ export default function MyProfilePage() {
 
         const profileImageKey =
           rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
-        if (profileImageKey) {
-          setCachedProfileImage(profileImageKey);
+        let locallyRemoved = false;
+        try {
+          locallyRemoved =
+            window.localStorage.getItem("katopia.profileImageRemoved") === "1";
+        } catch {
+          locallyRemoved = false;
         }
-
-        const cachedImage = getCachedProfileImage();
+        const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
 
         setProfile({
           userId,
           ...rawProfile,
           gender: normalizedGender,
-          profileImageUrl: profileImageKey ?? cachedImage,
+          profileImageUrl: resolvedProfileImageKey ?? null,
         });
       } catch (err) {
         console.error(err);
@@ -100,14 +103,14 @@ export default function MyProfilePage() {
     };
 
     fetchMe();
-  }, [ready, isAuthenticated, searchParams.toString()]);
+  }, [ready, isAuthenticated, searchParamsKey]);
 
   useEffect(() => {
     if (!ready) return;
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !withdrawRedirecting) {
       router.replace("/home");
     }
-  }, [ready, isAuthenticated, router]);
+  }, [ready, isAuthenticated, router, withdrawRedirecting]);
 
   /* -------------------------
      게시글 로딩
@@ -144,8 +147,26 @@ export default function MyProfilePage() {
       <ProfileWithdrawModal
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
-        onConfirm={() => {
-          setWithdrawOpen(false);
+        confirmDisabled={withdrawing}
+        confirmLabel={withdrawing ? "처리 중..." : "확인"}
+        onConfirm={async () => {
+          if (withdrawing) return;
+          setWithdrawing(true);
+          try {
+            await withdrawMember();
+            setWithdrawRedirecting(true);
+            setWithdrawOpen(false);
+            router.replace("/withdraw/success");
+            clearAccessToken();
+            setLoggedOutFlag(true);
+            setAuthenticated(false);
+          } catch (err) {
+            const message =
+              err instanceof Error ? err.message : "회원 탈퇴에 실패했습니다.";
+            alert(message);
+          } finally {
+            setWithdrawing(false);
+          }
         }}
       />
 

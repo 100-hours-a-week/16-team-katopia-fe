@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   Carousel,
   CarouselContent,
@@ -44,29 +43,25 @@ export default function PostImageCarousel({ images }: PostImageCarouselProps) {
         {images.map((src, i) => (
           <CarouselItem key={i}>
             <div className="relative aspect-[3/4] bg-muted">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={src}
                 alt={`게시물 이미지 ${i + 1}`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 768px"
-                priority={i === 0}
+                className="absolute inset-0 h-full w-full object-cover"
+                loading={i === 0 ? "eager" : "lazy"} // priority 대체
               />
             </div>
           </CarouselItem>
         ))}
       </CarouselContent>
 
-      {/* controls */}
       {total > 1 && (
         <>
           <CarouselPrevious />
           <CarouselNext />
+          <Indicators />
         </>
       )}
-
-      {/* dots */}
-      {total > 1 && <Indicators />}
     </Carousel>
   );
 }

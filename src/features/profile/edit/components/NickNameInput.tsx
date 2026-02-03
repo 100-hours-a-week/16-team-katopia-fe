@@ -65,17 +65,17 @@ const NicknameInput = memo(
           </Button>
         </div>
 
-      {duplicateError ? (
-        <p className="mt-2 text-[11px] text-red-500">{duplicateError}</p>
-      ) : duplicateSuccess ? (
-        <p className="mt-2 text-[11px] text-green-600">{duplicateSuccess}</p>
-      ) : overLimit ? (
-        <p className="mt-2 text-[11px] text-red-500">
-          닉네임은 20자 이하여야 합니다.
-        </p>
-      ) : (
-        error && <p className="mt-2 text-[11px] text-red-500">{error}</p>
-      )}
+        {duplicateError ? (
+          <p className="mt-2 text-[11px] text-red-500">{duplicateError}</p>
+        ) : duplicateSuccess ? (
+          <p className="mt-2 text-[11px] text-green-600">{duplicateSuccess}</p>
+        ) : overLimit ? (
+          <p className="mt-2 text-[11px] text-red-500">
+            닉네임은 20자 이하여야 합니다.
+          </p>
+        ) : (
+          error && <p className="mt-2 text-[11px] text-red-500">{error}</p>
+        )}
       </div>
     );
   },

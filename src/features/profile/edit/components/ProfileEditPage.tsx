@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,16 +17,12 @@ import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep
 import NicknameInput from "./NickNameInput";
 import ProfileEditCancelModal from "./ProfileEditCancelModal";
 import BodyInfoSection from "@/src/features/signup/components/SignupStep2/BodyInfoSection";
-import {
-  getCachedProfileImage,
-  setCachedProfileImage,
-} from "@/src/features/profile/utils/profileImageCache";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import {
   requestUploadPresign,
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
-import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
+import heic2any from "heic2any";
 
 /* =========================
    Constants
@@ -61,6 +58,8 @@ const ENUM_TO_STYLE: Record<string, string> = Object.fromEntries(
   Object.entries(STYLE_TO_ENUM).map(([k, v]) => [v, k]),
 );
 
+const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
+
 /* =========================
    Schema
 ========================= */
@@ -85,13 +84,6 @@ const schema = z.object({
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: "닉네임은 20자 이하여야 합니다.",
-        });
-      }
-
-      if (/^[ㄱ-ㅎㅏ-ㅣ]+$/.test(value)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "자음/모음만으로는 닉네임을 만들 수 없습니다.",
         });
       }
 
@@ -120,7 +112,7 @@ export default function ProfileEditPage() {
   /* ---------- State ---------- */
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const [heightError, setHeightError] = useState<string | null>(null);
   const [weightError, setWeightError] = useState<string | null>(null);
@@ -139,7 +131,9 @@ export default function ProfileEditPage() {
   const redirectTimerRef = useRef<NodeJS.Timeout | null>(null);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previewUrlRef = useRef<string | null>(null);
   const weightInputRef = useRef<HTMLInputElement | null>(null);
+  const removedFlagRef = useRef<boolean>(false);
 
   /* ---------- Form ---------- */
   const {
@@ -225,14 +219,17 @@ export default function ProfileEditPage() {
         );
         const profileImageKey =
           profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
-        setCurrentProfileImageObjectKey(profileImageKey);
-        if (profileImageKey) {
-          setCachedProfileImage(profileImageKey);
+        let locallyRemoved = false;
+        try {
+          locallyRemoved =
+            window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1";
+        } catch {
+          locallyRemoved = false;
         }
-        const cachedImage = getCachedProfileImage();
-        setPreview(
-          resolveMediaUrl(profileImageKey ?? cachedImage ?? undefined),
-        );
+        removedFlagRef.current = locallyRemoved;
+        const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
+        setCurrentProfileImageObjectKey(resolvedProfileImageKey);
+        setPreview(resolveMediaUrl(resolvedProfileImageKey ?? undefined));
         setRemoveImage(false);
       } catch {
         // ignore (handled by auth guard)
@@ -287,29 +284,21 @@ export default function ProfileEditPage() {
     try {
       let uploadedProfileObjectKey: string | undefined;
 
-      if (!removeImage && imageFile) {
-        const extension = getFileExtension(imageFile);
-        if (!extension) {
-          throw new Error("지원하지 않는 이미지 확장자입니다.");
-        }
-
-        const [presigned] = await requestUploadPresign("PROFILE", [extension]);
+      if (!removeImage && imageBlob) {
+        const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
         await uploadToPresignedUrl(
           presigned.uploadUrl,
-          imageFile,
-          imageFile.type,
+          imageBlob,
+          "image/webp",
         );
         uploadedProfileObjectKey = presigned.imageObjectKey.replace(/^\/+/, "");
-        setCachedProfileImage(uploadedProfileObjectKey);
         setCurrentProfileImageObjectKey(uploadedProfileObjectKey);
         setPreview(resolveMediaUrl(uploadedProfileObjectKey));
       }
 
       const profileImageObjectKey = removeImage
         ? null
-        : uploadedProfileObjectKey
-          ? uploadedProfileObjectKey
-          : currentProfileImageObjectKey ?? undefined;
+        : (uploadedProfileObjectKey ?? currentProfileImageObjectKey ?? null);
 
       await updateProfile({
         nickname: trimmedNickname || undefined,
@@ -321,6 +310,18 @@ export default function ProfileEditPage() {
         style: data.styles.map((s) => STYLE_TO_ENUM[s]),
       });
 
+      try {
+        if (removeImage) {
+          window.localStorage.setItem(PROFILE_IMAGE_REMOVED_KEY, "1");
+          removedFlagRef.current = true;
+        } else {
+          window.localStorage.removeItem(PROFILE_IMAGE_REMOVED_KEY);
+          removedFlagRef.current = false;
+        }
+      } catch {
+        // ignore storage errors
+      }
+
       // 🔥 캐시 무효화 → 마이프로필 즉시 반영
       queryClient.invalidateQueries({ queryKey: ["me"] });
 
@@ -330,9 +331,7 @@ export default function ProfileEditPage() {
         1500,
       );
     } catch (e) {
-      showToast(
-        e instanceof Error ? e.message : "프로필 수정에 실패했습니다.",
-      );
+      showToast(e instanceof Error ? e.message : "프로필 수정에 실패했습니다.");
     }
   };
 
@@ -370,82 +369,117 @@ export default function ProfileEditPage() {
   };
 
   const handleImageChange = (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      setImageError("사진 크기가 너무 큽니다. (최대 5MB)");
+    if (file.size > 30 * 1024 * 1024) {
+      setImageError("사진 크기가 너무 큽니다. (최대 30MB)");
       return;
     }
 
-    const resizeToSquareJpeg = (target: File) =>
-      new Promise<{ dataUrl: string; file: File }>((resolve, reject) => {
-        const img = new window.Image();
-        const objectUrl = URL.createObjectURL(target);
+    const resizeAndCompress = async (
+      target: File,
+      maxWidth = 1080,
+      quality = 0.8,
+    ): Promise<Blob> => {
+      let sourceFile = target;
 
-        img.onload = () => {
-          const side = 256;
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          if (!ctx) {
-            URL.revokeObjectURL(objectUrl);
-            reject(new Error("이미지 처리 실패"));
-            return;
-          }
+      const lowerName = target.name.toLowerCase();
+      if (
+        target.type === "image/heic" ||
+        target.type === "image/heif" ||
+        lowerName.endsWith(".heic") ||
+        lowerName.endsWith(".heif")
+      ) {
+        const buffer = await target.arrayBuffer();
+        const heicBlob = new Blob([buffer], {
+          type: target.type || "image/heic",
+        });
+        const converted = await heic2any({
+          blob: heicBlob,
+          toType: "image/jpeg",
+          quality: 0.9,
+        });
 
-          const min = Math.min(img.width, img.height);
-          const sx = (img.width - min) / 2;
-          const sy = (img.height - min) / 2;
+        const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
 
-          canvas.width = side;
-          canvas.height = side;
-          ctx.drawImage(img, sx, sy, min, min, 0, 0, side, side);
-          URL.revokeObjectURL(objectUrl);
+        const safeName = target.name.replace(/\.heic$|\.heif$/i, ".jpg");
+        sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
+      }
 
-          canvas.toBlob(
-            (blob) => {
-              if (!blob) {
-                reject(new Error("이미지 변환 실패"));
-                return;
-              }
-              const reader = new FileReader();
-              reader.onloadend = () => {
-                const jpegFile = new File([blob], "profile.jpg", {
-                  type: "image/jpeg",
-                });
-                resolve({ dataUrl: reader.result as string, file: jpegFile });
-              };
-              reader.onerror = () => reject(new Error("이미지 읽기 실패"));
-              reader.readAsDataURL(blob);
-            },
-            "image/jpeg",
-            0.85,
-          );
-        };
-
-        img.onerror = () => {
-          URL.revokeObjectURL(objectUrl);
-          reject(new Error("이미지 로드 실패"));
-        };
-
-        img.src = objectUrl;
+      const bitmap = await createImageBitmap(sourceFile, {
+        imageOrientation: "from-image",
       });
+
+      const scale = Math.min(1, maxWidth / bitmap.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width * scale;
+      canvas.height = bitmap.height * scale;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("이미지 처리 실패");
+      }
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      return new Promise((resolve, reject) =>
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("이미지 변환 실패"));
+              return;
+            }
+            resolve(blob);
+          },
+          "image/webp",
+          quality,
+        ),
+      );
+    };
 
     setImageError(null);
     setRemoveImage(false);
-    setImageFile(null);
-    resizeToSquareJpeg(file)
-      .then(({ dataUrl, file: resizedFile }) => {
-        setImageFile(resizedFile);
-        setPreview(dataUrl);
-        setCachedProfileImage(dataUrl);
+    setImageBlob(null);
+    if (removedFlagRef.current) {
+      try {
+        window.localStorage.removeItem(PROFILE_IMAGE_REMOVED_KEY);
+      } catch {
+        // ignore storage errors
+      }
+      removedFlagRef.current = false;
+    }
+
+    const localUrl = URL.createObjectURL(file);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = localUrl;
+    setPreview(localUrl);
+
+    resizeAndCompress(file)
+      .then((blob) => {
+        setImageBlob(blob);
+        const processedUrl = URL.createObjectURL(blob);
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+        }
+        previewUrlRef.current = processedUrl;
+        setPreview(processedUrl);
       })
       .catch((err) => {
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
+        }
+        setPreview(null);
         setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
       });
   };
 
   const handleRemoveImage = () => {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
     setPreview(null);
-    setImageFile(null);
-    setCachedProfileImage(null);
+    setImageBlob(null);
     setRemoveImage(true);
     setCurrentProfileImageObjectKey(null);
   };
@@ -473,7 +507,7 @@ export default function ProfileEditPage() {
   const normalizedStyles = [...styles].sort().join("|");
   const normalizedInitialStyles = [...initialStyles].sort().join("|");
   const hasChanges =
-    Boolean(imageFile) ||
+    Boolean(imageBlob) ||
     removeImage ||
     (trimmedNickname ?? "") !== (initialNickname ?? "") ||
     selectedGender !== initialGender ||
@@ -532,11 +566,11 @@ export default function ProfileEditPage() {
             }}
           >
             {preview ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={preview}
                 alt=""
-                fill
-                className="rounded-full object-cover"
+                className="h-full w-full rounded-full object-cover"
               />
             ) : (
               <span className="text-4xl">+</span>
@@ -550,6 +584,9 @@ export default function ProfileEditPage() {
                   e.preventDefault();
                   e.stopPropagation();
                   handleRemoveImage();
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
                 }}
               >
                 ×
@@ -560,9 +597,12 @@ export default function ProfileEditPage() {
               type="file"
               hidden
               accept="image/*"
-              onChange={(e) =>
-                e.target.files && handleImageChange(e.target.files[0])
-              }
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  handleImageChange(e.target.files[0]);
+                }
+                e.target.value = "";
+              }}
             />
           </div>
           {imageError && (
@@ -678,9 +718,9 @@ export default function ProfileEditPage() {
 
         {/* Toast */}
         {toastMessage && (
-          <div className="fixed bottom-25 left-1/2 z-[100] -translate-x-1/2 px-4">
+          <div className="fixed bottom-25 left-1/2 z-100 -translate-x-1/2 px-4">
             <div
-              className="min-w-[260px] rounded-full border border-black bg-gray-100 px-8 py-3 text-center text-base font-semibold text-black shadow-lg"
+              className="min-w-65 rounded-full bg-white px-8 py-3 text-center text-base font-semibold text-[#121212] shadow-lg"
               style={{ animation: "toastFadeIn 250ms ease-out forwards" }}
             >
               {toastMessage}

@@ -19,6 +19,11 @@ export async function createPost(data: {
   });
 
   const result = await res.json();
+  console.log("createPost payload", {
+    content: data.content,
+    imageObjectKeys: data.imageObjectKeys,
+    tags: extractTags(data.content),
+  });
   console.log("createPost response", { status: res.status, result });
 
   if (!res.ok) {

@@ -98,7 +98,11 @@ export default function PostContent({
           alert("게시글을 찾을 수 없습니다.");
           break;
         default:
-          alert(nextLiked ? "좋아요에 실패했습니다." : "좋아요 해제에 실패했습니다.");
+          alert(
+            nextLiked
+              ? "좋아요에 실패했습니다."
+              : "좋아요 해제에 실패했습니다.",
+          );
       }
     } finally {
       setLiking(false);

@@ -20,14 +20,16 @@ import {
   TERMS_OF_SERVICE_TEXT,
 } from "../constants/policies";
 import { API_BASE_URL } from "@/src/config/api";
-import { authFetch, issueAccessToken } from "@/src/lib/auth";
+import { issueAccessToken } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import { updateProfile } from "@/src/features/profile/api/updateProfile";
 import {
   requestUploadPresign,
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
-import { getFileExtension } from "@/src/features/upload/utils/getFileExtension";
+import {
+  clearSignupProfileImageBlob,
+  getSignupProfileImageBlob,
+} from "../SignupStep1/hooks/useProfileImage";
 
 /* =========================
    Schema & Types
@@ -54,8 +56,6 @@ const STYLE_TO_ENUM: Record<string, string> = {
   스포티: "SPORTY",
   Y2K: "Y2K",
 };
-
-const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
 
 /* =========================
    Component
@@ -210,6 +210,11 @@ export default function SignupStep2() {
   const onSubmit = useCallback(
     async (data: SignupStep2Values) => {
       try {
+        console.log("[signup] submit start", {
+          height: data.height,
+          weight: data.weight,
+          styles,
+        });
         if (!isHeightValid) {
           setHeightError("키는 100~300 사이로 입력해주세요.");
           return;
@@ -231,6 +236,7 @@ export default function SignupStep2() {
         }
 
         if (!nickname) {
+          console.log("[signup] missing nickname");
           alert("닉네임 정보가 없습니다. 다시 시도해주세요.");
           router.replace("/signup/step1");
           return;
@@ -238,25 +244,78 @@ export default function SignupStep2() {
 
         const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
+        let signupProfileImageObjectKey: string | null = null;
+        const signupProfileImageBlob = getSignupProfileImageBlob();
+        console.log("[signup] profile image blob", {
+          hasProfileImage: Boolean(signupProfileImageBlob),
+        });
+
+        if (signupProfileImageBlob) {
+          try {
+            const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
+            await uploadToPresignedUrl(
+              presigned.uploadUrl,
+              signupProfileImageBlob,
+              "image/webp",
+            );
+            signupProfileImageObjectKey = presigned.imageObjectKey.replace(
+              /^\/+/,
+              "",
+            );
+          } catch (err) {
+            const message =
+              err instanceof Error
+                ? err.message
+                : "프로필 이미지 업로드에 실패했습니다.";
+            alert(message);
+            return;
+          }
+        }
+
+        const payload: {
+          nickname: string;
+          gender: "M" | "F";
+          profileImageObjectKey: string | null;
+          height: number | null;
+          weight: number | null;
+          enableRealtimeNotification: boolean;
+          style: string[] | null;
+        } = {
+          nickname,
+          gender,
+          profileImageObjectKey: signupProfileImageObjectKey,
+          height: data.height ? Number(data.height) : null,
+          weight: data.weight ? Number(data.weight) : null,
+          enableRealtimeNotification: true,
+          style:
+            styles.length > 0
+              ? styles.map((style) => STYLE_TO_ENUM[style] ?? style)
+              : null,
+        };
+
+        console.log("[signup] POST /api/members request", payload);
         const res = await fetch(`${API_BASE_URL}/api/members`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify({
-            nickname,
-            gender,
-          }),
+          body: JSON.stringify(payload),
+        });
+        console.log("[signup] POST /api/members response", {
+          status: res.status,
         });
 
         if (!res.ok) {
           const error = await res.json().catch(() => null);
+          console.log("[signup] POST /api/members error body", error);
           console.error(error?.code ?? res.status);
           throw new Error(`회원가입 실패 (${res.status})`);
         }
 
+        console.log("[signup] issuing access token after signup");
         await issueAccessToken();
+        console.log("[signup] issued access token");
         setAuthenticated(true);
 
         try {
@@ -268,89 +327,27 @@ export default function SignupStep2() {
           // ignore storage errors
         }
 
-        let signupProfileImageObjectKey: string | null = null;
-        let signupProfileImageData: string | null = null;
-        try {
-          signupProfileImageData = window.localStorage.getItem(
-            SIGNUP_PROFILE_IMAGE_DATA_KEY,
-          );
-        } catch {
-          signupProfileImageData = null;
-        }
-
-        const hasOptionalInputs =
-          Boolean(data.height) ||
-          Boolean(data.weight) ||
-          styles.length > 0 ||
-          Boolean(signupProfileImageData);
-
-        if (signupProfileImageData) {
-          try {
-            const res = await fetch(signupProfileImageData);
-            const blob = await res.blob();
-            const tempFile = new File([blob], "profile", { type: blob.type });
-            const extension = getFileExtension(tempFile);
-            if (!extension) {
-              throw new Error("지원하지 않는 이미지 확장자입니다.");
-            }
-            const file = new File([blob], `profile.${extension}`, {
-              type: blob.type,
-            });
-            const [presigned] = await requestUploadPresign("PROFILE", [
-              extension,
-            ]);
-            await uploadToPresignedUrl(presigned.uploadUrl, file, file.type);
-            signupProfileImageObjectKey =
-              presigned.imageObjectKey.replace(/^\/+/, "");
-          } catch (err) {
-            alert(
-              err instanceof Error
-                ? err.message
-                : "프로필 이미지 업로드에 실패했습니다.",
-            );
-            return;
-          }
-        }
-
-        if (hasOptionalInputs) {
-          const payload = {
-            nickname,
-            gender,
-            profileImageObjectKey: signupProfileImageObjectKey || undefined,
-            height: data.height ? Number(data.height) : null,
-            weight: data.weight ? Number(data.weight) : null,
-            enableRealtimeNotification: true,
-            style: styles.map((style) => STYLE_TO_ENUM[style] ?? style),
-          };
-          console.log("[signup] PATCH /api/members request", payload);
-          try {
-            await updateProfile({ ...payload });
-          } catch (err) {
-            const message =
-              err instanceof Error ? err.message : "프로필 업데이트 실패";
-            console.error("[signup] PATCH /api/members failed", err);
-            alert(message);
-            return;
-          }
-        }
-
         try {
           window.localStorage.removeItem("signup-nickname");
-          window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
         } catch {
           // ignore storage errors
         }
+        clearSignupProfileImageBlob();
 
         try {
-          const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {
+          const meRes = await fetch(`${API_BASE_URL}/api/members/me`, {
             method: "GET",
             cache: "no-store",
+            credentials: "include",
           });
           const meBody = await meRes
             .clone()
             .json()
             .catch(() => null);
-          console.log("[signup] GET /api/members/me response", meBody);
+          console.log("[signup] GET /api/members/me response", {
+            status: meRes.status,
+            body: meBody,
+          });
         } catch (err) {
           console.log("[signup] GET /api/members/me failed", err);
         }
@@ -358,7 +355,7 @@ export default function SignupStep2() {
         router.replace("/home");
         return;
       } catch (err) {
-        console.error(err);
+        console.error("[signup] submit failed", err);
         alert("회원가입 중 오류가 발생했습니다.");
       }
     },

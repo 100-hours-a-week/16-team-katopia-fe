@@ -36,8 +36,7 @@ export async function requestUploadPresign(
   const parsed = raw ? (JSON.parse(raw) as PresignResponse) : null;
 
   if (!res.ok) {
-    const message =
-      parsed?.message ?? "업로드 URL 발급에 실패했습니다.";
+    const message = parsed?.message ?? "업로드 URL 발급에 실패했습니다.";
     throw new Error(`(${res.status}) ${message}`);
   }
 

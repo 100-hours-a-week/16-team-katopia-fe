@@ -22,7 +22,6 @@ import {
   normalizeImageUrls,
   pickImageUrl,
 } from "@/src/features/upload/utils/normalizeImageUrls";
-import { getCachedProfileImage } from "@/src/features/profile/utils/profileImageCache";
 
 /* ================= 타입 ================= */
 
@@ -63,6 +62,8 @@ type CommentItem = CommentListItem;
 
 /* ================= 유틸 ================= */
 
+const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
+
 function normalizePostImageUrls(
   value: PostImageItem[] | string[] | undefined,
 ): string[] {
@@ -101,6 +102,7 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [profileImageRemoved, setProfileImageRemoved] = useState(false);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
@@ -108,10 +110,7 @@ export default function PostDetailPage() {
   } | null>(null);
 
   const sortedImageUrls = useMemo(
-    () =>
-      normalizePostImageUrls(
-        post?.imageObjectKeys ?? post?.imageUrls,
-      ),
+    () => normalizePostImageUrls(post?.imageObjectKeys ?? post?.imageUrls),
     [post],
   );
 
@@ -127,6 +126,20 @@ export default function PostDetailPage() {
     }
     return false;
   }, [post, me]);
+
+  const authorForHeader = useMemo<PostAuthor | null>(() => {
+    if (!post?.author) return null;
+
+    if (!isMine || !profileImageRemoved) {
+      return post.author;
+    }
+
+    return {
+      ...post.author,
+      profileImageObjectKey: null,
+      profileImageUrl: null,
+    };
+  }, [post, isMine, profileImageRemoved]);
 
   /* ================= 게시글 ================= */
 
@@ -144,16 +157,18 @@ export default function PostDetailPage() {
       .finally(() => setLoading(false));
   }, [postId, router]);
 
-  /* ================= 좋아요 로컬 캐시 ================= */
+  const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
 
   useEffect(() => {
-    if (!postId) return;
-    const stored = localStorage.getItem(`post-liked-${postId}`);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stored != null) setLikedOverride(stored === "true");
-  }, [postId]);
-
-  const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setProfileImageRemoved(
+        window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1",
+      );
+    } catch {
+      setProfileImageRemoved(false);
+    }
+  }, []);
 
   /* ================= 댓글 ================= */
 
@@ -195,13 +210,27 @@ export default function PostDetailPage() {
           id: memberId,
           nickname: profile.nickname,
           profileImageUrl:
-            profile.profileImageObjectKey ??
-            profile.profileImageUrl ??
-            getCachedProfileImage(),
+            profile.profileImageObjectKey ?? profile.profileImageUrl ?? null,
         });
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!me?.id) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setComments((prev) =>
+      prev.map((comment) => {
+        if (String(comment.authorId) !== String(me.id)) return comment;
+        return {
+          ...comment,
+          profileImageUrl: profileImageRemoved
+            ? null
+            : (me.profileImageUrl ?? null),
+        };
+      }),
+    );
+  }, [me?.id, me?.profileImageUrl, profileImageRemoved]);
 
   /* ================= 댓글 핸들러 ================= */
 
@@ -218,7 +247,9 @@ export default function PostDetailPage() {
           createdAt: newComment.createdAt,
           nickname: me?.nickname ?? "나",
           authorId: me?.id,
-          profileImageUrl: me?.profileImageUrl ?? null,
+          profileImageUrl: profileImageRemoved
+            ? null
+            : (me?.profileImageUrl ?? null),
           isMine: true,
         },
         ...prev,
@@ -278,13 +309,15 @@ export default function PostDetailPage() {
 
   return (
     <div className="min-h-screen px-4 py-4">
-      <PostHeader
-        author={post.author}
-        createdAt={post.createdAt}
-        isMine={isMine}
-        onEdit={() => router.push(`/post/edit/${postId}`)}
-        onDelete={() => setDeleteOpen(true)}
-      />
+      {authorForHeader && (
+        <PostHeader
+          author={authorForHeader}
+          createdAt={post.createdAt}
+          isMine={isMine}
+          onEdit={() => router.push(`/post/edit/${postId}`)}
+          onDelete={() => setDeleteOpen(true)}
+        />
+      )}
 
       <PostImageCarousel images={sortedImageUrls} />
 
@@ -296,7 +329,6 @@ export default function PostDetailPage() {
         isLiked={effectiveLiked}
         onLikedChange={(next) => {
           setLikedOverride(next);
-          localStorage.setItem(`post-liked-${postId}`, String(next));
         }}
       />
 
@@ -317,9 +349,8 @@ export default function PostDetailPage() {
         onConfirm={async () => {
           if (!postId) return;
           await deletePost(postId);
-          router.replace(
-            searchParams.get("from") === "profile" ? "/profile" : "/home",
-          );
+          const from = searchParams.get("from");
+          router.replace(from === "profile" ? "/profile" : "/search");
         }}
       />
     </div>

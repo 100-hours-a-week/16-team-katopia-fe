@@ -3,8 +3,12 @@ import { useCallback, useRef, useState } from "react";
 import type { UseFormSetValue } from "react-hook-form";
 
 type Field = "height" | "weight";
+type BodyInfoFields = {
+  height?: string;
+  weight?: string;
+};
 
-export function useBodyInfo(setValue: UseFormSetValue<any>) {
+export function useBodyInfo(setValue: UseFormSetValue<BodyInfoFields>) {
   const [height, setHeight] = useState("");
   const [weight, setWeight] = useState("");
   const weightInputRef = useRef<HTMLInputElement | null>(null);
@@ -14,14 +18,22 @@ export function useBodyInfo(setValue: UseFormSetValue<any>) {
       const digits = raw.replace(/\D/g, "").slice(0, 3);
       if (!digits) {
         setValue(field, "");
-        field === "height" ? setHeight("") : setWeight("");
+        if (field === "height") {
+          setHeight("");
+        } else {
+          setWeight("");
+        }
         return;
       }
 
       const value = String(parseInt(digits, 10));
       setValue(field, value, { shouldDirty: true, shouldValidate: true });
 
-      field === "height" ? setHeight(value) : setWeight(value);
+      if (field === "height") {
+        setHeight(value);
+      } else {
+        setWeight(value);
+      }
       if (value.length === 3 && focusNext) focusNext();
     },
     [setValue],

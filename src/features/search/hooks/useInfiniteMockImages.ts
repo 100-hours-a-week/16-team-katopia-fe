@@ -7,10 +7,7 @@ export function useInfiniteMockImages() {
   const [page, setPage] = useState(1);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  const items = useMemo(
-    () => MOCK_IMAGES.slice(0, page * PAGE_SIZE),
-    [page],
-  );
+  const items = useMemo(() => MOCK_IMAGES.slice(0, page * PAGE_SIZE), [page]);
   const hasMore = items.length < MOCK_IMAGES.length;
 
   const observe = useCallback(
