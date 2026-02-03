@@ -140,7 +140,7 @@ export function useInfinitePostGrid(params?: Params) {
       cursorRef.current = nextCursorValue;
       setNextCursor(nextCursorValue);
       setHasMore(nextCursorValue != null);
-    } catch (e) {
+    } catch {
       // 요청 실패 시 더 불러오기 중단(무한 재시도 방지)
       setHasMore(false);
     } finally {

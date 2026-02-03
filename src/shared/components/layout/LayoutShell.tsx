@@ -57,7 +57,7 @@ export default function LayoutShell({ children }: Props) {
       }
     }
     alert(message);
-  }, [authInvalidated]);
+  }, [authInvalidated, isActiveLogin, isPendingSignup, isWithdrawnState]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;

@@ -26,6 +26,7 @@ type Profile = {
 export default function MyProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const searchParamsKey = searchParams.toString();
   const { ready, isAuthenticated, setAuthenticated } = useAuth();
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -94,7 +95,7 @@ export default function MyProfilePage() {
     };
 
     fetchMe();
-  }, [ready, isAuthenticated, searchParams.toString()]);
+  }, [ready, isAuthenticated, searchParamsKey]);
 
   useEffect(() => {
     if (!ready) return;

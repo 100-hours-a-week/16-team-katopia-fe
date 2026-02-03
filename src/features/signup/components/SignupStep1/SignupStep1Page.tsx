@@ -78,6 +78,7 @@ export default function SignupStep1() {
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const nickname = watch("nickname");
 
   /* -------------------------
@@ -123,7 +124,7 @@ export default function SignupStep1() {
         alert("회원가입 중 오류가 발생했습니다.");
       }
     },
-    [router, isNicknameVerified, handleDuplicateCheck, preview],
+    [router, isNicknameVerified, handleDuplicateCheck],
   );
 
   /* -------------------------

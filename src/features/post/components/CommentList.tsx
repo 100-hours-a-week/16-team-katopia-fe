@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CommentItem from "./CommentItem";
 
 export type Comment = {
@@ -29,16 +29,14 @@ export default function CommentList({
   currentUserNickname,
 }: Props) {
   const [page, setPage] = useState(1);
-  const [items, setItems] = useState<Comment[]>([]);
-  const [hasMore, setHasMore] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const next = comments.slice(0, page * PAGE_SIZE);
-    setItems([...next]);
-    setHasMore(next.length < comments.length);
-  }, [comments, page]);
+  const items = useMemo(
+    () => comments.slice(0, page * PAGE_SIZE),
+    [comments, page],
+  );
+  const hasMore = items.length < comments.length;
 
   useEffect(() => {
     if (!hasMore) return;

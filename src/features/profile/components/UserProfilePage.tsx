@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
@@ -39,7 +39,6 @@ type UserProfile = {
 
 export default function UserProfilePage({ userId }: Props) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const memberId = Number(userId);
   const { ready, isAuthenticated } = useAuth();
 
