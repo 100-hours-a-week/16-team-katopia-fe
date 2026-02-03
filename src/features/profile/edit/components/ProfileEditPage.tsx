@@ -85,13 +85,6 @@ const schema = z.object({
         });
       }
 
-      if (/^[ㄱ-ㅎㅏ-ㅣ]+$/.test(value)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "자음/모음만으로는 닉네임을 만들 수 없습니다.",
-        });
-      }
-
       if (!/^[a-zA-Z0-9._\p{Script=Hangul}]+$/u.test(value)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -557,15 +550,15 @@ export default function ProfileEditPage() {
                 type="button"
                 aria-label="프로필 이미지 삭제"
                 className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-lg font-semibold text-black shadow transition-colors hover:bg-gray-100"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleRemoveImage();
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = "";
-                }
-              }}
-            >
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleRemoveImage();
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}
+              >
                 ×
               </button>
             )}
