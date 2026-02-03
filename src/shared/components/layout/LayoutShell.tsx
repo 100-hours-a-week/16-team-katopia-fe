@@ -24,11 +24,13 @@ export default function LayoutShell({ children }: Props) {
   const hasAlertedRef = useRef(false);
   const isPendingSignup = searchParams.get("status") === "PENDING";
   const isActiveLogin = searchParams.get("status") === "ACTIVE";
+  const isWithdrawnState = searchParams.get("STATE") === "WITHDRAWN";
   const isProfilePath = pathname?.startsWith("/profile") ?? false;
 
   useEffect(() => {
     if (!authInvalidated) return;
     if (isPendingSignup || isActiveLogin) return;
+    if (isWithdrawnState) return;
     if (!hasLoggedInFlag()) return;
     try {
       if (window.sessionStorage.getItem("katopia.loginRedirect") === "1") {
@@ -61,11 +63,26 @@ export default function LayoutShell({ children }: Props) {
     document.body.style.backgroundColor = "#ffffff";
   }, [pathname]);
 
+  useEffect(() => {
+    if (!isWithdrawnState) return;
+    if (typeof window === "undefined") return;
+    try {
+      if (window.sessionStorage.getItem("katopia.withdrawnAlerted") === "1") {
+        return;
+      }
+      window.sessionStorage.setItem("katopia.withdrawnAlerted", "1");
+    } catch {
+      // ignore storage errors
+    }
+    alert("탈퇴한 사용자입니다. 14일 이후에 가입이 가능합니다.");
+  }, [isWithdrawnState]);
+
   const shouldLock =
     ready &&
     !isAuthenticated &&
     !isPendingSignup &&
     !isActiveLogin &&
+    !isWithdrawnState &&
     !LOGIN_GUARD_EXCLUDED_PATHS.includes(pathname ?? "") &&
     (authInvalidated ||
       LOGIN_GUARD_PATHS.includes(pathname ?? "") ||
