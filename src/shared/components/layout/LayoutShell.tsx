@@ -25,6 +25,7 @@ export default function LayoutShell({ children }: Props) {
   const isPendingSignup = searchParams.get("status") === "PENDING";
   const isActiveLogin = searchParams.get("status") === "ACTIVE";
   const isWithdrawnState = searchParams.get("STATE") === "WITHDRAWN";
+  const isWithdrawnPopup = searchParams.get("withdrawPopup") === "1";
   const isProfilePath = pathname?.startsWith("/profile") ?? false;
 
   useEffect(() => {
@@ -66,6 +67,21 @@ export default function LayoutShell({ children }: Props) {
   useEffect(() => {
     if (!isWithdrawnState) return;
     if (typeof window === "undefined") return;
+    if (!isWithdrawnPopup) {
+      try {
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set("withdrawPopup", "1");
+        const popup = window.open(nextUrl.toString(), "_blank", "noopener");
+        if (popup) {
+          popup.focus();
+          window.open("", "_self");
+          window.close();
+        }
+      } catch {
+        // ignore URL/open errors
+      }
+      return;
+    }
     try {
       if (window.sessionStorage.getItem("katopia.withdrawnAlerted") === "1") {
         return;
@@ -77,10 +93,7 @@ export default function LayoutShell({ children }: Props) {
     alert("탈퇴한 사용자입니다. 14일 이후에 가입이 가능합니다.");
     window.open("", "_self");
     window.close();
-    if (!window.closed) {
-      window.location.replace("about:blank");
-    }
-  }, [isWithdrawnState]);
+  }, [isWithdrawnState, isWithdrawnPopup]);
 
   const shouldLock =
     ready &&
