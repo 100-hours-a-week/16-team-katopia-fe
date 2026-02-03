@@ -24,16 +24,18 @@ export async function searchPosts(params: {
   const searchParams = new URLSearchParams();
 
   const rawQuery = params.query.trim();
-  const normalizedQuery = rawQuery.startsWith("#")
-    ? rawQuery.slice(1)
+  const isHashtagQuery = rawQuery.startsWith("#");
+  const normalizedQuery = isHashtagQuery
+    ? (rawQuery.slice(1).trim().match(/^[^#\s]+/)?.[0] ?? "")
     : rawQuery;
-  if (normalizedQuery.length < 2) {
+  const minLength = isHashtagQuery ? 1 : 2;
+  if (normalizedQuery.length < minLength) {
     return { posts: [], nextCursor: null };
   }
-  searchParams.set(
-    "query",
-    rawQuery.startsWith("#") ? rawQuery : normalizedQuery,
-  );
+  if (isHashtagQuery) {
+    searchParams.set("tags", normalizedQuery);
+  }
+  searchParams.set("query", isHashtagQuery ? rawQuery : normalizedQuery);
   if (params.size) searchParams.set("size", String(params.size));
   if (params.after) searchParams.set("after", params.after);
   if (params.height) searchParams.set("height", String(params.height));
