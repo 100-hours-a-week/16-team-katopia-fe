@@ -62,6 +62,8 @@ type CommentItem = CommentListItem;
 
 /* ================= 유틸 ================= */
 
+const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
+
 function normalizePostImageUrls(
   value: PostImageItem[] | string[] | undefined,
 ): string[] {
@@ -100,6 +102,7 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [profileImageRemoved, setProfileImageRemoved] = useState(false);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
@@ -124,6 +127,20 @@ export default function PostDetailPage() {
     return false;
   }, [post, me]);
 
+  const authorForHeader = useMemo<PostAuthor | null>(() => {
+    if (!post?.author) return null;
+
+    if (!isMine || !profileImageRemoved) {
+      return post.author;
+    }
+
+    return {
+      ...post.author,
+      profileImageObjectKey: null,
+      profileImageUrl: null,
+    };
+  }, [post, isMine, profileImageRemoved]);
+
   /* ================= 게시글 ================= */
 
   useEffect(() => {
@@ -141,6 +158,17 @@ export default function PostDetailPage() {
   }, [postId, router]);
 
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
+
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setProfileImageRemoved(
+        window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1",
+      );
+    } catch {
+      setProfileImageRemoved(false);
+    }
+  }, []);
 
   /* ================= 댓글 ================= */
 
@@ -188,6 +216,22 @@ export default function PostDetailPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!me?.id) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setComments((prev) =>
+      prev.map((comment) => {
+        if (String(comment.authorId) !== String(me.id)) return comment;
+        return {
+          ...comment,
+          profileImageUrl: profileImageRemoved
+            ? null
+            : (me.profileImageUrl ?? null),
+        };
+      }),
+    );
+  }, [me?.id, me?.profileImageUrl, profileImageRemoved]);
+
   /* ================= 댓글 핸들러 ================= */
 
   const handleCreateComment = async (content: string) => {
@@ -203,7 +247,9 @@ export default function PostDetailPage() {
           createdAt: newComment.createdAt,
           nickname: me?.nickname ?? "나",
           authorId: me?.id,
-          profileImageUrl: me?.profileImageUrl ?? null,
+          profileImageUrl: profileImageRemoved
+            ? null
+            : (me?.profileImageUrl ?? null),
           isMine: true,
         },
         ...prev,
@@ -263,13 +309,15 @@ export default function PostDetailPage() {
 
   return (
     <div className="min-h-screen px-4 py-4">
-      <PostHeader
-        author={post.author}
-        createdAt={post.createdAt}
-        isMine={isMine}
-        onEdit={() => router.push(`/post/edit/${postId}`)}
-        onDelete={() => setDeleteOpen(true)}
-      />
+      {authorForHeader && (
+        <PostHeader
+          author={authorForHeader}
+          createdAt={post.createdAt}
+          isMine={isMine}
+          onEdit={() => router.push(`/post/edit/${postId}`)}
+          onDelete={() => setDeleteOpen(true)}
+        />
+      )}
 
       <PostImageCarousel images={sortedImageUrls} />
 
