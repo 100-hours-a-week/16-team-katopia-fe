@@ -1,11 +1,19 @@
 import { useCallback, useRef, useState, type ChangeEvent } from "react";
 import heic2any from "heic2any";
-import {
-  requestUploadPresign,
-  uploadToPresignedUrl,
-} from "@/src/features/upload/api/presignUpload";
 
-const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
+let signupProfileImageBlob: Blob | null = null;
+
+export function getSignupProfileImageBlob() {
+  return signupProfileImageBlob;
+}
+
+export function setSignupProfileImageBlob(blob: Blob | null) {
+  signupProfileImageBlob = blob;
+}
+
+export function clearSignupProfileImageBlob() {
+  signupProfileImageBlob = null;
+}
 
 /* ===============================
  * 이미지 리사이징 + WebP 압축
@@ -114,16 +122,7 @@ export function useProfileImage() {
          * 리사이징 + 업로드
          * =============================== */
         const blob = await resizeAndCompress(sourceForResize);
-        const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
-        await uploadToPresignedUrl(presigned.uploadUrl, blob, "image/webp");
-
-        const objectKey = presigned.imageObjectKey.replace(/^\/+/, "");
-
-        try {
-          window.localStorage.setItem(SIGNUP_PROFILE_IMAGE_DATA_KEY, objectKey);
-        } catch {
-          // storage 실패는 무시
-        }
+        setSignupProfileImageBlob(blob);
       } catch (err) {
         if (previewUrlRef.current) {
           URL.revokeObjectURL(previewUrlRef.current);
@@ -131,6 +130,7 @@ export function useProfileImage() {
         }
         setPreview(null);
         setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
+        setSignupProfileImageBlob(null);
       }
     },
     [],
@@ -143,11 +143,7 @@ export function useProfileImage() {
     }
     setPreview(null);
     setImageError(null);
-    try {
-      window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
-    } catch {
-      // ignore
-    }
+    setSignupProfileImageBlob(null);
   }, []);
 
   return {

@@ -354,8 +354,8 @@ export default function ProfileEditPage() {
   };
 
   const handleImageChange = (file: File) => {
-    if (file.size > 5 * 1024 * 1024) {
-      setImageError("사진 크기가 너무 큽니다. (최대 5MB)");
+    if (file.size > 30 * 1024 * 1024) {
+      setImageError("사진 크기가 너무 큽니다. (최대 30MB)");
       return;
     }
 

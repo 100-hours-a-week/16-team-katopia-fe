@@ -112,9 +112,6 @@ export default function SignupStep1() {
 
         try {
           window.localStorage.setItem("signup-nickname", data.nickname);
-          if (!preview) {
-            window.localStorage.removeItem("katopia.signupProfileImageData");
-          }
         } catch {
           // ignore storage errors and still proceed
         }

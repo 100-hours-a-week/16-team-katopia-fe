@@ -22,6 +22,14 @@ import {
 import { API_BASE_URL } from "@/src/config/api";
 import { issueAccessToken } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
+import {
+  clearSignupProfileImageBlob,
+  getSignupProfileImageBlob,
+} from "../SignupStep1/hooks/useProfileImage";
 
 /* =========================
    Schema & Types
@@ -48,8 +56,6 @@ const STYLE_TO_ENUM: Record<string, string> = {
   스포티: "SPORTY",
   Y2K: "Y2K",
 };
-
-const SIGNUP_PROFILE_IMAGE_DATA_KEY = "katopia.signupProfileImageData";
 
 /* =========================
    Component
@@ -279,26 +285,37 @@ export default function SignupStep2() {
         }
 
         let signupProfileImageObjectKey: string | null = null;
-        let signupProfileImageData: string | null = null;
-        try {
-          signupProfileImageData = window.localStorage.getItem(
-            SIGNUP_PROFILE_IMAGE_DATA_KEY,
-          );
-        } catch {
-          signupProfileImageData = null;
-        }
-        console.log("[signup] profile image objectKey from storage", {
-          hasProfileImage: Boolean(signupProfileImageData),
+        const signupProfileImageBlob = getSignupProfileImageBlob();
+        console.log("[signup] profile image blob", {
+          hasProfileImage: Boolean(signupProfileImageBlob),
         });
 
         const hasOptionalInputs =
           Boolean(data.height) ||
           Boolean(data.weight) ||
           styles.length > 0 ||
-          Boolean(signupProfileImageData);
+          Boolean(signupProfileImageBlob);
 
-        if (signupProfileImageData) {
-          signupProfileImageObjectKey = signupProfileImageData;
+        if (signupProfileImageBlob) {
+          try {
+            const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
+            await uploadToPresignedUrl(
+              presigned.uploadUrl,
+              signupProfileImageBlob,
+              "image/webp",
+            );
+            signupProfileImageObjectKey = presigned.imageObjectKey.replace(
+              /^\/+/,
+              "",
+            );
+          } catch (err) {
+            const message =
+              err instanceof Error
+                ? err.message
+                : "프로필 이미지 업로드에 실패했습니다.";
+            alert(message);
+            return;
+          }
         }
 
         if (hasOptionalInputs) {
@@ -376,10 +393,10 @@ export default function SignupStep2() {
 
         try {
           window.localStorage.removeItem("signup-nickname");
-          window.localStorage.removeItem(SIGNUP_PROFILE_IMAGE_DATA_KEY);
         } catch {
           // ignore storage errors
         }
+        clearSignupProfileImageBlob();
 
         try {
           const meRes = await fetch(`${API_BASE_URL}/api/members/me`, {
