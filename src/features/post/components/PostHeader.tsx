@@ -146,7 +146,8 @@ export default function PostHeader({
           {resolveMediaUrl(
             author.profileImageObjectKey ?? author.profileImageUrl,
           ) ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={
                 resolveMediaUrl(
                   author.profileImageObjectKey ?? author.profileImageUrl,
