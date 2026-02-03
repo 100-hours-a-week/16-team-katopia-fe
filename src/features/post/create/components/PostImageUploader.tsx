@@ -92,28 +92,33 @@ async function resizeAndCompress(
   quality = 0.8,
 ): Promise<Blob> {
   let sourceFile = file;
-  // ✅ HEIC/HEIF → JPEG 변환
-  const lowerName = file.name.toLowerCase();
-  if (
+  const isHeicLike =
     file.type === "image/heic" ||
     file.type === "image/heif" ||
-    lowerName.endsWith(".heic") ||
-    lowerName.endsWith(".heif")
-  ) {
-    const buffer = await file.arrayBuffer();
-    const heicBlob = new Blob([buffer], {
-      type: file.type || "image/heic",
-    });
-    const converted = await heic2any({
-      blob: heicBlob,
-      toType: "image/jpeg",
-      quality: 0.9,
-    });
+    file.name.toLowerCase().endsWith(".heic") ||
+    file.name.toLowerCase().endsWith(".heif");
+  // ✅ HEIC/HEIF → JPEG 변환
+  if (isHeicLike) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const heicBlob = new Blob([buffer], {
+        type: file.type || "image/heic",
+      });
+      const converted = await heic2any({
+        blob: heicBlob,
+        toType: "image/jpeg",
+        quality: 0.9,
+      });
 
-    const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+      const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
 
-    const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
-    sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
+      const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
+      sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
+    } catch {
+      throw new Error(
+        "HEIC 파일은 업로드할 수 없습니다. JPG/PNG로 변환해주세요.",
+      );
+    }
   }
 
   // ✅ EXIF 회전 반영

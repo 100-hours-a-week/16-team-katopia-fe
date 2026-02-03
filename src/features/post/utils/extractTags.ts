@@ -1,4 +1,4 @@
-const TAG_REGEX = /#([^\s#]+)/g;
+const TAG_REGEX = /#\s*([^\s#]+)/g;
 
 export function extractTags(content: string) {
   const tags = new Set<string>();
