@@ -100,7 +100,7 @@ export default function CommentItem({
               alt={comment.nickname}
               width={32}
               height={32}
-              className="object-cover"
+              className="h-full w-full object-cover"
             />
           ) : (
             <Image src="/icons/user.svg" alt="유저" width={18} height={18} />
