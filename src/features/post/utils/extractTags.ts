@@ -1,4 +1,4 @@
-const TAG_REGEX = /#([0-9A-Za-z가-힣_]+)/g;
+const TAG_REGEX = /#([^\s#]+)/g;
 
 export function extractTags(content: string) {
   const tags = new Set<string>();
