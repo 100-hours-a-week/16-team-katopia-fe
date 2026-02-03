@@ -32,6 +32,7 @@ export default function MyProfilePage() {
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawRedirecting, setWithdrawRedirecting] = useState(false);
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,10 +98,10 @@ export default function MyProfilePage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !withdrawRedirecting) {
       router.replace("/home");
     }
-  }, [ready, isAuthenticated, router]);
+  }, [ready, isAuthenticated, router, withdrawRedirecting]);
 
   /* -------------------------
      게시글 로딩
@@ -144,11 +145,12 @@ export default function MyProfilePage() {
           setWithdrawing(true);
           try {
             await withdrawMember();
+            setWithdrawRedirecting(true);
+            setWithdrawOpen(false);
+            router.replace("/withdraw/success");
             clearAccessToken();
             setLoggedOutFlag(true);
             setAuthenticated(false);
-            setWithdrawOpen(false);
-            router.replace("/withdraw/success");
           } catch (err) {
             const message =
               err instanceof Error
