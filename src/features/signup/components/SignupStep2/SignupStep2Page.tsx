@@ -244,33 +244,10 @@ export default function SignupStep2() {
 
         const gender: "M" | "F" = data.gender === "male" ? "M" : "F";
 
-        let signupProfileImageObjectKey: string | null = null;
         const signupProfileImageBlob = getSignupProfileImageBlob();
         console.log("[signup] profile image blob", {
           hasProfileImage: Boolean(signupProfileImageBlob),
         });
-
-        if (signupProfileImageBlob) {
-          try {
-            const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
-            await uploadToPresignedUrl(
-              presigned.uploadUrl,
-              signupProfileImageBlob,
-              "image/webp",
-            );
-            signupProfileImageObjectKey = presigned.imageObjectKey.replace(
-              /^\/+/,
-              "",
-            );
-          } catch (err) {
-            const message =
-              err instanceof Error
-                ? err.message
-                : "프로필 이미지 업로드에 실패했습니다.";
-            alert(message);
-            return;
-          }
-        }
 
         const payload: {
           nickname: string;
@@ -283,7 +260,7 @@ export default function SignupStep2() {
         } = {
           nickname,
           gender,
-          profileImageObjectKey: signupProfileImageObjectKey,
+          profileImageObjectKey: null,
           height: data.height ? Number(data.height) : null,
           weight: data.weight ? Number(data.weight) : null,
           enableRealtimeNotification: true,
@@ -314,7 +291,7 @@ export default function SignupStep2() {
         }
 
         console.log("[signup] issuing access token after signup");
-        await issueAccessToken();
+        const accessToken = await issueAccessToken();
         console.log("[signup] issued access token");
         setAuthenticated(true);
 
@@ -327,12 +304,49 @@ export default function SignupStep2() {
           // ignore storage errors
         }
 
-        try {
-          if (signupProfileImageObjectKey) {
-            window.localStorage.removeItem("katopia.profileImageRemoved");
+        if (signupProfileImageBlob) {
+          let signupProfileImageObjectKey: string | null = null;
+          try {
+            const [presigned] = await requestUploadPresign("PROFILE", ["webp"]);
+            await uploadToPresignedUrl(
+              presigned.uploadUrl,
+              signupProfileImageBlob,
+              "image/webp",
+            );
+            signupProfileImageObjectKey = presigned.imageObjectKey.replace(
+              /^\/+/,
+              "",
+            );
+          } catch (err) {
+            const message =
+              err instanceof Error
+                ? err.message
+                : "프로필 이미지 업로드에 실패했습니다.";
+            alert(message);
+            return;
           }
-        } catch {
-          // ignore storage errors
+
+          try {
+            await fetch(`${API_BASE_URL}/api/members`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                profileImageObjectKey: signupProfileImageObjectKey,
+              }),
+            });
+          } catch (err) {
+            console.error("[signup] PATCH /api/members failed", err);
+          }
+
+          try {
+            window.localStorage.removeItem("katopia.profileImageRemoved");
+          } catch {
+            // ignore storage errors
+          }
         }
 
         try {
