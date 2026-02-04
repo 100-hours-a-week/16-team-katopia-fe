@@ -21,8 +21,10 @@ type ApiProfile = {
   profileImageUrl: string | null;
   profileImageObjectKey?: string | null;
   gender: "M" | "F" | null;
-  heightCm: number | null;
-  weightKg: number | null;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  height?: number | null;
+  weight?: number | null;
   style?: string[] | null;
 };
 
@@ -90,8 +92,8 @@ export default function UserProfilePage({ userId }: Props) {
               : apiProfile.gender === "F"
                 ? "female"
                 : null,
-          height: apiProfile.heightCm,
-          weight: apiProfile.weightKg,
+          height: apiProfile.heightCm ?? apiProfile.height ?? null,
+          weight: apiProfile.weightKg ?? apiProfile.weight ?? null,
           style: apiProfile.style ?? [],
         });
       } catch {
