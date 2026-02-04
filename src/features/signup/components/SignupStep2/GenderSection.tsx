@@ -6,9 +6,19 @@ import type { UseFormRegisterReturn } from "react-hook-form";
 type Props = {
   register: UseFormRegisterReturn;
   error?: string;
+  maleValue?: string;
+  femaleValue?: string;
+  errorMessage?: string;
 };
 
-const GenderSection = memo(({ register, error }: Props) => (
+const GenderSection = memo(
+  ({
+    register,
+    error,
+    maleValue = "male",
+    femaleValue = "female",
+    errorMessage = "성별을 선택해주세요.",
+  }: Props) => (
   <div className="mt-10">
     <p className="mb-2 font-medium text-[13px]">
       성별 <span className="text-red-500 text-[16px]">*</span>
@@ -18,7 +28,7 @@ const GenderSection = memo(({ register, error }: Props) => (
       <label className="flex items-center gap-2 text-[13px]">
         <input
           type="radio"
-          value="male"
+          value={maleValue}
           className="accent-black"
           {...register}
         />
@@ -28,7 +38,7 @@ const GenderSection = memo(({ register, error }: Props) => (
       <label className="flex items-center gap-2 text-[13px]">
         <input
           type="radio"
-          value="female"
+          value={femaleValue}
           className="accent-black"
           {...register}
         />
@@ -36,9 +46,10 @@ const GenderSection = memo(({ register, error }: Props) => (
       </label>
     </div>
 
-    {error && <p className="mt-1 text-sm text-red-500">성별을 선택해주세요.</p>}
+    {error && <p className="mt-1 text-sm text-red-500">{errorMessage}</p>}
   </div>
-));
+),
+);
 
 GenderSection.displayName = "GenderSection";
 export default GenderSection;

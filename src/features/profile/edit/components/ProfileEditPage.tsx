@@ -17,6 +17,8 @@ import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep
 import NicknameInput from "./NickNameInput";
 import ProfileEditCancelModal from "./ProfileEditCancelModal";
 import BodyInfoSection from "@/src/features/signup/components/SignupStep2/BodyInfoSection";
+import GenderSection from "@/src/features/signup/components/SignupStep2/GenderSection";
+import StyleSection from "@/src/features/signup/components/SignupStep2/StyleSection";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import {
   requestUploadPresign,
@@ -27,19 +29,6 @@ import heic2any from "heic2any";
 /* =========================
    Constants
 ========================= */
-
-const STYLE_OPTIONS = [
-  "미니멀",
-  "페미닌",
-  "시크모던",
-  "러블리",
-  "빈티지",
-  "캐주얼",
-  "스트릿",
-  "클래식",
-  "스포티",
-  "Y2K",
-];
 
 const STYLE_TO_ENUM: Record<string, string> = {
   미니멀: "MINIMAL",
@@ -609,39 +598,13 @@ export default function ProfileEditPage() {
         </section>
 
         {/* Gender */}
-        <section className="px-4 py-3 text-center">
-          <div className="mt-4 flex justify-center gap-10">
-            <label
-              className={`relative inline-flex cursor-pointer items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition-colors ${
-                selectedGender === "MALE"
-                  ? "border-black bg-black text-white"
-                  : "border-gray-300 text-gray-700"
-              }`}
-            >
-              <input
-                type="radio"
-                value="MALE"
-                {...register("gender")}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
-              남성
-            </label>
-            <label
-              className={`relative inline-flex cursor-pointer items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition-colors ${
-                selectedGender === "FEMALE"
-                  ? "border-black bg-black text-white"
-                  : "border-gray-300 text-gray-700"
-              }`}
-            >
-              <input
-                type="radio"
-                value="FEMALE"
-                {...register("gender")}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
-              여성
-            </label>
-          </div>
+        <section className="px-4">
+          <GenderSection
+            register={register("gender")}
+            error={errors.gender?.message}
+            maleValue="MALE"
+            femaleValue="FEMALE"
+          />
         </section>
 
         {/* Height / Weight */}
@@ -659,43 +622,7 @@ export default function ProfileEditPage() {
 
         {/* Styles */}
         <section className="px-4 py-8">
-          <div className="mt-6">
-            {/* Header */}
-            <div className="mb-2 flex justify-between">
-              <label className="font-semibold text-[13px]">선호 스타일</label>
-              <span className="text-[12px] text-gray-400">
-                선호 스타일은 최대 2개 선택 가능합니다.
-              </span>
-            </div>
-
-            {/* Style Buttons */}
-            <div className="grid grid-cols-5 gap-2">
-              {STYLE_OPTIONS.map((style) => (
-                <button
-                  key={style}
-                  type="button"
-                  onClick={() => onToggle(style)}
-                  className={`
-          h-10 px-2 text-[12px]
-          border rounded-[5px] whitespace-nowrap
-          flex items-center justify-center
-          ${
-            styles.includes(style)
-              ? "border-black bg-black text-white"
-              : "border-gray-300 text-black"
-          }
-        `}
-                >
-                  {style}
-                </button>
-              ))}
-            </div>
-
-            {/* Error */}
-            {styleError && (
-              <p className="mt-2 text-[11px] text-red-500">{styleError}</p>
-            )}
-          </div>
+          <StyleSection styles={styles} onToggle={onToggle} error={styleError} />
         </section>
 
         {/* Toast */}
