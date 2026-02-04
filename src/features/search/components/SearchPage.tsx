@@ -19,6 +19,14 @@ export default function SearchPage() {
   const { ready, isAuthenticated } = useAuth();
   const tabParam = searchParams.get("tab");
   const qParam = searchParams.get("q") ?? "";
+  const normalizeHashtagInput = (value: string) => {
+    if (!value.startsWith("#")) return value;
+    const raw = value.slice(1).trimStart();
+    const tag = raw.match(/^[^#\s]+/)?.[0] ?? "";
+    return tag ? `#${tag}` : "#";
+  };
+  const normalizeInputValue = (value: string) =>
+    value.startsWith("#") ? normalizeHashtagInput(value) : value;
 
   const initialTab: "계정" | "게시글/해시태그" =
     tabParam === "posts" || tabParam === "게시글/해시태그"
@@ -28,8 +36,8 @@ export default function SearchPage() {
   const [isSearching, setIsSearching] = useState(
     qParam.length > 0 || !!tabParam,
   );
-  const [inputValue, setInputValue] = useState(qParam);
-  const [query, setQuery] = useState(qParam);
+  const [inputValue, setInputValue] = useState(normalizeInputValue(qParam));
+  const [query, setQuery] = useState(normalizeInputValue(qParam));
   const [activeTab, setActiveTab] = useState<"계정" | "게시글/해시태그">(
     initialTab,
   );
@@ -161,7 +169,7 @@ export default function SearchPage() {
     <div className="px-4 py-4">
       <SearchInput
         value={inputValue}
-        onChange={setInputValue}
+        onChange={(value) => setInputValue(normalizeInputValue(value))}
         onFocus={handleFocus}
         onBack={handleBack}
         isSearching={isSearching}
