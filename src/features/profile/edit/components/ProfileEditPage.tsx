@@ -244,6 +244,7 @@ export default function ProfileEditPage() {
         const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
         setCurrentProfileImageObjectKey(resolvedProfileImageKey);
         setPreview(resolveMediaUrl(resolvedProfileImageKey ?? undefined));
+        setRemoveImage(locallyRemoved);
         if (heightRemoved) {
           setValue("height", "");
           setInitialHeight("");
@@ -318,7 +319,8 @@ export default function ProfileEditPage() {
         setPreview(resolveMediaUrl(uploadedProfileObjectKey));
       }
 
-      const profileImageObjectKey = removeImage
+      const shouldRemoveImage = removeImage || removedFlagRef.current;
+      const profileImageObjectKey = shouldRemoveImage
         ? null
         : (uploadedProfileObjectKey ?? currentProfileImageObjectKey ?? null);
 
@@ -333,7 +335,7 @@ export default function ProfileEditPage() {
       });
 
       try {
-        if (removeImage) {
+        if (shouldRemoveImage) {
           window.localStorage.setItem(PROFILE_IMAGE_REMOVED_KEY, "1");
           removedFlagRef.current = true;
         } else {
