@@ -10,9 +10,9 @@ export default function SignupStep2() {
   const {
     form,
     onSubmit,
-    styles,
-    styleError,
-    toggleStyle,
+    stylesRef,
+    setStylesRef,
+    styleErrorTimeoutRef,
     privacyChecked,
     termsChecked,
     setPrivacyChecked,
@@ -25,9 +25,9 @@ export default function SignupStep2() {
       form={form}
       onSubmit={onSubmit}
       onBack={() => router.back()}
-      styles={styles}
-      styleError={styleError}
-      onToggleStyle={toggleStyle}
+      stylesRef={stylesRef}
+      setStylesRef={setStylesRef}
+      styleErrorTimeoutRef={styleErrorTimeoutRef}
       privacyChecked={privacyChecked}
       termsChecked={termsChecked}
       onPrivacyChange={setPrivacyChecked}

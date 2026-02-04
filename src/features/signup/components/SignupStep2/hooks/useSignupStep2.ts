@@ -63,8 +63,7 @@ export function useSignupStep2() {
   const router = useRouter();
   const { setAuthenticated } = useAuth();
 
-  const [styles, setStyles] = useState<string[]>([]);
-  const [styleError, setStyleError] = useState<string | null>(null);
+  const stylesRef = useRef<string[]>([]);
   const styleErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
@@ -78,28 +77,15 @@ export function useSignupStep2() {
     defaultValues: { gender: undefined, height: "", weight: "" },
   });
 
-  const toggleStyle = useCallback((style: string) => {
-    setStyles((prev) => {
-      if (prev.includes(style)) return prev.filter((s) => s !== style);
-
-      if (prev.length >= 2) {
-        setStyleError("스타일은 최대 2개까지 선택 가능합니다.");
-        styleErrorTimeoutRef.current = setTimeout(
-          () => setStyleError(null),
-          2000,
-        );
-        return prev;
-      }
-
-      return [...prev, style];
-    });
+  const setStylesRef = useCallback((next: string[]) => {
+    stylesRef.current = next;
   }, []);
 
   const onSubmit = useCallback(
     async (data: SignupStep2Values) => {
       try {
+        const styles = stylesRef.current;
         if (styles.length > 2) {
-          setStyleError("스타일은 최대 2개까지 선택 가능합니다.");
           return;
         }
 
@@ -220,7 +206,7 @@ export function useSignupStep2() {
         alert("회원가입 중 오류가 발생했습니다.");
       }
     },
-    [router, setAuthenticated, styles],
+    [router, setAuthenticated],
   );
 
   useEffect(() => {
@@ -244,9 +230,9 @@ export function useSignupStep2() {
   return {
     form,
     onSubmit,
-    styles,
-    styleError,
-    toggleStyle,
+    stylesRef,
+    setStylesRef,
+    styleErrorTimeoutRef,
     privacyChecked,
     termsChecked,
     setPrivacyChecked,

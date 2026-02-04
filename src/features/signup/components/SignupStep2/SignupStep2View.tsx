@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
+import type { MutableRefObject } from "react";
 import dynamic from "next/dynamic";
 import {
   FormProvider,
@@ -31,9 +32,9 @@ type Props = {
   form: UseFormReturn<SignupStep2Values>;
   onSubmit: (values: SignupStep2Values) => void | Promise<void>;
   onBack: () => void;
-  styles: string[];
-  styleError: string | null;
-  onToggleStyle: (style: string) => void;
+  stylesRef: MutableRefObject<string[]>;
+  setStylesRef: (next: string[]) => void;
+  styleErrorTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
   privacyChecked: boolean;
   termsChecked: boolean;
   onPrivacyChange: (next: boolean) => void;
@@ -185,13 +186,61 @@ const TermsField = memo(
 
 TermsField.displayName = "TermsField";
 
+const StyleField = memo(
+  ({
+    stylesRef,
+    setStylesRef,
+    styleErrorTimeoutRef,
+  }: {
+    stylesRef: MutableRefObject<string[]>;
+    setStylesRef: (next: string[]) => void;
+    styleErrorTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
+  }) => {
+    // eslint-disable-next-line react-hooks/refs
+    const [styles, setStyles] = useState<string[]>(stylesRef.current);
+    const [styleError, setStyleError] = useState<string | null>(null);
+
+    const toggleStyle = useCallback(
+      (style: string) => {
+        setStyles((prev) => {
+          if (prev.includes(style)) {
+            const next = prev.filter((s) => s !== style);
+            setStylesRef(next);
+            return next;
+          }
+
+          if (prev.length >= 2) {
+            setStyleError("스타일은 최대 2개까지 선택 가능합니다.");
+            styleErrorTimeoutRef.current = setTimeout(
+              () => setStyleError(null),
+              2000,
+            );
+            return prev;
+          }
+
+          const next = [...prev, style];
+          setStylesRef(next);
+          return next;
+        });
+      },
+      [setStylesRef, styleErrorTimeoutRef],
+    );
+
+    return (
+      <StyleSection styles={styles} onToggle={toggleStyle} error={styleError} />
+    );
+  },
+);
+
+StyleField.displayName = "StyleField";
+
 export default function SignupStep2View({
   form,
   onSubmit,
   onBack,
-  styles,
-  styleError,
-  onToggleStyle,
+  stylesRef,
+  setStylesRef,
+  styleErrorTimeoutRef,
   privacyChecked,
   termsChecked,
   onPrivacyChange,
@@ -214,7 +263,11 @@ export default function SignupStep2View({
 
         <BodyInfoField />
 
-        <StyleSection styles={styles} onToggle={onToggleStyle} error={styleError} />
+        <StyleField
+          stylesRef={stylesRef}
+          setStylesRef={setStylesRef}
+          styleErrorTimeoutRef={styleErrorTimeoutRef}
+        />
 
         <TermsField
           privacyChecked={privacyChecked}
