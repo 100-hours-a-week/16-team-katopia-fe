@@ -35,16 +35,6 @@ type Props = {
   stylesRef: MutableRefObject<string[]>;
   setStylesRef: (next: string[]) => void;
   styleErrorTimeoutRef: MutableRefObject<NodeJS.Timeout | null>;
-  privacyChecked: boolean;
-  termsChecked: boolean;
-  onPrivacyChange: (next: boolean) => void;
-  onTermsChange: (next: boolean) => void;
-  modals: {
-    showPrivacyModal: boolean;
-    showTermsModal: boolean;
-    setShowPrivacyModal: (next: boolean) => void;
-    setShowTermsModal: (next: boolean) => void;
-  };
 };
 
 const GenderField = memo(() => {
@@ -157,34 +147,48 @@ const SubmitButton = memo(
 
 SubmitButton.displayName = "SubmitButton";
 
-const TermsField = memo(
-  ({
-    privacyChecked,
-    termsChecked,
-    onPrivacyChange,
-    onTermsChange,
-    onShowPrivacy,
-    onShowTerms,
-  }: {
-    privacyChecked: boolean;
-    termsChecked: boolean;
-    onPrivacyChange: (next: boolean) => void;
-    onTermsChange: (next: boolean) => void;
-    onShowPrivacy: () => void;
-    onShowTerms: () => void;
-  }) => (
-    <TermsSection
-      privacyChecked={privacyChecked}
-      termsChecked={termsChecked}
-      onPrivacyChange={onPrivacyChange}
-      onTermsChange={onTermsChange}
-      onShowPrivacy={onShowPrivacy}
-      onShowTerms={onShowTerms}
-    />
-  ),
-);
+const TermsAgreement = memo(() => {
+  const [privacyChecked, setPrivacyChecked] = useState(false);
+  const [termsChecked, setTermsChecked] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
-TermsField.displayName = "TermsField";
+  return (
+    <>
+      <TermsSection
+        privacyChecked={privacyChecked}
+        termsChecked={termsChecked}
+        onPrivacyChange={setPrivacyChecked}
+        onTermsChange={setTermsChecked}
+        onShowPrivacy={() => setShowPrivacyModal(true)}
+        onShowTerms={() => setShowTermsModal(true)}
+      />
+
+      {showPrivacyModal && (
+        <PolicyModal
+          title="개인정보 처리방침"
+          content={PRIVACY_POLICY_TEXT}
+          onClose={() => setShowPrivacyModal(false)}
+        />
+      )}
+
+      {showTermsModal && (
+        <PolicyModal
+          title="서비스 이용 약관"
+          content={TERMS_OF_SERVICE_TEXT}
+          onClose={() => setShowTermsModal(false)}
+        />
+      )}
+
+      <SubmitButton
+        privacyChecked={privacyChecked}
+        termsChecked={termsChecked}
+      />
+    </>
+  );
+});
+
+TermsAgreement.displayName = "TermsAgreement";
 
 const StyleField = memo(
   ({
@@ -241,11 +245,6 @@ export default function SignupStep2View({
   stylesRef,
   setStylesRef,
   styleErrorTimeoutRef,
-  privacyChecked,
-  termsChecked,
-  onPrivacyChange,
-  onTermsChange,
-  modals,
 }: Props) {
   const handleSubmit = useMemo(
     () => form.handleSubmit(onSubmit),
@@ -269,35 +268,7 @@ export default function SignupStep2View({
           styleErrorTimeoutRef={styleErrorTimeoutRef}
         />
 
-        <TermsField
-          privacyChecked={privacyChecked}
-          termsChecked={termsChecked}
-          onPrivacyChange={onPrivacyChange}
-          onTermsChange={onTermsChange}
-          onShowPrivacy={() => modals.setShowPrivacyModal(true)}
-          onShowTerms={() => modals.setShowTermsModal(true)}
-        />
-
-        {modals.showPrivacyModal && (
-          <PolicyModal
-            title="개인정보 처리방침"
-            content={PRIVACY_POLICY_TEXT}
-            onClose={() => modals.setShowPrivacyModal(false)}
-          />
-        )}
-
-        {modals.showTermsModal && (
-          <PolicyModal
-            title="서비스 이용 약관"
-            content={TERMS_OF_SERVICE_TEXT}
-            onClose={() => modals.setShowTermsModal(false)}
-          />
-        )}
-
-        <SubmitButton
-          privacyChecked={privacyChecked}
-          termsChecked={termsChecked}
-        />
+        <TermsAgreement />
       </form>
     </FormProvider>
   );

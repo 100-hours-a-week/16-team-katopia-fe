@@ -13,11 +13,6 @@ export default function SignupStep2() {
     stylesRef,
     setStylesRef,
     styleErrorTimeoutRef,
-    privacyChecked,
-    termsChecked,
-    setPrivacyChecked,
-    setTermsChecked,
-    modals,
   } = useSignupStep2();
 
   return (
@@ -28,11 +23,6 @@ export default function SignupStep2() {
       stylesRef={stylesRef}
       setStylesRef={setStylesRef}
       styleErrorTimeoutRef={styleErrorTimeoutRef}
-      privacyChecked={privacyChecked}
-      termsChecked={termsChecked}
-      onPrivacyChange={setPrivacyChecked}
-      onTermsChange={setTermsChecked}
-      modals={modals}
     />
   );
 }

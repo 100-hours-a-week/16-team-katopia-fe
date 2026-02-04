@@ -66,11 +66,6 @@ export function useSignupStep2() {
   const stylesRef = useRef<string[]>([]);
   const styleErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [privacyChecked, setPrivacyChecked] = useState(false);
-  const [termsChecked, setTermsChecked] = useState(false);
-
   const form = useForm<SignupStep2Values>({
     resolver: zodResolver(signupStep2Schema),
     mode: "onChange",
@@ -217,26 +212,11 @@ export function useSignupStep2() {
     };
   }, []);
 
-  const modals = useMemo(
-    () => ({
-      showPrivacyModal,
-      showTermsModal,
-      setShowPrivacyModal,
-      setShowTermsModal,
-    }),
-    [showPrivacyModal, showTermsModal],
-  );
-
   return {
     form,
     onSubmit,
     stylesRef,
     setStylesRef,
     styleErrorTimeoutRef,
-    privacyChecked,
-    termsChecked,
-    setPrivacyChecked,
-    setTermsChecked,
-    modals,
   };
 }
