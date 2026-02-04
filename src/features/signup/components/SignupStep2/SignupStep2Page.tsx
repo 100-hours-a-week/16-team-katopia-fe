@@ -328,6 +328,14 @@ export default function SignupStep2() {
         }
 
         try {
+          if (signupProfileImageObjectKey) {
+            window.localStorage.removeItem("katopia.profileImageRemoved");
+          }
+        } catch {
+          // ignore storage errors
+        }
+
+        try {
           window.localStorage.removeItem("signup-nickname");
         } catch {
           // ignore storage errors

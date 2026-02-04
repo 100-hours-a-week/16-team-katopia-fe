@@ -68,6 +68,10 @@ export default function MyProfilePage() {
         }
 
         const json = await res.json();
+        console.log("[profile] /api/members/me response", {
+          profileImageObjectKey: json?.data?.profile?.profileImageObjectKey,
+          profileImageUrl: json?.data?.profile?.profileImageUrl,
+        });
         const rawProfile = json.data.profile;
         const userId = json.data.id;
 
