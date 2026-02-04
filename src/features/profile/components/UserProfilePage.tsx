@@ -104,16 +104,14 @@ export default function UserProfilePage({ userId }: Props) {
         let weight = apiProfile.weightKg ?? apiProfile.weight ?? null;
         if (currentUserId != null && currentUserId === memberId) {
           try {
-            if (
-              window.localStorage.getItem("katopia.profileHeightRemoved") === "1"
-            ) {
-              height = null;
-            }
-            if (
-              window.localStorage.getItem("katopia.profileWeightRemoved") === "1"
-            ) {
-              weight = null;
-            }
+            const heightRemoved =
+              window.localStorage.getItem("katopia.profileHeightRemoved") ===
+              "1";
+            const weightRemoved =
+              window.localStorage.getItem("katopia.profileWeightRemoved") ===
+              "1";
+            if (heightRemoved) height = null;
+            if (weightRemoved) weight = null;
           } catch {
             // ignore storage errors
           }
