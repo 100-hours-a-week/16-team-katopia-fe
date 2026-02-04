@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/refs */
-import { memo, useMemo, useRef, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { useController, useWatch, type Control } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,12 +29,14 @@ const NicknameField = memo(
     const nickname = useWatch({ name: "nickname", control });
 
     const [overLimit, setOverLimit] = useState(false);
-    const lastCheckedNickname = useRef<string | null>(null);
+    const [lastCheckedNickname, setLastCheckedNickname] = useState<
+      string | null
+    >(null);
 
     const needRecheck = useMemo(() => {
-      if (!lastCheckedNickname.current) return true;
-      return lastCheckedNickname.current !== nickname;
-    }, [nickname]);
+      if (!lastCheckedNickname) return true;
+      return lastCheckedNickname !== nickname;
+    }, [lastCheckedNickname, nickname]);
 
     return (
       <div className="mt-15">
@@ -73,7 +75,7 @@ const NicknameField = memo(
             disabled={!nickname || isChecking || !needRecheck}
             onClick={async () => {
               const ok = await onDuplicateCheck(nickname);
-              if (ok) lastCheckedNickname.current = nickname;
+              if (ok) setLastCheckedNickname(nickname);
             }}
           >
             중복 확인
