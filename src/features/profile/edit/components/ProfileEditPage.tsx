@@ -321,7 +321,7 @@ export default function ProfileEditPage() {
 
       const shouldRemoveImage = removeImage || removedFlagRef.current;
       const profileImageObjectKey = shouldRemoveImage
-        ? null
+        ? ""
         : (uploadedProfileObjectKey ?? currentProfileImageObjectKey ?? null);
 
       await updateProfile({
