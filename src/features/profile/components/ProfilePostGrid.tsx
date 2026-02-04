@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
@@ -49,13 +48,11 @@ export default function ProfilePostGrid({
           className="relative aspect-3/4 overflow-hidden bg-gray-100"
         >
           {resolveMediaUrl(post.imageUrl) && (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={resolveMediaUrl(post.imageUrl) as string}
               alt=""
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 33vw, 200px"
-              placeholder="empty"
+              className="h-full w-full object-cover"
             />
           )}
         </Link>
