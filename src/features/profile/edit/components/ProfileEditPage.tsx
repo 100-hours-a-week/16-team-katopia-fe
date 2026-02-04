@@ -259,7 +259,7 @@ export default function ProfileEditPage() {
     };
 
     fetchProfile();
-  }, [ready, isAuthenticated, reset]);
+  }, [ready, isAuthenticated, reset, setValue]);
 
   useEffect(() => {
     if (!ready) return;

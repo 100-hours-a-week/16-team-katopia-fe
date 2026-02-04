@@ -63,8 +63,6 @@ type CommentItem = CommentListItem;
 /* ================= 유틸 ================= */
 
 const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
-const PROFILE_HEIGHT_REMOVED_KEY = "katopia.profileHeightRemoved";
-const PROFILE_WEIGHT_REMOVED_KEY = "katopia.profileWeightRemoved";
 
 function normalizePostImageUrls(
   value: PostImageItem[] | string[] | undefined,
@@ -105,7 +103,6 @@ export default function PostDetailPage() {
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [profileImageRemoved, setProfileImageRemoved] = useState(false);
-  const [bodyInfoRemoved, setBodyInfoRemoved] = useState(false);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
@@ -133,7 +130,7 @@ export default function PostDetailPage() {
   const authorForHeader = useMemo<PostAuthor | null>(() => {
     if (!post?.author) return null;
 
-    if (!isMine || (!profileImageRemoved && !bodyInfoRemoved)) {
+    if (!isMine || !profileImageRemoved) {
       return post.author;
     }
 
@@ -141,12 +138,10 @@ export default function PostDetailPage() {
       ...post.author,
       profileImageObjectKey: profileImageRemoved
         ? null
-        : post.author.profileImageObjectKey ?? post.author.profileImageUrl,
+        : (post.author.profileImageObjectKey ?? post.author.profileImageUrl),
       profileImageUrl: profileImageRemoved ? null : post.author.profileImageUrl,
-      height: bodyInfoRemoved ? null : post.author.height,
-      weight: bodyInfoRemoved ? null : post.author.weight,
     };
-  }, [post, isMine, profileImageRemoved, bodyInfoRemoved]);
+  }, [post, isMine, profileImageRemoved]);
 
   /* ================= 게시글 ================= */
 
@@ -172,14 +167,8 @@ export default function PostDetailPage() {
       setProfileImageRemoved(
         window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1",
       );
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBodyInfoRemoved(
-        window.localStorage.getItem(PROFILE_HEIGHT_REMOVED_KEY) === "1" ||
-          window.localStorage.getItem(PROFILE_WEIGHT_REMOVED_KEY) === "1",
-      );
     } catch {
       setProfileImageRemoved(false);
-      setBodyInfoRemoved(false);
     }
   }, []);
 

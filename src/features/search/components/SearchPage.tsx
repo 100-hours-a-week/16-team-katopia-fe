@@ -80,14 +80,14 @@ export default function SearchPage() {
 
   const handleFocus = useCallback(() => {
     setIsSearching(true);
-  }, []);
+  }, [setIsSearching]);
 
   const handleBack = useCallback(() => {
     setIsSearching(false);
     setInputValue("");
     setQuery("");
     setActiveTab("계정");
-  }, []);
+  }, [setIsSearching, setInputValue, setQuery, setActiveTab]);
 
   /* -------------------------
      검색어 디바운스
