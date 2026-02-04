@@ -46,6 +46,7 @@ export default function UserProfilePage({ userId }: Props) {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const {
     items: posts,
@@ -60,6 +61,23 @@ export default function UserProfilePage({ userId }: Props) {
   });
 
   /* ================= 프로필 ================= */
+
+  useEffect(() => {
+    if (!ready || !isAuthenticated) return;
+
+    authFetch(`${API_BASE_URL}/api/members/me`, {
+      method: "GET",
+      cache: "no-store",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        const id = json?.data?.id;
+        if (typeof id === "number") {
+          setCurrentUserId(id);
+        }
+      })
+      .catch(() => {});
+  }, [ready, isAuthenticated]);
 
   useEffect(() => {
     if (!ready || !isAuthenticated) return;
@@ -82,6 +100,25 @@ export default function UserProfilePage({ userId }: Props) {
           return;
         }
 
+        let height = apiProfile.heightCm ?? apiProfile.height ?? null;
+        let weight = apiProfile.weightKg ?? apiProfile.weight ?? null;
+        if (currentUserId != null && currentUserId === memberId) {
+          try {
+            if (
+              window.localStorage.getItem("katopia.profileHeightRemoved") === "1"
+            ) {
+              height = null;
+            }
+            if (
+              window.localStorage.getItem("katopia.profileWeightRemoved") === "1"
+            ) {
+              weight = null;
+            }
+          } catch {
+            // ignore storage errors
+          }
+        }
+
         setProfile({
           nickname: apiProfile.nickname,
           profileImageUrl:
@@ -92,8 +129,8 @@ export default function UserProfilePage({ userId }: Props) {
               : apiProfile.gender === "F"
                 ? "female"
                 : null,
-          height: apiProfile.heightCm ?? apiProfile.height ?? null,
-          weight: apiProfile.weightKg ?? apiProfile.weight ?? null,
+          height,
+          weight,
           style: apiProfile.style ?? [],
         });
       } catch {
@@ -104,7 +141,7 @@ export default function UserProfilePage({ userId }: Props) {
     };
 
     fetchProfile();
-  }, [memberId, ready, isAuthenticated]);
+  }, [memberId, ready, isAuthenticated, currentUserId]);
 
   useEffect(() => {
     if (!ready) return;
