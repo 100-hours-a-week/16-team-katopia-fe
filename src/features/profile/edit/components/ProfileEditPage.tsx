@@ -326,8 +326,8 @@ export default function ProfileEditPage() {
         nickname: trimmedNickname || undefined,
         profileImageObjectKey,
         gender: data.gender === "MALE" ? "M" : "F",
-        height: data.height ? Number(data.height) : 0,
-        weight: data.weight ? Number(data.weight) : 0,
+        height: data.height ? Number(data.height) : null,
+        weight: data.weight ? Number(data.weight) : null,
         enableRealtimeNotification: data.enableRealtimeNotification ?? true,
         style: data.styles.map((s) => STYLE_TO_ENUM[s]),
       });

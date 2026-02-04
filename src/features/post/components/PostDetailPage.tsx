@@ -63,6 +63,8 @@ type CommentItem = CommentListItem;
 /* ================= 유틸 ================= */
 
 const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
+const PROFILE_HEIGHT_REMOVED_KEY = "katopia.profileHeightRemoved";
+const PROFILE_WEIGHT_REMOVED_KEY = "katopia.profileWeightRemoved";
 
 function normalizePostImageUrls(
   value: PostImageItem[] | string[] | undefined,
@@ -103,6 +105,8 @@ export default function PostDetailPage() {
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [profileImageRemoved, setProfileImageRemoved] = useState(false);
+  const [heightRemoved, setHeightRemoved] = useState(false);
+  const [weightRemoved, setWeightRemoved] = useState(false);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
@@ -130,7 +134,10 @@ export default function PostDetailPage() {
   const authorForHeader = useMemo<PostAuthor | null>(() => {
     if (!post?.author) return null;
 
-    if (!isMine || !profileImageRemoved) {
+    if (
+      !isMine ||
+      (!profileImageRemoved && !heightRemoved && !weightRemoved)
+    ) {
       return post.author;
     }
 
@@ -140,8 +147,10 @@ export default function PostDetailPage() {
         ? null
         : (post.author.profileImageObjectKey ?? post.author.profileImageUrl),
       profileImageUrl: profileImageRemoved ? null : post.author.profileImageUrl,
+      height: heightRemoved ? null : post.author.height,
+      weight: weightRemoved ? null : post.author.weight,
     };
-  }, [post, isMine, profileImageRemoved]);
+  }, [post, isMine, profileImageRemoved, heightRemoved, weightRemoved]);
 
   /* ================= 게시글 ================= */
 
@@ -167,8 +176,16 @@ export default function PostDetailPage() {
       setProfileImageRemoved(
         window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1",
       );
+      setHeightRemoved(
+        window.localStorage.getItem(PROFILE_HEIGHT_REMOVED_KEY) === "1",
+      );
+      setWeightRemoved(
+        window.localStorage.getItem(PROFILE_WEIGHT_REMOVED_KEY) === "1",
+      );
     } catch {
       setProfileImageRemoved(false);
+      setHeightRemoved(false);
+      setWeightRemoved(false);
     }
   }, []);
 
