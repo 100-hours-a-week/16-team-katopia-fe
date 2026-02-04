@@ -19,14 +19,12 @@ export default function SearchPage() {
   const { ready, isAuthenticated } = useAuth();
   const tabParam = searchParams.get("tab");
   const qParam = searchParams.get("q") ?? "";
-  const normalizeHashtagInput = (value: string) => {
+  const normalizeHashtagQuery = (value: string) => {
     if (!value.startsWith("#")) return value;
-    const raw = value.slice(1).trimStart();
+    const raw = value.slice(1).trim();
     const tag = raw.match(/^[^#\s]+/)?.[0] ?? "";
     return tag ? `#${tag}` : "#";
   };
-  const normalizeInputValue = (value: string) =>
-    value.startsWith("#") ? normalizeHashtagInput(value) : value;
 
   const initialTab: "계정" | "게시글/해시태그" =
     tabParam === "posts" || tabParam === "게시글/해시태그"
@@ -36,8 +34,8 @@ export default function SearchPage() {
   const [isSearching, setIsSearching] = useState(
     qParam.length > 0 || !!tabParam,
   );
-  const [inputValue, setInputValue] = useState(normalizeInputValue(qParam));
-  const [query, setQuery] = useState(normalizeInputValue(qParam));
+  const [inputValue, setInputValue] = useState(qParam);
+  const [query, setQuery] = useState(qParam);
   const [activeTab, setActiveTab] = useState<"계정" | "게시글/해시태그">(
     initialTab,
   );
@@ -94,7 +92,10 @@ export default function SearchPage() {
   ------------------------- */
   useEffect(() => {
     const timer = setTimeout(() => {
-      setQuery(inputValue.trim());
+      const trimmed = inputValue.trim();
+      setQuery(
+        trimmed.startsWith("#") ? normalizeHashtagQuery(trimmed) : trimmed,
+      );
     }, 400);
 
     return () => clearTimeout(timer);
@@ -151,8 +152,11 @@ export default function SearchPage() {
     const params = new URLSearchParams();
 
     if (isSearching) {
-      if (query.trim().length > 0) {
-        params.set("q", query.trim());
+      const normalizedQuery = query.trim().startsWith("#")
+        ? normalizeHashtagQuery(query.trim())
+        : query.trim();
+      if (normalizedQuery.length > 0) {
+        params.set("q", normalizedQuery);
       }
       params.set("tab", activeTab === "게시글/해시태그" ? "posts" : "account");
     }
@@ -169,7 +173,7 @@ export default function SearchPage() {
     <div className="px-4 py-4">
       <SearchInput
         value={inputValue}
-        onChange={(value) => setInputValue(normalizeInputValue(value))}
+        onChange={setInputValue}
         onFocus={handleFocus}
         onBack={handleBack}
         isSearching={isSearching}
