@@ -20,8 +20,8 @@ export default function PostImagePreview({ images }: Props) {
                 : "h-[60vh] aspect-[3/4] flex-shrink-0 snap-start"
             }`}
           >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img.url} alt="" className="h-full w-full object-cover" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={img.url} alt="" className="h-full w-full object-cover" />
           </div>
         ))}
       </div>
