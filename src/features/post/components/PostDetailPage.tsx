@@ -134,10 +134,7 @@ export default function PostDetailPage() {
   const authorForHeader = useMemo<PostAuthor | null>(() => {
     if (!post?.author) return null;
 
-    if (
-      !isMine ||
-      (!profileImageRemoved && !heightRemoved && !weightRemoved)
-    ) {
+    if (!isMine || (!profileImageRemoved && !heightRemoved && !weightRemoved)) {
       return post.author;
     }
 
