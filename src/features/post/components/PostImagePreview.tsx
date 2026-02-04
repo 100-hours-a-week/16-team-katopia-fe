@@ -1,5 +1,4 @@
 // components/PostImagePreview.tsx
-import Image from "next/image";
 
 type Props = {
   images: { id: string; url: string }[];
@@ -21,7 +20,8 @@ export default function PostImagePreview({ images }: Props) {
                 : "h-[60vh] aspect-[3/4] flex-shrink-0 snap-start"
             }`}
           >
-            <Image src={img.url} alt="" fill className="object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={img.url} alt="" className="h-full w-full object-cover" />
           </div>
         ))}
       </div>
