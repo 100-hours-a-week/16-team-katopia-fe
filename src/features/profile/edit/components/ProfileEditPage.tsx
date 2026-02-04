@@ -59,8 +59,6 @@ const ENUM_TO_STYLE: Record<string, string> = Object.fromEntries(
 );
 
 const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
-const PROFILE_HEIGHT_REMOVED_KEY = "katopia.profileHeightRemoved";
-const PROFILE_WEIGHT_REMOVED_KEY = "katopia.profileWeightRemoved";
 
 /* =========================
    Schema
@@ -136,8 +134,6 @@ export default function ProfileEditPage() {
   const previewUrlRef = useRef<string | null>(null);
   const weightInputRef = useRef<HTMLInputElement | null>(null);
   const removedFlagRef = useRef<boolean>(false);
-  const removedHeightRef = useRef<boolean>(false);
-  const removedWeightRef = useRef<boolean>(false);
 
   /* ---------- Form ---------- */
   const {
@@ -224,34 +220,16 @@ export default function ProfileEditPage() {
         const profileImageKey =
           profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
         let locallyRemoved = false;
-        let heightRemoved = false;
-        let weightRemoved = false;
         try {
           locallyRemoved =
             window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1";
-          heightRemoved =
-            window.localStorage.getItem(PROFILE_HEIGHT_REMOVED_KEY) === "1";
-          weightRemoved =
-            window.localStorage.getItem(PROFILE_WEIGHT_REMOVED_KEY) === "1";
         } catch {
           locallyRemoved = false;
-          heightRemoved = false;
-          weightRemoved = false;
         }
         removedFlagRef.current = locallyRemoved;
-        removedHeightRef.current = heightRemoved;
-        removedWeightRef.current = weightRemoved;
         const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
         setCurrentProfileImageObjectKey(resolvedProfileImageKey);
         setPreview(resolveMediaUrl(resolvedProfileImageKey ?? undefined));
-        if (heightRemoved) {
-          setValue("height", "");
-          setInitialHeight("");
-        }
-        if (weightRemoved) {
-          setValue("weight", "");
-          setInitialWeight("");
-        }
         setRemoveImage(false);
       } catch {
         // ignore (handled by auth guard)
@@ -326,8 +304,8 @@ export default function ProfileEditPage() {
         nickname: trimmedNickname || undefined,
         profileImageObjectKey,
         gender: data.gender === "MALE" ? "M" : "F",
-        height: data.height ? Number(data.height) : null,
-        weight: data.weight ? Number(data.weight) : null,
+        height: data.height ? Number(data.height) : 0,
+        weight: data.weight ? Number(data.weight) : 0,
         enableRealtimeNotification: data.enableRealtimeNotification ?? true,
         style: data.styles.map((s) => STYLE_TO_ENUM[s]),
       });
@@ -339,20 +317,6 @@ export default function ProfileEditPage() {
         } else {
           window.localStorage.removeItem(PROFILE_IMAGE_REMOVED_KEY);
           removedFlagRef.current = false;
-        }
-        if (!data.height) {
-          window.localStorage.setItem(PROFILE_HEIGHT_REMOVED_KEY, "1");
-          removedHeightRef.current = true;
-        } else {
-          window.localStorage.removeItem(PROFILE_HEIGHT_REMOVED_KEY);
-          removedHeightRef.current = false;
-        }
-        if (!data.weight) {
-          window.localStorage.setItem(PROFILE_WEIGHT_REMOVED_KEY, "1");
-          removedWeightRef.current = true;
-        } else {
-          window.localStorage.removeItem(PROFILE_WEIGHT_REMOVED_KEY);
-          removedWeightRef.current = false;
         }
       } catch {
         // ignore storage errors
@@ -387,22 +351,6 @@ export default function ProfileEditPage() {
       if (field === "height") setHeightError(null);
       if (field === "weight") setWeightError(null);
       return;
-    }
-    if (field === "height" && removedHeightRef.current) {
-      try {
-        window.localStorage.removeItem(PROFILE_HEIGHT_REMOVED_KEY);
-      } catch {
-        // ignore storage errors
-      }
-      removedHeightRef.current = false;
-    }
-    if (field === "weight" && removedWeightRef.current) {
-      try {
-        window.localStorage.removeItem(PROFILE_WEIGHT_REMOVED_KEY);
-      } catch {
-        // ignore storage errors
-      }
-      removedWeightRef.current = false;
     }
     const parsed = parseInt(sanitized, 10);
     if (field === "height") {

@@ -22,7 +22,7 @@ export default function ProfileSummary({
   const { nickname, profileImageUrl, gender, height, weight, style } = profile;
   const resolvedProfileImageUrl = resolveMediaUrl(profileImageUrl);
 
-  const hasBodyInfo = height != null || weight != null;
+  const hasBodyInfo = (height ?? 0) > 0 || (weight ?? 0) > 0;
   const styles = (style ?? []).filter(Boolean);
   const hasStyle = styles.length > 0;
 
@@ -63,9 +63,9 @@ export default function ProfileSummary({
       {/* Body Info */}
       {hasBodyInfo && (
         <p className="text-xs text-gray-600">
-          {height != null && <span>{height}cm</span>}
-          {height != null && weight != null && <span> · </span>}
-          {weight != null && <span>{weight}kg</span>}
+          {(height ?? 0) > 0 && <span>{height}cm</span>}
+          {(height ?? 0) > 0 && (weight ?? 0) > 0 && <span> · </span>}
+          {(weight ?? 0) > 0 && <span>{weight}kg</span>}
         </p>
       )}
 
