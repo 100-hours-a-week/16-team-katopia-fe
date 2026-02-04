@@ -4,7 +4,7 @@ import { API_BASE_URL } from "@/src/config/api";
 
 export function useNicknameHandlers<T extends FieldValues>(
   trigger: UseFormTrigger<T>,
-  nicknamePath: Path<T>, // 🔥 핵심
+  nicknamePath: Path<T>, //
 ) {
   const lastVerifiedNicknameRef = useRef<string>("");
 
