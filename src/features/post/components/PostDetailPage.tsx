@@ -62,9 +62,6 @@ type CommentItem = CommentListItem;
 
 /* ================= 유틸 ================= */
 
-const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
-const PROFILE_HEIGHT_REMOVED_KEY = "katopia.profileHeightRemoved";
-const PROFILE_WEIGHT_REMOVED_KEY = "katopia.profileWeightRemoved";
 
 function normalizePostImageUrls(
   value: PostImageItem[] | string[] | undefined,
@@ -104,9 +101,6 @@ export default function PostDetailPage() {
   const [loading, setLoading] = useState(true);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [profileImageRemoved, setProfileImageRemoved] = useState(false);
-  const [heightRemoved, setHeightRemoved] = useState(false);
-  const [weightRemoved, setWeightRemoved] = useState(false);
   const [me, setMe] = useState<{
     id?: number | string;
     nickname?: string;
@@ -131,24 +125,6 @@ export default function PostDetailPage() {
     return false;
   }, [post, me]);
 
-  const authorForHeader = useMemo<PostAuthor | null>(() => {
-    if (!post?.author) return null;
-
-    if (!isMine || (!profileImageRemoved && !heightRemoved && !weightRemoved)) {
-      return post.author;
-    }
-
-    return {
-      ...post.author,
-      profileImageObjectKey: profileImageRemoved
-        ? null
-        : (post.author.profileImageObjectKey ?? post.author.profileImageUrl),
-      profileImageUrl: profileImageRemoved ? null : post.author.profileImageUrl,
-      height: heightRemoved ? null : post.author.height,
-      weight: weightRemoved ? null : post.author.weight,
-    };
-  }, [post, isMine, profileImageRemoved, heightRemoved, weightRemoved]);
-
   /* ================= 게시글 ================= */
 
   useEffect(() => {
@@ -166,25 +142,6 @@ export default function PostDetailPage() {
   }, [postId, router]);
 
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
-
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProfileImageRemoved(
-        window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1",
-      );
-      setHeightRemoved(
-        window.localStorage.getItem(PROFILE_HEIGHT_REMOVED_KEY) === "1",
-      );
-      setWeightRemoved(
-        window.localStorage.getItem(PROFILE_WEIGHT_REMOVED_KEY) === "1",
-      );
-    } catch {
-      setProfileImageRemoved(false);
-      setHeightRemoved(false);
-      setWeightRemoved(false);
-    }
-  }, []);
 
   /* ================= 댓글 ================= */
 
@@ -232,22 +189,6 @@ export default function PostDetailPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!me?.id) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setComments((prev) =>
-      prev.map((comment) => {
-        if (String(comment.authorId) !== String(me.id)) return comment;
-        return {
-          ...comment,
-          profileImageUrl: profileImageRemoved
-            ? null
-            : (me.profileImageUrl ?? null),
-        };
-      }),
-    );
-  }, [me?.id, me?.profileImageUrl, profileImageRemoved]);
-
   /* ================= 댓글 핸들러 ================= */
 
   const handleCreateComment = async (content: string) => {
@@ -263,9 +204,7 @@ export default function PostDetailPage() {
           createdAt: newComment.createdAt,
           nickname: me?.nickname ?? "나",
           authorId: me?.id,
-          profileImageUrl: profileImageRemoved
-            ? null
-            : (me?.profileImageUrl ?? null),
+          profileImageUrl: me?.profileImageUrl ?? null,
           isMine: true,
         },
         ...prev,
@@ -325,15 +264,13 @@ export default function PostDetailPage() {
 
   return (
     <div className="min-h-screen px-4 py-4">
-      {authorForHeader && (
-        <PostHeader
-          author={authorForHeader}
-          createdAt={post.createdAt}
-          isMine={isMine}
-          onEdit={() => router.push(`/post/edit/${postId}`)}
-          onDelete={() => setDeleteOpen(true)}
-        />
-      )}
+      <PostHeader
+        author={post.author}
+        createdAt={post.createdAt}
+        isMine={isMine}
+        onEdit={() => router.push(`/post/edit/${postId}`)}
+        onDelete={() => setDeleteOpen(true)}
+      />
 
       <PostImageCarousel images={sortedImageUrls} />
 

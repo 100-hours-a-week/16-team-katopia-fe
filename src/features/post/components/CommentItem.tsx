@@ -27,7 +27,6 @@ export default function CommentItem({
   const color = avatarColors[comment.id % avatarColors.length] ?? "#D9D9D9";
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
-  const [profileImageRemoved, setProfileImageRemoved] = useState(false);
   const editRef = useRef<HTMLTextAreaElement | null>(null);
   const isMine =
     comment.isMine != null
@@ -38,10 +37,6 @@ export default function CommentItem({
         (comment.nickname &&
           currentUserNickname &&
           comment.nickname === currentUserNickname);
-  const resolvedProfileImageUrl =
-    !profileImageRemoved && resolveMediaUrl(comment.profileImageUrl)
-      ? resolveMediaUrl(comment.profileImageUrl)
-      : null;
 
   const handleStartEdit = () => {
     setDraft(comment.content);
@@ -82,17 +77,6 @@ export default function CommentItem({
     }
   }, [draft, isEditing]);
 
-  useEffect(() => {
-    if (!isMine) return;
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProfileImageRemoved(
-        window.localStorage.getItem("katopia.profileImageRemoved") === "1",
-      );
-    } catch {
-      setProfileImageRemoved(false);
-    }
-  }, [isMine]);
 
   const handleProfileClick = () => {
     if (comment.authorId == null) return;
@@ -111,10 +95,10 @@ export default function CommentItem({
           style={{ backgroundColor: color }}
           aria-label={`${comment.nickname} 프로필 보기`}
         >
-          {resolvedProfileImageUrl ? (
+          {resolveMediaUrl(comment.profileImageUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={resolvedProfileImageUrl as string}
+              src={resolveMediaUrl(comment.profileImageUrl) as string}
               alt={comment.nickname}
               className="h-full w-full object-cover"
             />

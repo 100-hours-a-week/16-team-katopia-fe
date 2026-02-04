@@ -342,11 +342,6 @@ export default function SignupStep2() {
             console.error("[signup] PATCH /api/members failed", err);
           }
 
-          try {
-            window.localStorage.removeItem("katopia.profileImageRemoved");
-          } catch {
-            // ignore storage errors
-          }
         }
 
         try {
