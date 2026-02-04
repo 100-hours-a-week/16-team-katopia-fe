@@ -95,11 +95,10 @@ export default function CommentItem({
           aria-label={`${comment.nickname} 프로필 보기`}
         >
           {resolveMediaUrl(comment.profileImageUrl) ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={resolveMediaUrl(comment.profileImageUrl) as string}
               alt={comment.nickname}
-              width={32}
-              height={32}
               className="h-full w-full object-cover"
             />
           ) : (
