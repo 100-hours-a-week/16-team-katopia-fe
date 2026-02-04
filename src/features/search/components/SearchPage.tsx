@@ -19,6 +19,12 @@ export default function SearchPage() {
   const { ready, isAuthenticated } = useAuth();
   const tabParam = searchParams.get("tab");
   const qParam = searchParams.get("q") ?? "";
+  const normalizeHashtagQuery = (value: string) => {
+    if (!value.startsWith("#")) return value;
+    const raw = value.slice(1).trim();
+    const tag = raw.match(/^[^#\s]+/)?.[0] ?? "";
+    return tag ? `#${tag}` : "#";
+  };
 
   const initialTab: "계정" | "게시글/해시태그" =
     tabParam === "posts" || tabParam === "게시글/해시태그"
@@ -72,21 +78,24 @@ export default function SearchPage() {
 
   const handleFocus = useCallback(() => {
     setIsSearching(true);
-  }, []);
+  }, [setIsSearching]);
 
   const handleBack = useCallback(() => {
     setIsSearching(false);
     setInputValue("");
     setQuery("");
     setActiveTab("계정");
-  }, []);
+  }, [setIsSearching, setInputValue, setQuery, setActiveTab]);
 
   /* -------------------------
      검색어 디바운스
   ------------------------- */
   useEffect(() => {
     const timer = setTimeout(() => {
-      setQuery(inputValue.trim());
+      const trimmed = inputValue.trim();
+      setQuery(
+        trimmed.startsWith("#") ? normalizeHashtagQuery(trimmed) : trimmed,
+      );
     }, 400);
 
     return () => clearTimeout(timer);
@@ -143,8 +152,11 @@ export default function SearchPage() {
     const params = new URLSearchParams();
 
     if (isSearching) {
-      if (query.trim().length > 0) {
-        params.set("q", query.trim());
+      const normalizedQuery = query.trim().startsWith("#")
+        ? normalizeHashtagQuery(query.trim())
+        : query.trim();
+      if (normalizedQuery.length > 0) {
+        params.set("q", normalizedQuery);
       }
       params.set("tab", activeTab === "게시글/해시태그" ? "posts" : "account");
     }

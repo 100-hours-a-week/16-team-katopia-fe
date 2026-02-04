@@ -38,7 +38,8 @@ export async function searchPosts(params: {
   if (isHashtagQuery) {
     searchParams.set("tags", normalizedQuery);
   }
-  searchParams.set("query", isHashtagQuery ? rawQuery : normalizedQuery);
+  const queryParam = isHashtagQuery ? `#${normalizedQuery}` : normalizedQuery;
+  searchParams.set("query", queryParam);
   if (params.size) searchParams.set("size", String(params.size));
   if (params.after) searchParams.set("after", params.after);
   if (params.height) searchParams.set("height", String(params.height));

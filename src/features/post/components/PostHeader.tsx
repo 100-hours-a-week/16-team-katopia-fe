@@ -165,13 +165,13 @@ export default function PostHeader({
 
         <div className="flex-1">
           <p className="text-sm font-semibold">{author.nickname}</p>
-          {(author.height || 0) > 0 || (author.weight || 0) > 0 ? (
+          {(author.height ?? 0) > 0 || (author.weight ?? 0) > 0 ? (
             <p className="text-xs text-muted-foreground">
-              {(author.height || 0) > 0 ? `${author.height}cm` : ""}
-              {(author.height || 0) > 0 && (author.weight || 0) > 0
+              {(author.height ?? 0) > 0 ? `${author.height}cm` : ""}
+              {(author.height ?? 0) > 0 && (author.weight ?? 0) > 0
                 ? " · "
                 : ""}
-              {(author.weight || 0) > 0 ? `${author.weight}kg` : ""}
+              {(author.weight ?? 0) > 0 ? `${author.weight}kg` : ""}
             </p>
           ) : null}
         </div>
