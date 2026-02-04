@@ -1,31 +1,40 @@
-import { memo, useState } from "react";
-import type { UseFormRegisterReturn } from "react-hook-form";
+/* eslint-disable react-hooks/refs */
+import { memo, useMemo, useRef, useState } from "react";
+import { useController, useWatch, type Control } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import type { SignupStep1Values } from "./schema";
 
 type Props = {
-  register: UseFormRegisterReturn;
-  nickname: string;
-  onChangeCapture?: React.FormEventHandler<HTMLInputElement>;
-  error?: string;
+  control: Control<SignupStep1Values>;
   duplicateError: string | null;
   duplicateSuccess: string | null;
-  onDuplicateCheck: (nickname: string) => boolean | void | Promise<boolean>;
-  disableDuplicateCheck?: boolean;
+  onDuplicateCheck: (nickname: string) => boolean | Promise<boolean>;
+  isChecking: boolean;
 };
 
 const NicknameField = memo(
   ({
-    register,
-    nickname,
-    onChangeCapture,
-    error,
+    control,
     duplicateError,
     duplicateSuccess,
     onDuplicateCheck,
-    disableDuplicateCheck,
+    isChecking,
   }: Props) => {
+    const {
+      field,
+      fieldState: { error },
+    } = useController({ name: "nickname", control });
+
+    const nickname = useWatch({ name: "nickname", control });
+
     const [overLimit, setOverLimit] = useState(false);
+    const lastCheckedNickname = useRef<string | null>(null);
+
+    const needRecheck = useMemo(() => {
+      if (!lastCheckedNickname.current) return true;
+      return lastCheckedNickname.current !== nickname;
+    }, [nickname]);
 
     return (
       <div className="mt-15">
@@ -39,25 +48,21 @@ const NicknameField = memo(
 
         <div className="flex gap-2">
           <Input
-            {...register}
+            {...field}
             maxLength={20}
             onBeforeInput={(e) => {
               const input = e.target as HTMLInputElement;
-
               if (input.value.length >= 20) {
-                e.preventDefault(); // 입력 차단
-                setOverLimit(true); // 헬퍼 ON
+                e.preventDefault();
+                setOverLimit(true);
               }
             }}
             onChange={(e) => {
-              // ✅ 20자 미만으로 돌아오면 즉시 헬퍼 OFF
               if (e.currentTarget.value.length < 20) {
                 setOverLimit(false);
               }
-
-              register.onChange(e); // RHF 동기화
+              field.onChange(e);
             }}
-            onChangeCapture={onChangeCapture}
             placeholder="닉네임을 입력해주세요."
             className="placeholder:text-[12px] text-[12px]"
           />
@@ -65,24 +70,28 @@ const NicknameField = memo(
           <Button
             type="button"
             variant="outline"
-            onClick={() => onDuplicateCheck(nickname)}
-            disabled={disableDuplicateCheck ?? !nickname}
+            disabled={!nickname || isChecking || !needRecheck}
+            onClick={async () => {
+              const ok = await onDuplicateCheck(nickname);
+              if (ok) lastCheckedNickname.current = nickname;
+            }}
           >
             중복 확인
           </Button>
         </div>
 
-        {/* 🔥 헬퍼 텍스트 우선순위 */}
         {overLimit ? (
           <p className="mt-2 text-[11px] text-red-500">
             닉네임은 최대 20자까지 입력할 수 있습니다.
           </p>
         ) : duplicateError ? (
           <p className="mt-2 text-[11px] text-red-500">{duplicateError}</p>
-        ) : duplicateSuccess ? (
+        ) : duplicateSuccess && !needRecheck ? (
           <p className="mt-2 text-[11px] text-green-600">{duplicateSuccess}</p>
         ) : (
-          error && <p className="mt-2 text-[11px] text-red-500">{error}</p>
+          error && (
+            <p className="mt-2 text-[11px] text-red-500">{error.message}</p>
+          )
         )}
       </div>
     );
