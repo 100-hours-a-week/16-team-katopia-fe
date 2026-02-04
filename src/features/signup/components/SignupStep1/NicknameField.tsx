@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/refs */
 import { memo, useMemo, useState } from "react";
 import { useController, useWatch, type Control } from "react-hook-form";
 import { Input } from "@/components/ui/input";

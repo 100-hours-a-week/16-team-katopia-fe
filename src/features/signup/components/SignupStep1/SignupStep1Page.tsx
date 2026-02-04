@@ -47,7 +47,6 @@ export default function SignupStep1() {
       <SubmitButton
         control={control}
         isNicknameVerified={isNicknameVerified}
-        duplicateSuccess={duplicateSuccess}
       />
     </form>
   );

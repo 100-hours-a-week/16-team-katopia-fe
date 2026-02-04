@@ -6,11 +6,9 @@ import type { SignupStep1Values } from "./schema";
 type Props = {
   control: Control<SignupStep1Values>;
   isNicknameVerified: boolean;
-  duplicateSuccess: string | null;
 };
 
-const SubmitButton = memo(
-  ({ control, isNicknameVerified, duplicateSuccess }: Props) => {
+const SubmitButton = memo(({ control, isNicknameVerified }: Props) => {
     // ✅ nickname 필드만 에러 구독
     const { errors } = useFormState<SignupStep1Values>({
       control,
@@ -25,13 +23,8 @@ const SubmitButton = memo(
       }) ?? "";
 
     const disabled = useMemo(() => {
-      return (
-        !!errors.nickname ||
-        nickname.length === 0 ||
-        !isNicknameVerified ||
-        !duplicateSuccess
-      );
-    }, [errors.nickname, nickname, isNicknameVerified, duplicateSuccess]);
+      return !!errors.nickname || nickname.length === 0 || !isNicknameVerified;
+    }, [errors.nickname, nickname, isNicknameVerified]);
 
     return (
       <Button
