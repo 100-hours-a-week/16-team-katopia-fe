@@ -88,6 +88,9 @@ jobs:
       - name: Build (next build)
         id: build_next
         run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://dev.fitcheck.kr
+          NEXT_PUBLIC_IMAGE_BASE_URL: https://df1ez4kkj7703.cloudfront.net
 
       # 4.5) 전송할 압축 파일명 만들기
       - name: Prepare artifact filename (date + commit message)
