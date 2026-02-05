@@ -42,12 +42,10 @@ export default function SignupStep1() {
         duplicateSuccess={duplicateSuccess}
         onDuplicateCheck={handleDuplicateCheck}
         isChecking={isChecking}
+        disableDuplicateCheck={verifiedNickname !== ""} // ✅ 검증 완료 후 비활성화
       />
 
-      <SubmitButton
-        control={control}
-        verifiedNickname={verifiedNickname}
-      />
+      <SubmitButton control={control} verifiedNickname={verifiedNickname} />
     </form>
   );
 }

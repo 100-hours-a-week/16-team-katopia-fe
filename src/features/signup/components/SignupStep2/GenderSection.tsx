@@ -9,6 +9,8 @@ type Props = {
   maleValue?: string;
   femaleValue?: string;
   errorMessage?: string;
+  showRequiredMark?: boolean;
+  labelClassName?: string;
 };
 
 const GenderSection = memo(
@@ -18,10 +20,15 @@ const GenderSection = memo(
     maleValue = "male",
     femaleValue = "female",
     errorMessage = "성별을 선택해주세요.",
+    showRequiredMark = true,
+    labelClassName = "text-[13px]",
   }: Props) => (
   <div className="mt-10">
-    <p className="mb-2 font-medium text-[13px]">
-      성별 <span className="text-red-500 text-[16px]">*</span>
+    <p className={`mb-2 font-medium ${labelClassName}`}>
+      성별{" "}
+      {showRequiredMark && (
+        <span className="text-red-500 text-[16px]">*</span>
+      )}
     </p>
 
     <div className="flex justify-center gap-12">

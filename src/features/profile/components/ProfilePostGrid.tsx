@@ -38,7 +38,7 @@ export default function ProfilePostGrid({
 
   return (
     <div className="mt-6 grid grid-cols-3 gap-2 px-4">
-      {posts.map((post) => (
+      {posts.map((post, index) => (
         <Link
           key={post.id}
           href={
@@ -53,6 +53,8 @@ export default function ProfilePostGrid({
               src={resolveMediaUrl(post.imageUrl) as string}
               alt=""
               className="h-full w-full object-cover"
+              loading={index === 0 ? "eager" : "lazy"}
+              fetchPriority={index === 0 ? "high" : "auto"}
             />
           )}
         </Link>

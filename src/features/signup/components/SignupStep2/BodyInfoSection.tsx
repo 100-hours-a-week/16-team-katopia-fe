@@ -11,6 +11,7 @@ type Props = {
   weightInputRef: RefObject<HTMLInputElement | null>;
   heightError?: string | null;
   weightError?: string | null;
+  labelClassName?: string;
 };
 
 const BodyInfoSection = memo(
@@ -22,10 +23,11 @@ const BodyInfoSection = memo(
     weightInputRef,
     heightError,
     weightError,
+    labelClassName = "text-[13px]",
   }: Props) => (
     <div className="mt-10 flex items-center justify-center gap-8">
       <div>
-        <label className="mb-1 block text-[13px] font-medium">키</label>
+        <label className={`mb-1 block font-medium ${labelClassName}`}>키</label>
         <div className="inline-flex items-center gap-2">
           <Input
             value={heightValue}
@@ -47,7 +49,9 @@ const BodyInfoSection = memo(
       </div>
 
       <div>
-        <label className="mb-1 block text-[13px] font-medium">몸무게</label>
+        <label className={`mb-1 block font-medium ${labelClassName}`}>
+          몸무게
+        </label>
         <div className="inline-flex items-center gap-2">
           <Input
             ref={weightInputRef}

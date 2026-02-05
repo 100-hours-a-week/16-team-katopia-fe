@@ -19,12 +19,14 @@ type Props = {
   styles: string[];
   onToggle: (style: string) => void;
   error: string | null;
+  labelClassName?: string;
 };
 
-const StyleSection = memo(({ styles, onToggle, error }: Props) => (
+const StyleSection = memo(
+  ({ styles, onToggle, error, labelClassName = "text-[13px]" }: Props) => (
   <div className="mt-10">
     <div className="mb-2 flex items-center justify-between">
-      <span className="font-medium text-[13px]">선호 스타일</span>
+      <span className={`font-medium ${labelClassName}`}>선호 스타일</span>
       <span className="text-[11px] text-gray-400">
         최대 2개 선택 가능합니다.
       </span>
@@ -49,7 +51,8 @@ const StyleSection = memo(({ styles, onToggle, error }: Props) => (
 
     {error && <p className="mt-2 text-[11px] text-red-500">{error}</p>}
   </div>
-));
+  ),
+);
 
 StyleSection.displayName = "StyleSection";
 export default StyleSection;

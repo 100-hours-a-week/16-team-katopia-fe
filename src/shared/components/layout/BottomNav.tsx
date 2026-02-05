@@ -6,11 +6,11 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  // {
-  //   href: "/home",
-  //   icon: "/icons/home.svg",
-  //   label: "홈",
-  // },
+  {
+    href: "/home",
+    icon: "/icons/home.svg",
+    label: "홈",
+  },
   {
     href: "/search",
     icon: "/icons/search.svg",
@@ -21,11 +21,11 @@ const NAV_ITEMS = [
     icon: "/icons/plus.svg", // 중앙 +
     label: "작성",
   },
-  // {
-  //   href: "/vote",
-  //   icon: "/icons/votee.svg",
-  //   label: "투표",
-  // },
+  {
+    href: "/vote",
+    icon: "/icons/votee.svg",
+    label: "투표",
+  },
   {
     href: "/profile",
     icon: "/icons/profile.svg",
@@ -61,6 +61,7 @@ export default function BottomNav() {
                     alt={item.label}
                     width={55}
                     height={55}
+                    loading="eager"
                     className={cn(isActive && "invert")}
                   />
                 </Link>
@@ -83,7 +84,10 @@ export default function BottomNav() {
                   alt={item.label}
                   width={22}
                   height={22}
-                  className={cn("opacity-60", isActive && "opacity-100")}
+                  className={cn(
+                    "h-auto w-auto opacity-60",
+                    isActive && "opacity-100",
+                  )}
                 />
                 <span
                   className={cn(

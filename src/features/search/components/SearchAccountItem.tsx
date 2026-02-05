@@ -47,7 +47,7 @@ function SearchAccountItem({
             alt="기본 프로필"
             width={20}
             height={20}
-            className="opacity-60"
+            className="h-auto w-auto opacity-60"
           />
         )}
       </div>
