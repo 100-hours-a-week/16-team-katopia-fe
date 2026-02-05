@@ -1,24 +1,34 @@
 import { memo, useMemo } from "react";
-import { useFormState, type Control } from "react-hook-form";
+import { useFormState, useWatch, type Control } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import type { SignupStep1Values } from "./schema";
 
 type Props = {
   control: Control<SignupStep1Values>;
-  isNicknameVerified: boolean;
+  verifiedNickname: string;
 };
 
-const SubmitButton = memo(({ control, isNicknameVerified }: Props) => {
+const SubmitButton = memo(({ control, verifiedNickname }: Props) => {
   // ✅ nickname 필드만 에러 구독
   const { errors } = useFormState<SignupStep1Values>({
     control,
     name: "nickname",
   });
+  const nickname = useWatch({ control, name: "nickname" }) ?? "";
 
   const disabled = useMemo(() => {
-    return !!errors.nickname || !isNicknameVerified;
-  }, [errors.nickname, isNicknameVerified]);
+    return (
+      !!errors.nickname || !nickname || nickname !== verifiedNickname
+    );
+  }, [errors.nickname, nickname, verifiedNickname]);
 
+  return <NextButton disabled={disabled} />;
+});
+
+SubmitButton.displayName = "SubmitButton";
+export default SubmitButton;
+
+const NextButton = memo(({ disabled }: { disabled: boolean }) => {
   return (
     <Button
       type="submit"
@@ -34,5 +44,4 @@ const SubmitButton = memo(({ control, isNicknameVerified }: Props) => {
   );
 });
 
-SubmitButton.displayName = "SubmitButton";
-export default SubmitButton;
+NextButton.displayName = "NextButton";

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useController, type Control } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,39 @@ const NicknameField = memo(
     onDuplicateCheck,
     isChecking,
   }: Props) => {
+    return (
+      <div className="mt-15">
+        <label className="mb-1 block text-sm font-medium">
+          닉네임<span className="text-red-500">*</span>
+        </label>
+
+        <p className="mb-2 text-xs text-muted-foreground">
+          2자 이상 20자 이하, 특수문자(._)만 사용 가능
+        </p>
+
+        <NicknameInputSection
+          control={control}
+          duplicateError={duplicateError}
+          duplicateSuccess={duplicateSuccess}
+          onDuplicateCheck={onDuplicateCheck}
+          isChecking={isChecking}
+        />
+      </div>
+    );
+  },
+);
+
+NicknameField.displayName = "NicknameField";
+export default NicknameField;
+
+const NicknameInputSection = memo(
+  ({
+    control,
+    duplicateError,
+    duplicateSuccess,
+    onDuplicateCheck,
+    isChecking,
+  }: Props) => {
     const {
       field,
       fieldState: { error },
@@ -31,22 +64,29 @@ const NicknameField = memo(
     const [lastCheckedNickname, setLastCheckedNickname] = useState<
       string | null
     >(null);
+    const latestNicknameRef = useRef(nickname);
 
     const needRecheck = useMemo(() => {
       if (!lastCheckedNickname) return true;
       return lastCheckedNickname !== nickname;
     }, [lastCheckedNickname, nickname]);
 
+    useEffect(() => {
+      latestNicknameRef.current = nickname;
+    }, [nickname]);
+
+    const handleDuplicateClick = useCallback(async () => {
+      const currentNickname = latestNicknameRef.current;
+      const ok = await onDuplicateCheck(currentNickname);
+      if (ok) setLastCheckedNickname(currentNickname);
+    }, [onDuplicateCheck]);
+
+    const isDuplicateDisabled = useMemo(() => {
+      return !nickname || isChecking || !needRecheck;
+    }, [nickname, isChecking, needRecheck]);
+
     return (
-      <div className="mt-15">
-        <label className="mb-1 block text-sm font-medium">
-          닉네임<span className="text-red-500">*</span>
-        </label>
-
-        <p className="mb-2 text-xs text-muted-foreground">
-          2자 이상 20자 이하, 특수문자(._)만 사용 가능
-        </p>
-
+      <>
         <div className="flex gap-2">
           <NicknameInput
             value={nickname}
@@ -54,24 +94,17 @@ const NicknameField = memo(
             onOverLimit={setOverLimit}
           />
 
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!nickname || isChecking || !needRecheck}
-            onClick={async () => {
-              const ok = await onDuplicateCheck(nickname);
-              if (ok) setLastCheckedNickname(nickname);
-            }}
-          >
-            중복 확인
-          </Button>
+          <DuplicateCheckButton
+            disabled={isDuplicateDisabled}
+            onClick={handleDuplicateClick}
+          />
         </div>
 
         {overLimit ? (
           <p className="mt-2 text-[11px] text-red-500">
             닉네임은 최대 20자까지 입력할 수 있습니다.
           </p>
-        ) : duplicateError ? (
+        ) : duplicateError && !needRecheck ? (
           <p className="mt-2 text-[11px] text-red-500">{duplicateError}</p>
         ) : duplicateSuccess && !needRecheck ? (
           <p className="mt-2 text-[11px] text-green-600">{duplicateSuccess}</p>
@@ -80,13 +113,35 @@ const NicknameField = memo(
             <p className="mt-2 text-[11px] text-red-500">{error.message}</p>
           )
         )}
-      </div>
+      </>
     );
   },
 );
 
-NicknameField.displayName = "NicknameField";
-export default NicknameField;
+NicknameInputSection.displayName = "NicknameInputSection";
+
+const DuplicateCheckButton = memo(
+  ({
+    disabled,
+    onClick,
+  }: {
+    disabled: boolean;
+    onClick: () => void;
+  }) => {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        disabled={disabled}
+        onClick={onClick}
+      >
+        중복 확인
+      </Button>
+    );
+  },
+);
+
+DuplicateCheckButton.displayName = "DuplicateCheckButton";
 
 const NicknameInput = memo(
   ({
@@ -99,20 +154,30 @@ const NicknameInput = memo(
     onOverLimit: (next: boolean) => void;
   }) => {
     const [localValue, setLocalValue] = useState(value);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
       setLocalValue(value);
     }, [value]);
 
     useEffect(() => {
-      const timer = setTimeout(() => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(() => {
         if (localValue !== value) {
           onChange({
             target: { value: localValue },
           } as React.ChangeEvent<HTMLInputElement>);
         }
       }, 200);
-      return () => clearTimeout(timer);
+
+      return () => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+      };
     }, [localValue, onChange, value]);
 
     return (

@@ -42,7 +42,7 @@ export function useSignupStep1() {
      Nickname 비즈니스 로직
   ------------------------- */
   const {
-    isNicknameVerified,
+    verifiedNickname,
     duplicateError,
     duplicateSuccess,
     isChecking,
@@ -54,7 +54,7 @@ export function useSignupStep1() {
   ------------------------- */
   const onSubmit = useCallback(
     async (data: SignupStep1Values) => {
-      if (!isNicknameVerified) {
+      if (data.nickname !== verifiedNickname) {
         const ok = await handleDuplicateCheck(data.nickname);
         if (!ok) return;
       }
@@ -67,7 +67,7 @@ export function useSignupStep1() {
 
       router.replace("/signup/step2");
     },
-    [router, isNicknameVerified, handleDuplicateCheck],
+    [router, verifiedNickname, handleDuplicateCheck],
   );
 
   return {
@@ -77,7 +77,7 @@ export function useSignupStep1() {
     onSubmit,
 
     // nickname business states
-    isNicknameVerified,
+    verifiedNickname,
     duplicateError,
     duplicateSuccess,
     isChecking,

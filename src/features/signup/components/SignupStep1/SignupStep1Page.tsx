@@ -12,7 +12,7 @@ export default function SignupStep1() {
     control,
     handleSubmit,
     onSubmit,
-    isNicknameVerified,
+    verifiedNickname,
     duplicateError,
     duplicateSuccess,
     isChecking,
@@ -46,7 +46,7 @@ export default function SignupStep1() {
 
       <SubmitButton
         control={control}
-        isNicknameVerified={isNicknameVerified}
+        verifiedNickname={verifiedNickname}
       />
     </form>
   );
