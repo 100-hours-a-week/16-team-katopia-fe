@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,10 +12,10 @@ import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 import PostFormLayout from "../PostFormLayout";
 import PostFormHeader from "../components/PostFormHeader";
-
 import PostImageUploader from "./components/PostImageUploader";
 import PostContentInput from "./components/PostContentInput";
 import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
+import PostSubmitButton from "./components/PostSubmitButton";
 
 export default function PostCreatePage() {
   const router = useRouter();
@@ -52,22 +52,13 @@ export default function PostCreatePage() {
 
   const {
     handleSubmit,
-    watch,
-    formState: { isDirty, isSubmitting },
+    formState: { isDirty },
   } = methods;
-
-  /* ---------------- submit 가능 여부 ---------------- */
-  const [imageObjectKeys, content] = watch([
-    "imageObjectKeys", // ✅ 수정: 기준 필드 통일
-    "content",
-  ]);
-
-  const canSubmit = (imageObjectKeys?.length ?? 0) > 0 && !!content?.trim();
 
   usePostUnsavedGuard(isDirty);
 
   /* ---------------- submit ---------------- */
-  const onSubmit = async (data: PostCreateValues) => {
+  const onSubmit = useCallback(async (data: PostCreateValues) => {
     try {
       console.log("post create submit", data);
 
@@ -97,11 +88,16 @@ export default function PostCreatePage() {
       console.error(e);
       // TODO: 에러 코드별 토스트 분기
     }
-  };
+  }, [router]);
 
-  const onInvalid = (errors: FieldErrors<PostCreateValues>) => {
+  const onInvalid = useCallback((errors: FieldErrors<PostCreateValues>) => {
     console.log("post create invalid", errors);
-  };
+  }, []);
+
+  const handleBack = useCallback(() => {
+    if (isDirty) setShowCancelModal(true);
+    else router.back();
+  }, [isDirty, router]);
 
   /* ---------------- render ---------------- */
   return (
@@ -109,12 +105,13 @@ export default function PostCreatePage() {
       <PostFormLayout>
         <PostFormHeader
           title="새 게시물"
-          onBack={() => {
-            if (isDirty) setShowCancelModal(true);
-            else router.back();
-          }}
-          formId="post-create-form"
-          submitDisabled={!canSubmit || isSubmitting || Boolean(toastMessage)}
+          onBack={handleBack}
+          rightSlot={
+            <PostSubmitButton
+              formId="post-create-form"
+              disabled={Boolean(toastMessage)}
+            />
+          }
         />
 
         <form

@@ -17,8 +17,8 @@ export default function PostImagePreview({ images }: Props) {
             key={img.id}
             className={`relative overflow-hidden rounded-[3px] bg-gray-200 ${
               isSingle
-                ? "w-full aspect-[3/4]"
-                : "h-[60vh] aspect-[3/4] flex-shrink-0 snap-start"
+                ? "w-full aspect-3/4"
+                : "h-[60vh] aspect-3/4 shrink-0 snap-start"
             }`}
           >
             <Image src={img.url} alt="" fill className="object-cover" />

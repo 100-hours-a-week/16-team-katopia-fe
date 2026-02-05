@@ -111,6 +111,25 @@ select:-webkit-autofill {
   caret-color: #000;
 }
 
+.image-preview-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+.image-preview-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.image-preview-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.image-preview-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 999px;
+}
+
 .dark {
   --background: #ffffff;
   --foreground: #121212;

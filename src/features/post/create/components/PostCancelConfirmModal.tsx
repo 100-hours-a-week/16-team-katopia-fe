@@ -31,12 +31,12 @@ export default function PostCancelConfirmModal({
   return (
     // 배경 (overlay)
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/40"
       onClick={onClose}
     >
       {/* 모달 본문 */}
       <div
-        className="w-[360px] rounded-3xl bg-white px-6 py-6 text-center"
+        className="w-90 rounded-3xl bg-white px-6 py-6 text-center"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Icon */}
