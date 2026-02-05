@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from "react";
-import { useController, useWatch, type Control } from "react-hook-form";
+import { useController, type Control } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { SignupStep1Values } from "./schema";
@@ -25,7 +25,7 @@ const NicknameField = memo(
       fieldState: { error },
     } = useController({ name: "nickname", control });
 
-    const nickname = useWatch({ name: "nickname", control });
+    const nickname = field.value ?? "";
 
     const [overLimit, setOverLimit] = useState(false);
     const [lastCheckedNickname, setLastCheckedNickname] = useState<
