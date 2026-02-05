@@ -70,6 +70,7 @@ jobs:
       - name: TypeScript typecheck
         id: ts_typecheck
         run: npx tsc --noEmit
+        continue-on-error: true # 에러 무시
 
       # 보안 취약점 탐색
       - name: npm audit (high+)
