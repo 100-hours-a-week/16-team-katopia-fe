@@ -34,7 +34,7 @@ export default function SearchPage() {
   const [isSearching, setIsSearching] = useState(
     qParam.length > 0 || !!tabParam,
   );
-  const [inputValue, setInputValue] = useState(qParam);
+  const [inputSeed, setInputSeed] = useState(qParam);
   const [query, setQuery] = useState(qParam);
   const [activeTab, setActiveTab] = useState<"계정" | "게시글/해시태그">(
     initialTab,
@@ -82,24 +82,20 @@ export default function SearchPage() {
 
   const handleBack = useCallback(() => {
     setIsSearching(false);
-    setInputValue("");
+    setInputSeed("");
     setQuery("");
     setActiveTab("계정");
-  }, [setIsSearching, setInputValue, setQuery, setActiveTab]);
+  }, [setIsSearching, setInputSeed, setQuery, setActiveTab]);
 
-  /* -------------------------
-     검색어 디바운스
-  ------------------------- */
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const trimmed = inputValue.trim();
+  const handleDebouncedChange = useCallback(
+    (nextValue: string) => {
+      const trimmed = nextValue.trim();
       setQuery(
         trimmed.startsWith("#") ? normalizeHashtagQuery(trimmed) : trimmed,
       );
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [inputValue]);
+    },
+    [setQuery],
+  );
 
   /* -------------------------
      계정 검색 API
@@ -172,8 +168,8 @@ export default function SearchPage() {
   return (
     <div className="px-4 py-4">
       <SearchInput
-        value={inputValue}
-        onChange={setInputValue}
+        seedValue={inputSeed}
+        onDebouncedChange={handleDebouncedChange}
         onFocus={handleFocus}
         onBack={handleBack}
         isSearching={isSearching}

@@ -2,20 +2,33 @@
 
 // 리렌더링 최소화 해야됌. 지금 레전드 불필요한 리렌더링 발생함.
 
-import { memo, useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
 
 interface Props {
-  value: string;
-  onChange: (v: string) => void;
+  seedValue: string;
+  onDebouncedChange: (v: string) => void;
   onFocus: () => void;
   onBack: () => void; // 취소 버튼에서 사용
   isSearching: boolean;
 }
 
-function SearchInput({ value, onChange, onFocus, onBack, isSearching }: Props) {
+function SearchInput({
+  seedValue,
+  onDebouncedChange,
+  onFocus,
+  onBack,
+  isSearching,
+}: Props) {
+  const [value, setValue] = useState(seedValue);
   const [overLimit, setOverLimit] = useState(false);
+  const debounceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setValue(seedValue);
+    setOverLimit(seedValue.length > 20);
+  }, [seedValue]);
 
   useEffect(() => {
     if (value.length <= 20) {
@@ -24,14 +37,29 @@ function SearchInput({ value, onChange, onFocus, onBack, isSearching }: Props) {
     }
   }, [value]);
 
+  useEffect(() => {
+    if (debounceRef.current) {
+      window.clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = window.setTimeout(() => {
+      onDebouncedChange(value);
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) {
+        window.clearTimeout(debounceRef.current);
+      }
+    };
+  }, [onDebouncedChange, value]);
+
   const handleChange = (nextValue: string) => {
     if (nextValue.length > 20) {
-      onChange(nextValue.slice(0, 20));
+      setValue(nextValue.slice(0, 20));
       setOverLimit(true);
       return;
     }
     setOverLimit(false);
-    onChange(nextValue);
+    setValue(nextValue);
   };
 
   return (
@@ -70,7 +98,10 @@ function SearchInput({ value, onChange, onFocus, onBack, isSearching }: Props) {
         {value && isSearching && (
           <button
             type="button"
-            onClick={() => onChange("")}
+            onClick={() => {
+              setValue("");
+              onDebouncedChange("");
+            }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
           >
             ✕
