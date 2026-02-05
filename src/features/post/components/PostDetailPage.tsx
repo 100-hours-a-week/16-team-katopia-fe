@@ -6,14 +6,12 @@ import PostHeader from "./PostHeader";
 import PostDeleteConfirmModal from "./PostDeleteConfirmModal";
 import PostImageCarousel from "./PostImageCarousel";
 import PostContent from "./PostContent";
-import CommentInput from "./CommentInput";
-import CommentList from "./CommentList";
+import PostCommentSection from "./PostCommentSection";
 
 export default function PostDetailPage() {
   const {
     postId,
     post,
-    comments,
     loading,
     sortedImageUrls,
     effectiveLiked,
@@ -22,9 +20,6 @@ export default function PostDetailPage() {
     setDeleteOpen,
     isMine,
     me,
-    handleCreateComment,
-    handleUpdateComment,
-    handleDeleteComment,
     handleEdit,
     handleDeleteConfirm,
   } = usePostDetail();
@@ -62,16 +57,12 @@ export default function PostDetailPage() {
         }}
       />
 
-      <div className="mt-8 border-t pt-6">
-        <CommentInput onSubmit={handleCreateComment} />
-        <CommentList
-          comments={comments}
-          onDelete={handleDeleteComment}
-          onUpdate={handleUpdateComment}
-          currentUserId={me?.id}
-          currentUserNickname={me?.nickname}
-        />
-      </div>
+      <PostCommentSection
+        postId={postId}
+        currentUserId={me?.id}
+        currentUserNickname={me?.nickname}
+        currentUserProfileImageUrl={me?.profileImageUrl}
+      />
 
       <PostDeleteConfirmModal
         open={deleteOpen}

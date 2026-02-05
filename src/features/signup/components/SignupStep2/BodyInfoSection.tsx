@@ -37,7 +37,7 @@ const BodyInfoSection = memo(
           />
           <span className="text-sm text-muted-foreground">cm</span>
         </div>
-        <div className="mt-1 min-h-[14px]">
+        <div className="mt-1 min-h-3.5">
           {heightError && (
             <p className="whitespace-nowrap text-[10px] text-red-500">
               {heightError}
@@ -60,7 +60,7 @@ const BodyInfoSection = memo(
           />
           <span className="text-sm text-muted-foreground">kg</span>
         </div>
-        <div className="mt-1 min-h-[14px]">
+        <div className="mt-1 min-h-3.5">
           {weightError && (
             <p className="whitespace-nowrap text-[10px] text-red-500">
               {weightError}

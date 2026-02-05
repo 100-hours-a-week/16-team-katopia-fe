@@ -5,17 +5,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { deletePost } from "../api/deletePost";
 import { getPostDetail } from "../api/getPostDetail";
-import { createComment } from "../api/createComment";
-import { deleteComment } from "../api/deleteComment";
-import { getComments } from "../api/getComments";
-import { updateComment } from "../api/updateComment";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
 import {
   normalizeImageUrls,
   pickImageUrl,
 } from "@/src/features/upload/utils/normalizeImageUrls";
-import type { Comment as CommentListItem } from "../components/CommentList";
 
 type PostAuthor = {
   nickname: string;
@@ -50,8 +45,6 @@ type PostDetail = {
   author: PostAuthor;
 };
 
-type CommentItem = CommentListItem;
-
 function normalizePostImageUrls(
   value: PostImageItem[] | string[] | undefined,
 ): string[] {
@@ -67,24 +60,12 @@ function normalizePostImageUrls(
     .filter(Boolean) as string[];
 }
 
-function dedupeComments(items: CommentItem[]) {
-  const seen = new Set<number>();
-  const next: CommentItem[] = [];
-  for (const item of items) {
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    next.push(item);
-  }
-  return next;
-}
-
 export function usePostDetail() {
   const { postId } = useParams<{ postId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [post, setPost] = useState<PostDetail | null>(null);
-  const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -129,27 +110,6 @@ export function usePostDetail() {
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
 
   useEffect(() => {
-    if (!postId) return;
-
-    getComments(postId, { size: 30 })
-      .then((res) => {
-        const mapped = res.comments.map((comment) => ({
-          id: comment.id,
-          content: comment.content,
-          createdAt: comment.createdAt,
-          nickname: comment.author.nickname,
-          profileImageUrl:
-            comment.author.profileImageObjectKey ??
-            comment.author.profileImageUrl ??
-            null,
-          authorId: comment.author.id,
-        }));
-        setComments(dedupeComments(mapped));
-      })
-      .catch(() => {});
-  }, [postId]);
-
-  useEffect(() => {
     authFetch(`${API_BASE_URL}/api/members/me`, {
       method: "GET",
       credentials: "include",
@@ -170,74 +130,6 @@ export function usePostDetail() {
       .catch(() => {});
   }, []);
 
-  const handleCreateComment = useCallback(
-    async (content: string) => {
-      if (!postId) return;
-
-      const newComment = await createComment({ postId, content });
-
-      setComments((prev) =>
-        dedupeComments([
-          {
-            id: newComment.id,
-            content: newComment.content,
-            createdAt: newComment.createdAt,
-            nickname: me?.nickname ?? "나",
-            authorId: me?.id,
-            profileImageUrl: me?.profileImageUrl ?? null,
-            isMine: true,
-          },
-          ...prev,
-        ]),
-      );
-
-      setPost((prev) =>
-        prev
-          ? {
-              ...prev,
-              aggregate: {
-                ...prev.aggregate,
-                commentCount: prev.aggregate.commentCount + 1,
-              },
-            }
-          : prev,
-      );
-    },
-    [me?.id, me?.nickname, me?.profileImageUrl, postId],
-  );
-
-  const handleUpdateComment = useCallback(
-    async (id: number, content: string) => {
-      if (!postId) return;
-      await updateComment({ postId, commentId: id, content });
-      setComments((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, content } : c)),
-      );
-    },
-    [postId],
-  );
-
-  const handleDeleteComment = useCallback(
-    async (id: number) => {
-      if (!postId) return;
-      await deleteComment({ postId, commentId: id });
-
-      setComments((prev) => prev.filter((c) => c.id !== id));
-      setPost((prev) =>
-        prev
-          ? {
-              ...prev,
-              aggregate: {
-                ...prev.aggregate,
-                commentCount: Math.max(0, prev.aggregate.commentCount - 1),
-              },
-            }
-          : prev,
-      );
-    },
-    [postId],
-  );
-
   const handleEdit = useCallback(() => {
     if (!postId) return;
     router.push(`/post/edit/${postId}`);
@@ -253,7 +145,6 @@ export function usePostDetail() {
   return {
     postId,
     post,
-    comments,
     loading,
     sortedImageUrls,
     effectiveLiked,
@@ -263,9 +154,6 @@ export function usePostDetail() {
     setDeleteOpen,
     isMine,
     me,
-    handleCreateComment,
-    handleUpdateComment,
-    handleDeleteComment,
     handleEdit,
     handleDeleteConfirm,
   };
