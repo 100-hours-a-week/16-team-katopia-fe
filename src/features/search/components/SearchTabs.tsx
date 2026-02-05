@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 const TABS = ["계정", "게시글/해시태그"] as const;
 
 interface Props {
@@ -7,7 +9,7 @@ interface Props {
   onChange: (tab: (typeof TABS)[number]) => void;
 }
 
-export default function SearchTabs({ active, onChange }: Props) {
+function SearchTabs({ active, onChange }: Props) {
   return (
     <div className="mt-10 flex justify-center gap-28  pb-2">
       {TABS.map((tab) => (
@@ -26,3 +28,5 @@ export default function SearchTabs({ active, onChange }: Props) {
     </div>
   );
 }
+
+export default memo(SearchTabs);
