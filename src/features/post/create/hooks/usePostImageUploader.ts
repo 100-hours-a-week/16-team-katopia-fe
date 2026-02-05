@@ -120,6 +120,7 @@ export function usePostImageUploader() {
   } = useFormContext();
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const [inputKey, setInputKey] = useState(0);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [helperText, setHelperText] = useState<string | null>(null);
 
@@ -141,6 +142,10 @@ export function usePostImageUploader() {
 
   const handleAddClick = useCallback(() => {
     inputRef.current?.click();
+  }, []);
+
+  const resetInput = useCallback(() => {
+    setInputKey((prev) => prev + 1);
   }, []);
 
   const handleRemoveAt = useCallback(
@@ -181,6 +186,7 @@ export function usePostImageUploader() {
           message: "최대 3장까지 업로드할 수 있습니다",
         });
         setHelperText("최대 3장까지 업로드할 수 있습니다");
+        resetInput();
         return;
       }
 
@@ -205,7 +211,7 @@ export function usePostImageUploader() {
         (file) => file.size <= MAX_FILE_SIZE && isSupportedImageFile(file),
       );
       if (validSelected.length === 0) {
-        e.target.value = "";
+        resetInput();
         return;
       }
 
@@ -298,14 +304,23 @@ export function usePostImageUploader() {
           );
         }
       } finally {
-        e.target.value = "";
+        resetInput();
       }
     },
-    [clearErrors, getValues, objectKeys, previews.length, setError, setValue],
+    [
+      clearErrors,
+      getValues,
+      objectKeys,
+      previews.length,
+      resetInput,
+      setError,
+      setValue,
+    ],
   );
 
   return {
     inputRef,
+    inputKey,
     previews,
     previewIds,
     sensors,

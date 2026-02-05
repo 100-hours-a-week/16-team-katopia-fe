@@ -125,6 +125,7 @@ export default function PostImageUploader() {
   const prevCountRef = useRef(0);
   const {
     inputRef,
+    inputKey,
     previews,
     previewIds,
     sensors,
@@ -161,6 +162,7 @@ export default function PostImageUploader() {
     <div>
       <input
         id={inputId}
+        key={inputKey}
         ref={inputRef}
         type="file"
         accept={ACCEPT}
