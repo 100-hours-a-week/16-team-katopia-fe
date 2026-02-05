@@ -1,7 +1,5 @@
 "use client";
 
-// 리렌더링 최소화 해야됌. 지금 레전드 불필요한 리렌더링 발생함.
-
 import { memo, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
