@@ -74,20 +74,6 @@ export default function MyProfilePage() {
         });
         const rawProfile = json.data.profile;
         const userId = json.data.id;
-        let heightRemoved = false;
-        let weightRemoved = false;
-        try {
-          heightRemoved =
-            window.localStorage.getItem("katopia.profileHeightRemoved") === "1";
-          weightRemoved =
-            window.localStorage.getItem("katopia.profileWeightRemoved") === "1";
-        } catch {
-          heightRemoved = false;
-          weightRemoved = false;
-        }
-        const resolvedHeight = heightRemoved ? null : rawProfile.height;
-        const resolvedWeight = weightRemoved ? null : rawProfile.weight;
-
         const normalizedGender =
           rawProfile.gender === "M" || rawProfile.gender === "MALE"
             ? "male"
@@ -97,22 +83,13 @@ export default function MyProfilePage() {
 
         const profileImageKey =
           rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
-        let locallyRemoved = false;
-        try {
-          locallyRemoved =
-            window.localStorage.getItem("katopia.profileImageRemoved") === "1";
-        } catch {
-          locallyRemoved = false;
-        }
-        const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
-
         setProfile({
           userId,
           ...rawProfile,
           gender: normalizedGender,
-          profileImageUrl: resolvedProfileImageKey ?? null,
-          height: resolvedHeight,
-          weight: resolvedWeight,
+          profileImageUrl: profileImageKey ?? null,
+          height: rawProfile.height,
+          weight: rawProfile.weight,
         });
       } catch (err) {
         console.error(err);

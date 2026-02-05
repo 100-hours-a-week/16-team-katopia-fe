@@ -17,6 +17,8 @@ import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep
 import NicknameInput from "./NickNameInput";
 import ProfileEditCancelModal from "./ProfileEditCancelModal";
 import BodyInfoSection from "@/src/features/signup/components/SignupStep2/BodyInfoSection";
+import GenderSection from "@/src/features/signup/components/SignupStep2/GenderSection";
+import StyleSection from "@/src/features/signup/components/SignupStep2/StyleSection";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import {
   requestUploadPresign,
@@ -27,19 +29,6 @@ import heic2any from "heic2any";
 /* =========================
    Constants
 ========================= */
-
-const STYLE_OPTIONS = [
-  "미니멀",
-  "페미닌",
-  "시크모던",
-  "러블리",
-  "빈티지",
-  "캐주얼",
-  "스트릿",
-  "클래식",
-  "스포티",
-  "Y2K",
-];
 
 const STYLE_TO_ENUM: Record<string, string> = {
   미니멀: "MINIMAL",
@@ -58,9 +47,6 @@ const ENUM_TO_STYLE: Record<string, string> = Object.fromEntries(
   Object.entries(STYLE_TO_ENUM).map(([k, v]) => [v, k]),
 );
 
-const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
-const PROFILE_HEIGHT_REMOVED_KEY = "katopia.profileHeightRemoved";
-const PROFILE_WEIGHT_REMOVED_KEY = "katopia.profileWeightRemoved";
 
 /* =========================
    Schema
@@ -135,9 +121,6 @@ export default function ProfileEditPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewUrlRef = useRef<string | null>(null);
   const weightInputRef = useRef<HTMLInputElement | null>(null);
-  const removedFlagRef = useRef<boolean>(false);
-  const removedHeightRef = useRef<boolean>(false);
-  const removedWeightRef = useRef<boolean>(false);
 
   /* ---------- Form ---------- */
   const {
@@ -223,36 +206,8 @@ export default function ProfileEditPage() {
         );
         const profileImageKey =
           profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
-        let locallyRemoved = false;
-        let heightRemoved = false;
-        let weightRemoved = false;
-        try {
-          locallyRemoved =
-            window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1";
-          heightRemoved =
-            window.localStorage.getItem(PROFILE_HEIGHT_REMOVED_KEY) === "1";
-          weightRemoved =
-            window.localStorage.getItem(PROFILE_WEIGHT_REMOVED_KEY) === "1";
-        } catch {
-          locallyRemoved = false;
-          heightRemoved = false;
-          weightRemoved = false;
-        }
-        removedFlagRef.current = locallyRemoved;
-        removedHeightRef.current = heightRemoved;
-        removedWeightRef.current = weightRemoved;
-        const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
-        setCurrentProfileImageObjectKey(resolvedProfileImageKey);
-        setPreview(resolveMediaUrl(resolvedProfileImageKey ?? undefined));
-        setRemoveImage(locallyRemoved);
-        if (heightRemoved) {
-          setValue("height", "");
-          setInitialHeight("");
-        }
-        if (weightRemoved) {
-          setValue("weight", "");
-          setInitialWeight("");
-        }
+        setCurrentProfileImageObjectKey(profileImageKey);
+        setPreview(resolveMediaUrl(profileImageKey ?? undefined));
         setRemoveImage(false);
       } catch {
         // ignore (handled by auth guard)
@@ -319,46 +274,32 @@ export default function ProfileEditPage() {
         setPreview(resolveMediaUrl(uploadedProfileObjectKey));
       }
 
-      const shouldRemoveImage = removeImage || removedFlagRef.current;
-      const profileImageObjectKey = shouldRemoveImage
+      const shouldRemoveImage = removeImage;
+      const shouldSendEmpty =
+        shouldRemoveImage && !data.height && !data.weight;
+      const profileImageObjectKey = shouldSendEmpty
         ? ""
-        : (uploadedProfileObjectKey ?? currentProfileImageObjectKey ?? null);
+        : shouldRemoveImage
+          ? ""
+          : (uploadedProfileObjectKey ?? currentProfileImageObjectKey ?? null);
 
       await updateProfile({
         nickname: trimmedNickname || undefined,
         profileImageObjectKey,
         gender: data.gender === "MALE" ? "M" : "F",
-        height: data.height ? Number(data.height) : null,
-        weight: data.weight ? Number(data.weight) : null,
+        height: shouldSendEmpty
+          ? ""
+          : data.height
+            ? Number(data.height)
+            : null,
+        weight: shouldSendEmpty
+          ? ""
+          : data.weight
+            ? Number(data.weight)
+            : null,
         enableRealtimeNotification: data.enableRealtimeNotification ?? true,
         style: data.styles.map((s) => STYLE_TO_ENUM[s]),
       });
-
-      try {
-        if (shouldRemoveImage) {
-          window.localStorage.setItem(PROFILE_IMAGE_REMOVED_KEY, "1");
-          removedFlagRef.current = true;
-        } else {
-          window.localStorage.removeItem(PROFILE_IMAGE_REMOVED_KEY);
-          removedFlagRef.current = false;
-        }
-        if (!data.height) {
-          window.localStorage.setItem(PROFILE_HEIGHT_REMOVED_KEY, "1");
-          removedHeightRef.current = true;
-        } else {
-          window.localStorage.removeItem(PROFILE_HEIGHT_REMOVED_KEY);
-          removedHeightRef.current = false;
-        }
-        if (!data.weight) {
-          window.localStorage.setItem(PROFILE_WEIGHT_REMOVED_KEY, "1");
-          removedWeightRef.current = true;
-        } else {
-          window.localStorage.removeItem(PROFILE_WEIGHT_REMOVED_KEY);
-          removedWeightRef.current = false;
-        }
-      } catch {
-        // ignore storage errors
-      }
 
       // 🔥 캐시 무효화 → 마이프로필 즉시 반영
       queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -389,22 +330,6 @@ export default function ProfileEditPage() {
       if (field === "height") setHeightError(null);
       if (field === "weight") setWeightError(null);
       return;
-    }
-    if (field === "height" && removedHeightRef.current) {
-      try {
-        window.localStorage.removeItem(PROFILE_HEIGHT_REMOVED_KEY);
-      } catch {
-        // ignore storage errors
-      }
-      removedHeightRef.current = false;
-    }
-    if (field === "weight" && removedWeightRef.current) {
-      try {
-        window.localStorage.removeItem(PROFILE_WEIGHT_REMOVED_KEY);
-      } catch {
-        // ignore storage errors
-      }
-      removedWeightRef.current = false;
     }
     const parsed = parseInt(sanitized, 10);
     if (field === "height") {
@@ -491,14 +416,6 @@ export default function ProfileEditPage() {
     setImageError(null);
     setRemoveImage(false);
     setImageBlob(null);
-    if (removedFlagRef.current) {
-      try {
-        window.localStorage.removeItem(PROFILE_IMAGE_REMOVED_KEY);
-      } catch {
-        // ignore storage errors
-      }
-      removedFlagRef.current = false;
-    }
 
     const localUrl = URL.createObjectURL(file);
     if (previewUrlRef.current) {
@@ -681,39 +598,13 @@ export default function ProfileEditPage() {
         </section>
 
         {/* Gender */}
-        <section className="px-4 py-3 text-center">
-          <div className="mt-4 flex justify-center gap-10">
-            <label
-              className={`relative inline-flex cursor-pointer items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition-colors ${
-                selectedGender === "MALE"
-                  ? "border-black bg-black text-white"
-                  : "border-gray-300 text-gray-700"
-              }`}
-            >
-              <input
-                type="radio"
-                value="MALE"
-                {...register("gender")}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
-              남성
-            </label>
-            <label
-              className={`relative inline-flex cursor-pointer items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition-colors ${
-                selectedGender === "FEMALE"
-                  ? "border-black bg-black text-white"
-                  : "border-gray-300 text-gray-700"
-              }`}
-            >
-              <input
-                type="radio"
-                value="FEMALE"
-                {...register("gender")}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              />
-              여성
-            </label>
-          </div>
+        <section className="px-4">
+          <GenderSection
+            register={register("gender")}
+            error={errors.gender?.message}
+            maleValue="MALE"
+            femaleValue="FEMALE"
+          />
         </section>
 
         {/* Height / Weight */}
@@ -731,43 +622,7 @@ export default function ProfileEditPage() {
 
         {/* Styles */}
         <section className="px-4 py-8">
-          <div className="mt-6">
-            {/* Header */}
-            <div className="mb-2 flex justify-between">
-              <label className="font-semibold text-[13px]">선호 스타일</label>
-              <span className="text-[12px] text-gray-400">
-                선호 스타일은 최대 2개 선택 가능합니다.
-              </span>
-            </div>
-
-            {/* Style Buttons */}
-            <div className="grid grid-cols-5 gap-2">
-              {STYLE_OPTIONS.map((style) => (
-                <button
-                  key={style}
-                  type="button"
-                  onClick={() => onToggle(style)}
-                  className={`
-          h-10 px-2 text-[12px]
-          border rounded-[5px] whitespace-nowrap
-          flex items-center justify-center
-          ${
-            styles.includes(style)
-              ? "border-black bg-black text-white"
-              : "border-gray-300 text-black"
-          }
-        `}
-                >
-                  {style}
-                </button>
-              ))}
-            </div>
-
-            {/* Error */}
-            {styleError && (
-              <p className="mt-2 text-[11px] text-red-500">{styleError}</p>
-            )}
-          </div>
+          <StyleSection styles={styles} onToggle={onToggle} error={styleError} />
         </section>
 
         {/* Toast */}

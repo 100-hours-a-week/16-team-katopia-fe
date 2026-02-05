@@ -1,5 +1,4 @@
 import { memo, useRef } from "react";
-import NextImage from "next/image";
 
 type Props = {
   preview: string | null;
@@ -15,16 +14,23 @@ const ProfileImageUploader = memo(
     return (
       <div className="mt-10 flex flex-col items-center">
         <div className="relative">
-          <label className="relative flex h-48 w-48 cursor-pointer items-center justify-center rounded-full bg-muted overflow-hidden border border-[#121212]">
+          <label
+            className="relative flex h-48 w-48 cursor-pointer items-center justify-center rounded-full bg-muted overflow-hidden border border-[#121212]"
+            style={{ contain: "layout paint size" }}
+          >
             {preview ? (
-              <NextImage
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={preview}
                 alt="프로필 미리보기"
-                fill
-                className="object-cover"
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                decoding="async"
               />
             ) : (
-              <span className="text-4xl font-bold">+</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                <span className="text-4xl font-bold">+</span>
+              </div>
             )}
 
             <input
@@ -40,7 +46,7 @@ const ProfileImageUploader = memo(
             <button
               type="button"
               onClick={onRemove}
-              className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white border border-[#121212]"
+              className="absolute right-2 top-2 h-8 w-8 rounded-full border border-[#121212] bg-white"
             >
               ✕
             </button>

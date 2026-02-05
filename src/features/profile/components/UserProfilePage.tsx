@@ -46,7 +46,6 @@ export default function UserProfilePage({ userId }: Props) {
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   const {
     items: posts,
@@ -61,23 +60,6 @@ export default function UserProfilePage({ userId }: Props) {
   });
 
   /* ================= 프로필 ================= */
-
-  useEffect(() => {
-    if (!ready || !isAuthenticated) return;
-
-    authFetch(`${API_BASE_URL}/api/members/me`, {
-      method: "GET",
-      cache: "no-store",
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        const id = json?.data?.id;
-        if (typeof id === "number") {
-          setCurrentUserId(id);
-        }
-      })
-      .catch(() => {});
-  }, [ready, isAuthenticated]);
 
   useEffect(() => {
     if (!ready || !isAuthenticated) return;
@@ -100,22 +82,8 @@ export default function UserProfilePage({ userId }: Props) {
           return;
         }
 
-        let height = apiProfile.heightCm ?? apiProfile.height ?? null;
-        let weight = apiProfile.weightKg ?? apiProfile.weight ?? null;
-        if (currentUserId != null && currentUserId === memberId) {
-          try {
-            const heightRemoved =
-              window.localStorage.getItem("katopia.profileHeightRemoved") ===
-              "1";
-            const weightRemoved =
-              window.localStorage.getItem("katopia.profileWeightRemoved") ===
-              "1";
-            if (heightRemoved) height = null;
-            if (weightRemoved) weight = null;
-          } catch {
-            // ignore storage errors
-          }
-        }
+        const height = apiProfile.heightCm ?? apiProfile.height ?? null;
+        const weight = apiProfile.weightKg ?? apiProfile.weight ?? null;
 
         setProfile({
           nickname: apiProfile.nickname,
@@ -139,7 +107,7 @@ export default function UserProfilePage({ userId }: Props) {
     };
 
     fetchProfile();
-  }, [memberId, ready, isAuthenticated, currentUserId]);
+  }, [memberId, ready, isAuthenticated]);
 
   useEffect(() => {
     if (!ready) return;
