@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import { useController, type Control } from "react-hook-form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -48,24 +48,10 @@ const NicknameField = memo(
         </p>
 
         <div className="flex gap-2">
-          <Input
-            {...field}
-            maxLength={20}
-            onBeforeInput={(e) => {
-              const input = e.target as HTMLInputElement;
-              if (input.value.length >= 20) {
-                e.preventDefault();
-                setOverLimit(true);
-              }
-            }}
-            onChange={(e) => {
-              if (e.currentTarget.value.length < 20) {
-                setOverLimit(false);
-              }
-              field.onChange(e);
-            }}
-            placeholder="닉네임을 입력해주세요."
-            className="placeholder:text-[12px] text-[12px]"
+          <NicknameInput
+            value={nickname}
+            onChange={field.onChange}
+            onOverLimit={setOverLimit}
           />
 
           <Button
@@ -101,3 +87,56 @@ const NicknameField = memo(
 
 NicknameField.displayName = "NicknameField";
 export default NicknameField;
+
+const NicknameInput = memo(
+  ({
+    value,
+    onChange,
+    onOverLimit,
+  }: {
+    value: string;
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+    onOverLimit: (next: boolean) => void;
+  }) => {
+    const [localValue, setLocalValue] = useState(value);
+
+    useEffect(() => {
+      setLocalValue(value);
+    }, [value]);
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        if (localValue !== value) {
+          onChange({
+            target: { value: localValue },
+          } as React.ChangeEvent<HTMLInputElement>);
+        }
+      }, 200);
+      return () => clearTimeout(timer);
+    }, [localValue, onChange, value]);
+
+    return (
+      <Input
+        maxLength={20}
+        onBeforeInput={(e) => {
+          const input = e.target as HTMLInputElement;
+          if (input.value.length >= 20) {
+            e.preventDefault();
+            onOverLimit(true);
+          }
+        }}
+        onChange={(e) => {
+          if (e.currentTarget.value.length < 20) {
+            onOverLimit(false);
+          }
+          setLocalValue(e.currentTarget.value);
+        }}
+        value={localValue}
+        placeholder="닉네임을 입력해주세요."
+        className="placeholder:text-[12px] text-[12px]"
+      />
+    );
+  },
+);
+
+NicknameInput.displayName = "NicknameInput";
