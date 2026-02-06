@@ -398,7 +398,9 @@ export function useProfileEdit() {
           height: data.height ? Number(data.height) : "",
           weight: data.weight ? Number(data.weight) : "",
           enableRealtimeNotification: data.enableRealtimeNotification ?? true,
-          style: stylesRef.current.map((style) => STYLE_TO_ENUM[style] ?? style),
+          style: stylesRef.current.map(
+            (style) => STYLE_TO_ENUM[style] ?? style,
+          ),
         });
 
         queryClient.invalidateQueries({ queryKey: ["me"] });

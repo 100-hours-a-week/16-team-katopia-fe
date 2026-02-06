@@ -30,7 +30,6 @@ function SearchInput({
 
   useEffect(() => {
     if (value.length <= 20) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOverLimit(false);
     }
   }, [value]);

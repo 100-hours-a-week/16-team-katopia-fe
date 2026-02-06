@@ -30,7 +30,7 @@ export async function getPostList(params?: {
   );
 
   const result = await res.json();
-  console.log("[posts] getPostList response", result);
+  // console.log("[posts] getPostList response", result);
 
   if (!res.ok) {
     if (res.status === 401) {

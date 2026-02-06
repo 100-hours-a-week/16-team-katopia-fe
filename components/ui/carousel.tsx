@@ -111,12 +111,12 @@ export function CarouselPrevious({ className, ...props }: ControlProps) {
       disabled={disabled}
       onClick={() => setIndex(index - 1)}
       className={cn(
-        "absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-sm shadow disabled:opacity-40",
+        "absolute left-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white shadow backdrop-blur-sm ring-1 ring-white/10 transition hover:bg-black/55 active:scale-95 disabled:opacity-40",
         className,
       )}
       {...props}
     >
-      ‹
+      <span className="text-xl leading-none">‹</span>
     </button>
   );
 }
@@ -131,12 +131,12 @@ export function CarouselNext({ className, ...props }: ControlProps) {
       disabled={disabled}
       onClick={() => setIndex(index + 1)}
       className={cn(
-        "absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2 text-sm shadow disabled:opacity-40",
+        "absolute right-3 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 text-white shadow backdrop-blur-sm ring-1 ring-white/10 transition hover:bg-black/55 active:scale-95 disabled:opacity-40",
         className,
       )}
       {...props}
     >
-      ›
+      <span className="text-xl leading-none">›</span>
     </button>
   );
 }

@@ -21,7 +21,6 @@ export default function SearchPage() {
     gridHasMore,
     observeGrid,
     accountResults,
-    accountLoading,
     postResults,
     postLoading,
     postHasMore,

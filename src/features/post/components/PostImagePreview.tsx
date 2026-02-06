@@ -1,6 +1,4 @@
 // components/PostImagePreview.tsx
-import Image from "next/image";
-
 type Props = {
   images: { id: string; url: string }[];
 };
@@ -10,18 +8,27 @@ export default function PostImagePreview({ images }: Props) {
   const isSingle = images.length === 1;
 
   return (
-    <div className={`mt-4 ${isSingle ? "" : "overflow-x-auto"}`}>
-      <div className={`flex gap-3 ${isSingle ? "" : "snap-x snap-mandatory"}`}>
+    <div
+      className={`mt-4 w-full ${
+        isSingle ? "flex justify-center" : "overflow-x-auto"
+      }`}
+    >
+      <div
+        className={`flex w-full min-w-0 ${
+          isSingle ? "justify-center" : "gap-3 snap-x snap-mandatory"
+        }`}
+      >
         {images.map((img) => (
           <div
             key={img.id}
-            className={`relative overflow-hidden rounded-[3px] bg-gray-200 ${
+            className={`relative overflow-hidden rounded-[5px] bg-gray-200 ${
               isSingle
-                ? "w-full aspect-3/4"
-                : "h-[60vh] aspect-3/4 shrink-0 snap-start"
+                ? "h-[55vh] w-88.75"
+                : "h-[55vh] w-88.75 shrink-0 snap-start"
             }`}
           >
-            <Image src={img.url} alt="" fill className="object-cover" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={img.url} alt="" className="h-full w-full object-cover" />
           </div>
         ))}
       </div>
