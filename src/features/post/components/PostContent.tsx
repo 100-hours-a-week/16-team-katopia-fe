@@ -5,12 +5,12 @@ import Image from "next/image";
 
 import { likePost } from "../api/likePost";
 import { unlikePost } from "../api/unlikePost";
+import { useCommentCount } from "../hooks/useCommentCountStore";
 
 type PostContentProps = {
   postId: string;
   content: string;
   likeCount: number;
-  commentCount: number;
   isLiked?: boolean; // (추후 API 대비)
   onLikedChange?: (nextLiked: boolean) => void;
 };
@@ -19,10 +19,10 @@ export default function PostContent({
   postId,
   content,
   likeCount,
-  commentCount,
   isLiked = false,
   onLikedChange,
 }: PostContentProps) {
+  const { count: commentCount } = useCommentCount();
   const [liked, setLiked] = useState(isLiked);
   const [likes, setLikes] = useState(likeCount);
   const [liking, setLiking] = useState(false);
