@@ -1,8 +1,7 @@
-import Image from "next/image";
-import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Comment } from "./CommentList";
+import Avatar from "@/src/shared/components/Avatar";
 
 // 여기 수정 시 리렌더링 최소화 하기. 입력할 때 마다 그 Item 부분이 계속 렌더링이 되가지구..
 
@@ -91,20 +90,17 @@ export default function CommentItem({
         <button
           type="button"
           onClick={handleProfileClick}
-          className="flex h-8 w-8 items-center justify-center rounded-full overflow-hidden"
-          style={{ backgroundColor: color }}
+          className="flex items-center justify-center"
           aria-label={`${comment.nickname} 프로필 보기`}
         >
-          {resolveMediaUrl(comment.profileImageUrl) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resolveMediaUrl(comment.profileImageUrl) as string}
-              alt={comment.nickname}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <Image src="/icons/user.svg" alt="유저" width={18} height={18} />
-          )}
+          <Avatar
+            src={comment.profileImageUrl}
+            alt={comment.nickname}
+            size={32}
+            fallbackSrc="/icons/user.svg"
+            fallbackSize={18}
+            style={{ backgroundColor: color }}
+          />
         </button>
         <span className="text-[13px] font-medium">{comment.nickname}</span>
       </div>

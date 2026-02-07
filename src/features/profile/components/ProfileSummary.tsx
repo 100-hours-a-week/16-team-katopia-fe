@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
+import Avatar from "@/src/shared/components/Avatar";
 
 type Profile = {
   nickname: string;
@@ -20,7 +20,6 @@ export default function ProfileSummary({
   if (loading || !profile) return null;
 
   const { nickname, profileImageUrl, gender, height, weight, style } = profile;
-  const resolvedProfileImageUrl = resolveMediaUrl(profileImageUrl);
 
   const hasBodyInfo = (height ?? 0) > 0 || (weight ?? 0) > 0;
   const styles = (style ?? []).filter(Boolean);
@@ -29,17 +28,15 @@ export default function ProfileSummary({
   return (
     <section className="flex flex-col items-center py-16">
       {/* Avatar */}
-      <div className="mb-4 h-24 w-24 rounded-full bg-gray-200 relative overflow-hidden flex items-center justify-center">
-        {resolvedProfileImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={resolvedProfileImageUrl}
-            alt="profile"
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <Image src="/icons/user.svg" alt="profile" width={45} height={45} />
-        )}
+      <div className="mb-4">
+        <Avatar
+          src={profileImageUrl}
+          alt="profile"
+          size={96}
+          fallbackSrc="/icons/user.svg"
+          fallbackSize={45}
+          className="bg-gray-200"
+        />
       </div>
 
       {/* Nickname */}

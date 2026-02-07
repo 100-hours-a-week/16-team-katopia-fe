@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
+import Image from "next/image";
+import Avatar from "@/src/shared/components/Avatar";
 
 type Author = {
   id?: number | string | null;
@@ -140,27 +140,16 @@ export default function PostHeader({
         <button
           type="button"
           onClick={handleProfileClick}
-          className="h-10 w-10 rounded-full overflow-hidden bg-muted flex items-center justify-center"
+          className="flex items-center justify-center"
           aria-label={`${author.nickname} 프로필 보기`}
         >
-          {resolveMediaUrl(
-            author.profileImageObjectKey ?? author.profileImageUrl,
-          ) ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={
-                resolveMediaUrl(
-                  author.profileImageObjectKey ?? author.profileImageUrl,
-                ) as string
-              }
-              alt={author.nickname}
-              width={40}
-              height={40}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <Image src="/icons/user.svg" alt="유저" width={20} height={20} />
-          )}
+          <Avatar
+            src={author.profileImageObjectKey ?? author.profileImageUrl}
+            alt={author.nickname}
+            size={40}
+            fallbackSrc="/icons/user.svg"
+            fallbackSize={20}
+          />
         </button>
 
         <div className="flex-1">
