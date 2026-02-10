@@ -35,7 +35,7 @@ export default function SearchGrid({ posts, loading }: SearchGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-3 gap-0.5">
       {posts.map((post) => (
         <SearchItem key={post.id} src={post.imageUrl} postId={post.id} />
       ))}
