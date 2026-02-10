@@ -14,6 +14,7 @@ type AvatarProps = {
   imageClassName?: string;
   fallbackClassName?: string;
   style?: CSSProperties;
+  priority?: boolean;
 };
 
 export default function Avatar({
@@ -26,6 +27,7 @@ export default function Avatar({
   imageClassName = "",
   fallbackClassName = "",
   style,
+  priority = false,
 }: AvatarProps) {
   const resolvedSrc = resolveMediaUrl(src);
   const resolvedFallbackSize =
@@ -37,11 +39,13 @@ export default function Avatar({
       style={{ width: size, height: size, ...style }}
     >
       {resolvedSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={resolvedSrc}
           alt={alt}
-          className={`h-full w-full object-cover ${imageClassName}`}
+          fill
+          sizes={`${size}px`}
+          className={`object-cover ${imageClassName}`}
+          priority={priority}
         />
       ) : (
         <Image
