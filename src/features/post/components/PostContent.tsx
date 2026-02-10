@@ -15,6 +15,25 @@ type PostContentProps = {
   onLikedChange?: (nextLiked: boolean) => void;
 };
 
+function BookmarkIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-7 w-7"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        d="M6 4.5h12a1 1 0 0 1 1 1v15l-7-4-7 4v-15a1 1 0 0 1 1-1z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function PostContent({
   postId,
   content,
@@ -112,28 +131,34 @@ export default function PostContent({
   return (
     <div className="mt-4 space-y-5">
       {/* 좋아요 / 댓글 */}
-      <div className="flex items-center gap-4 text-sm">
-        <button
-          type="button"
-          onClick={handleToggleLike}
-          className="flex items-center gap-1.5"
-          aria-pressed={liked}
-          disabled={liking}
-        >
-          <Image
-            src={liked ? "/icons/heart_on.svg" : "/icons/heart.svg"}
-            alt="좋아요"
-            width={25}
-            height={25}
-            className={liked ? "opacity-100" : "opacity-60"}
-          />
-          <span className="text-[12px]">{likes}</span>
-        </button>
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={handleToggleLike}
+            className="flex items-center gap-1.5"
+            aria-pressed={liked}
+            disabled={liking}
+          >
+            <Image
+              src={liked ? "/icons/heart_on.svg" : "/icons/heart.svg"}
+              alt="좋아요"
+              width={25}
+              height={25}
+              className={liked ? "opacity-100" : "opacity-60"}
+            />
+            <span className="text-[12px]">{likes}</span>
+          </button>
 
-        <div className="flex items-center gap-1.5">
-          <Image src="/icons/comment.svg" alt="댓글" width={25} height={25} />
-          <span className="text-[12px]">{formatCount(commentCount)}</span>
+          <div className="flex items-center gap-1.5">
+            <Image src="/icons/comment.svg" alt="댓글" width={25} height={25} />
+            <span className="text-[12px]">{formatCount(commentCount)}</span>
+          </div>
         </div>
+
+        <button type="button" aria-label="저장" className="text-neutral-900">
+          <BookmarkIcon />
+        </button>
       </div>
 
       {/* 본문 */}

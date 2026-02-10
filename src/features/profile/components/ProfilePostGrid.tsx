@@ -17,7 +17,7 @@ export default function ProfilePostGrid({
 }: ProfilePostGridProps) {
   if (loading && posts.length === 0) {
     return (
-      <div className="mt-6 grid grid-cols-3 gap-0.5 px-4">
+      <div className="mt-6 grid grid-cols-3 gap-0.5 ">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
             key={i}
@@ -37,7 +37,7 @@ export default function ProfilePostGrid({
   }
 
   return (
-    <div className="mt-6 grid grid-cols-3 gap-0.5 px-4">
+    <div className="mt-6 grid grid-cols-3 gap-0.5 ">
       {posts.map((post, index) => (
         <Link
           key={post.id}

@@ -142,16 +142,30 @@ export default function UserProfilePage({ userId }: Props) {
 
   return (
     <div className="min-h-screen px-4 py-4">
-      {/* 뒤로가기 */}
-      <button
-        onClick={() => {
-          router.back();
-        }}
-      >
-        <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
-      </button>
+      <div className="flex items-center justify-between">
+        {/* 뒤로가기 */}
+        <button
+          type="button"
+          onClick={() => {
+            router.back();
+          }}
+        >
+          <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
+        </button>
 
-      <ProfileSummary profile={profile} loading={false} />
+        <button
+          type="button"
+          className="rounded-full bg-black px-5 py-2 text-[12px] font-semibold text-white"
+        >
+          팔로우
+        </button>
+      </div>
+
+      <ProfileSummary
+        profile={profile}
+        loading={false}
+        stats={{ postCount: posts.length, friendCount: 0 }}
+      />
 
       <ProfilePostGrid posts={posts} loading={postsLoading} />
       {postsHasMore && <div ref={observePosts} className="h-24" />}
