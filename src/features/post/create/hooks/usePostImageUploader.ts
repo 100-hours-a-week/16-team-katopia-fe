@@ -39,11 +39,16 @@ type PreviewItem = {
   objectKey: string;
 };
 
+type EncodedImage = {
+  blob: Blob;
+  contentType: string;
+  extension: string;
+};
+
 async function resizeAndCompress(
   file: File,
-  maxWidth = 1080,
-  quality = 0.8,
-): Promise<Blob> {
+  maxLongSide = 1440,
+): Promise<EncodedImage> {
   let sourceFile = file;
   const isHeicLike =
     file.type === "image/heic" ||
@@ -59,7 +64,7 @@ async function resizeAndCompress(
       const converted = await heic2any({
         blob: heicBlob,
         toType: "image/jpeg",
-        quality: 0.9,
+        quality: 0.92,
       });
 
       const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
@@ -76,24 +81,35 @@ async function resizeAndCompress(
     imageOrientation: "from-image",
   });
 
-  const scale = Math.min(1, maxWidth / bitmap.width);
+  const scale = Math.min(
+    1,
+    maxLongSide / Math.max(bitmap.width, bitmap.height),
+  );
   const canvas = document.createElement("canvas");
   canvas.width = bitmap.width * scale;
   canvas.height = bitmap.height * scale;
 
   const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
-  return new Promise((resolve) =>
+  const blob = await new Promise<Blob>((resolve) =>
     canvas.toBlob(
-      (blob) => {
-        if (!blob) throw new Error("이미지 압축 실패");
-        resolve(blob);
+      (result) => {
+        if (!result) throw new Error("이미지 압축 실패");
+        resolve(result);
       },
       "image/webp",
-      quality,
+      0.92,
     ),
   );
+
+  return {
+    blob,
+    contentType: "image/webp",
+    extension: "webp",
+  };
 }
 
 const getExtension = (name: string) => {
@@ -234,18 +250,22 @@ export function usePostImageUploader() {
       );
 
       try {
-        const blobs = await Promise.all(
+        const encoded = await Promise.all(
           validSelected.map((f) => resizeAndCompress(f)),
         );
 
         const presigned = await requestUploadPresign(
           "POST",
-          blobs.map(() => "webp"),
+          encoded.map((item) => item.extension),
         );
 
         await Promise.all(
           presigned.map((p, i) =>
-            uploadToPresignedUrl(p.uploadUrl, blobs[i], "image/webp"),
+            uploadToPresignedUrl(
+              p.uploadUrl,
+              encoded[i].blob,
+              encoded[i].contentType,
+            ),
           ),
         );
 
