@@ -5,6 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import HomeFeed, { type HomePost } from "./HomeFeed";
+import HomeRecommendationSection, {
+  type HomeRecommendationMember,
+} from "./HomeRecommendationSection";
+import HomeInfoCarousel from "./HomeInfoCarousel";
 
 const MOCK_POSTS: HomePost[] = [
   {
@@ -19,6 +23,32 @@ const MOCK_POSTS: HomePost[] = [
     likeCount: 50,
     commentCount: 15,
     caption: "안녕하세요!",
+  },
+];
+const MOCK_RECOMMENDATIONS: HomeRecommendationMember[] = [
+  {
+    id: "rec-1",
+    name: "닉네임 1",
+    heightCm: 160,
+    weightKg: 60,
+    styles: ["캐주얼", "미니멀"],
+    avatarUrl: null,
+  },
+  {
+    id: "rec-2",
+    name: "닉네임 2",
+    heightCm: 165,
+    weightKg: 55,
+    styles: ["스트릿", "빈티지"],
+    avatarUrl: null,
+  },
+  {
+    id: "rec-3",
+    name: "닉네임 3",
+    heightCm: 158,
+    weightKg: 52,
+    styles: ["페미닌", "클래식"],
+    avatarUrl: null,
   },
 ];
 
@@ -71,8 +101,10 @@ export default function HomePage() {
     <>
       <div className="relative min-h-screen flex flex-col">
         <AppHeader />
-        <main className="flex-1 px-6 pb-8 pt-16">
+        <main className="flex-1 px-6 pb-12 pt-16">
+          <HomeInfoCarousel />
           <HomeFeed posts={MOCK_POSTS} />
+          <HomeRecommendationSection members={MOCK_RECOMMENDATIONS} />
         </main>
 
         {toastMessage && (
