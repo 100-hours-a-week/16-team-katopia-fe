@@ -37,11 +37,17 @@ type NicknameInputProps = {
 };
 
 const NicknameInput = memo(
-  ({ value, onCommitChange, onLocalValueChange, onOverLimitChange }: NicknameInputProps) => {
+  ({
+    value,
+    onCommitChange,
+    onLocalValueChange,
+    onOverLimitChange,
+  }: NicknameInputProps) => {
     const [localValue, setLocalValue] = useState(value);
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalValue(value);
       onLocalValueChange(value);
     }, [value, onLocalValueChange]);
@@ -87,7 +93,12 @@ NicknameInput.displayName = "NicknameInput";
 
 const DuplicateCheckButton = memo(
   ({ disabled, onClick }: { disabled: boolean; onClick: () => void }) => (
-    <Button type="button" variant="outline" disabled={disabled} onClick={onClick}>
+    <Button
+      type="button"
+      variant="outline"
+      disabled={disabled}
+      onClick={onClick}
+    >
       중복 확인
     </Button>
   ),
@@ -108,9 +119,9 @@ const NicknameInputRow = memo(
     initialNickname,
   }: NicknameInputRowProps) => {
     const [overLimit, setOverLimit] = useState(false);
-    const [lastCheckedNickname, setLastCheckedNickname] = useState<string | null>(
-      null,
-    );
+    const [lastCheckedNickname, setLastCheckedNickname] = useState<
+      string | null
+    >(null);
     const latestInputRef = useRef(value);
 
     const handleLocalValueChange = useCallback((next: string) => {
@@ -167,9 +178,7 @@ const NicknameInputRow = memo(
         ) : duplicateError && !needRecheck ? (
           <p className="mt-2 text-[11px] text-red-500">{duplicateError}</p>
         ) : duplicateSuccess && !needRecheck ? (
-          <p className="mt-2 text-[11px] text-green-600">
-            {duplicateSuccess}
-          </p>
+          <p className="mt-2 text-[11px] text-green-600">{duplicateSuccess}</p>
         ) : (
           inputError && (
             <p className="mt-2 text-[11px] text-red-500">{inputError}</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -205,9 +205,10 @@ export function useSignupStep2() {
   );
 
   useEffect(() => {
+    const timeout = styleErrorTimeoutRef.current;
     return () => {
-      if (styleErrorTimeoutRef.current) {
-        clearTimeout(styleErrorTimeoutRef.current);
+      if (timeout) {
+        clearTimeout(timeout);
       }
     };
   }, []);

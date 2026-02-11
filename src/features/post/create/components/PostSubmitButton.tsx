@@ -29,8 +29,7 @@ export default function PostSubmitButton({ disabled = false, formId }: Props) {
   useEffect(() => {
     const current = getValues();
     const canSubmit =
-      (current.imageObjectKeys?.length ?? 0) > 0 &&
-      !!current.content?.trim();
+      (current.imageObjectKeys?.length ?? 0) > 0 && !!current.content?.trim();
     lastCanSubmitRef.current = canSubmit;
     applyDisabled(canSubmit);
   }, [applyDisabled, getValues]);
@@ -38,8 +37,7 @@ export default function PostSubmitButton({ disabled = false, formId }: Props) {
   useEffect(() => {
     const subscription = watch((values) => {
       const canSubmit =
-        (values.imageObjectKeys?.length ?? 0) > 0 &&
-        !!values.content?.trim();
+        (values.imageObjectKeys?.length ?? 0) > 0 && !!values.content?.trim();
       if (canSubmit === lastCanSubmitRef.current) return;
       lastCanSubmitRef.current = canSubmit;
       applyDisabled(canSubmit);

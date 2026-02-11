@@ -24,33 +24,33 @@ type Props = {
 
 const StyleSection = memo(
   ({ styles, onToggle, error, labelClassName = "text-[13px]" }: Props) => (
-  <div className="mt-10">
-    <div className="mb-2 flex items-center justify-between">
-      <span className={`font-medium ${labelClassName}`}>선호 스타일</span>
-      <span className="text-[11px] text-gray-400">
-        최대 2개 선택 가능합니다.
-      </span>
-    </div>
+    <div className="mt-10">
+      <div className="mb-2 flex items-center justify-between">
+        <span className={`font-medium ${labelClassName}`}>선호 스타일</span>
+        <span className="text-[11px] text-gray-400">
+          최대 2개 선택 가능합니다.
+        </span>
+      </div>
 
-    <div className="grid grid-cols-5 gap-2">
-      {STYLE_OPTIONS.map((style) => (
-        <button
-          key={style}
-          type="button"
-          onClick={() => onToggle(style)}
-          className={`
+      <div className="grid grid-cols-5 gap-2">
+        {STYLE_OPTIONS.map((style) => (
+          <button
+            key={style}
+            type="button"
+            onClick={() => onToggle(style)}
+            className={`
             h-10 px-2 text-[12px] border rounded-[5px] whitespace-nowrap
             flex items-center justify-center
             ${styles.includes(style) ? "border-black bg-black text-white" : ""}
           `}
-        >
-          {style}
-        </button>
-      ))}
-    </div>
+          >
+            {style}
+          </button>
+        ))}
+      </div>
 
-    {error && <p className="mt-2 text-[11px] text-red-500">{error}</p>}
-  </div>
+      {error && <p className="mt-2 text-[11px] text-red-500">{error}</p>}
+    </div>
   ),
 );
 

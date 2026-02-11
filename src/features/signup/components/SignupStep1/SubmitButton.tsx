@@ -17,9 +17,7 @@ const SubmitButton = memo(({ control, verifiedNickname }: Props) => {
   const nickname = useWatch({ control, name: "nickname" }) ?? "";
 
   const disabled = useMemo(() => {
-    return (
-      !!errors.nickname || !nickname || nickname !== verifiedNickname
-    );
+    return !!errors.nickname || !nickname || nickname !== verifiedNickname;
   }, [errors.nickname, nickname, verifiedNickname]);
 
   return <NextButton disabled={disabled} />;

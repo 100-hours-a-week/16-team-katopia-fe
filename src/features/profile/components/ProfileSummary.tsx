@@ -109,33 +109,33 @@ export default function ProfileSummary({
 
         {hasStats && (
           <div className="flex items-center gap-12 text-center">
-          {statsItems.map((item) => (
-            <div key={item.label}>
-              {item.onClick ? (
-                <button
-                  type="button"
-                  onClick={item.onClick}
-                  className="flex flex-col items-center"
-                >
-                  <p className="text-[14px] font-semibold text-[#121212]">
-                    {item.value}
-                  </p>
-                  <p className="mt-1 text-[12px] text-gray-600">
-                    {item.label}
-                  </p>
-                </button>
-              ) : (
-                <>
-                  <p className="text-[14px] font-semibold text-[#121212]">
-                    {item.value}
-                  </p>
-                  <p className="mt-1 text-[12px] text-gray-600">
-                    {item.label}
-                  </p>
-                </>
-              )}
-            </div>
-          ))}
+            {statsItems.map((item) => (
+              <div key={item.label}>
+                {item.onClick ? (
+                  <button
+                    type="button"
+                    onClick={item.onClick}
+                    className="flex flex-col items-center"
+                  >
+                    <p className="text-[14px] font-semibold text-[#121212]">
+                      {item.value}
+                    </p>
+                    <p className="mt-1 text-[12px] text-gray-600">
+                      {item.label}
+                    </p>
+                  </button>
+                ) : (
+                  <>
+                    <p className="text-[14px] font-semibold text-[#121212]">
+                      {item.value}
+                    </p>
+                    <p className="mt-1 text-[12px] text-gray-600">
+                      {item.label}
+                    </p>
+                  </>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>

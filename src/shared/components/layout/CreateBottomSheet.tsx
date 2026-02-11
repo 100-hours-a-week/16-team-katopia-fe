@@ -8,7 +8,6 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;

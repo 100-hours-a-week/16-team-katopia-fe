@@ -104,9 +104,6 @@ export function useProfileEdit() {
   const [removeImage, setRemoveImage] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [initialNickname, setInitialNickname] = useState<string | null>(null);
-  const [initialGender, setInitialGender] = useState<"MALE" | "FEMALE">("MALE");
-  const [initialHeight, setInitialHeight] = useState<string>("");
-  const [initialWeight, setInitialWeight] = useState<string>("");
   const [initialStyles, setInitialStyles] = useState<string[]>([]);
   const [currentProfileImageObjectKey, setCurrentProfileImageObjectKey] =
     useState<string | null>(null);

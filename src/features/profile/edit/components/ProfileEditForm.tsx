@@ -60,18 +60,14 @@ type HeaderSharedProps = {
   getStylesSnapshot: () => string[];
 };
 
-const useHeaderBackState = ({
-  imageBlob,
-  removeImage,
-}: HeaderSharedProps) => {
+const useHeaderBackState = ({ imageBlob, removeImage }: HeaderSharedProps) => {
   const { control } = useFormContext<ProfileEditFormValues>();
   const { isDirty } = useFormState<ProfileEditFormValues>({
     control,
     name: ["nickname", "gender", "height", "weight"],
   });
 
-  const hasChanges =
-    Boolean(imageBlob) || removeImage || isDirty;
+  const hasChanges = Boolean(imageBlob) || removeImage || isDirty;
 
   return { hasChanges };
 };
@@ -111,25 +107,23 @@ const useHeaderSubmitState = ({
   return { hasChanges, hasRequiredValues };
 };
 
-const HeaderBackButton = memo(
-  (props: HeaderSharedProps) => {
-    const { hasChanges } = useHeaderBackState(props);
-    const { onBackImmediate, setShowCancelModal } = props;
-    const handleBack = useCallback(() => {
-      if (hasChanges) {
-        setShowCancelModal(true);
-        return;
-      }
-      onBackImmediate();
-    }, [hasChanges, onBackImmediate, setShowCancelModal]);
+const HeaderBackButton = memo((props: HeaderSharedProps) => {
+  const { hasChanges } = useHeaderBackState(props);
+  const { onBackImmediate, setShowCancelModal } = props;
+  const handleBack = useCallback(() => {
+    if (hasChanges) {
+      setShowCancelModal(true);
+      return;
+    }
+    onBackImmediate();
+  }, [hasChanges, onBackImmediate, setShowCancelModal]);
 
-    return (
-      <button type="button" aria-label="뒤로가기" onClick={handleBack}>
-        <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
-      </button>
-    );
-  },
-);
+  return (
+    <button type="button" aria-label="뒤로가기" onClick={handleBack}>
+      <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
+    </button>
+  );
+});
 
 HeaderBackButton.displayName = "HeaderBackButton";
 
@@ -151,15 +145,13 @@ const HeaderSubmitButton = memo((props: HeaderSharedProps) => {
 
 HeaderSubmitButton.displayName = "HeaderSubmitButton";
 
-const HeaderSection = memo(
-  (props: HeaderSharedProps) => (
-    <header className="flex items-center justify-between px-4 py-3">
-      <HeaderBackButton {...props} />
-      <h1 className="text-[14px] font-semibold">프로필 수정</h1>
-      <HeaderSubmitButton {...props} />
-    </header>
-  ),
-);
+const HeaderSection = memo((props: HeaderSharedProps) => (
+  <header className="flex items-center justify-between px-4 py-3">
+    <HeaderBackButton {...props} />
+    <h1 className="text-[14px] font-semibold">프로필 수정</h1>
+    <HeaderSubmitButton {...props} />
+  </header>
+));
 
 HeaderSection.displayName = "HeaderSection";
 

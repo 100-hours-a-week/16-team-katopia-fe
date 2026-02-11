@@ -58,37 +58,40 @@ export default function PostCreatePage() {
   usePostUnsavedGuard(isDirty);
 
   /* ---------------- submit ---------------- */
-  const onSubmit = useCallback(async (data: PostCreateValues) => {
-    try {
-      console.log("post create submit", data);
+  const onSubmit = useCallback(
+    async (data: PostCreateValues) => {
+      try {
+        console.log("post create submit", data);
 
-      // ✅ 수정: pending 상태 체크 대상 통일
-      if (data.imageObjectKeys.some((key) => key.startsWith("pending:"))) {
-        throw new Error("이미지 업로드가 완료되지 않았습니다.");
+        // ✅ 수정: pending 상태 체크 대상 통일
+        if (data.imageObjectKeys.some((key) => key.startsWith("pending:"))) {
+          throw new Error("이미지 업로드가 완료되지 않았습니다.");
+        }
+
+        // ✅ 수정: images → imageObjectKeys
+        const imageObjectKeys = data.imageObjectKeys.map((key) =>
+          key.replace(/^\/+/, ""),
+        );
+
+        const res = await createPost({
+          content: data.content,
+          imageObjectKeys,
+        });
+
+        const postId = res.data.id;
+        console.log("게시글이 성공적으로 등록되었어요.", postId);
+
+        setToastMessage("게시글 작성이 완료되었습니다.");
+        toastTimerRef.current = setTimeout(() => {
+          router.replace("/search");
+        }, 1200);
+      } catch (e) {
+        console.error(e);
+        // TODO: 에러 코드별 토스트 분기
       }
-
-      // ✅ 수정: images → imageObjectKeys
-      const imageObjectKeys = data.imageObjectKeys.map((key) =>
-        key.replace(/^\/+/, ""),
-      );
-
-      const res = await createPost({
-        content: data.content,
-        imageObjectKeys,
-      });
-
-      const postId = res.data.id;
-      console.log("게시글이 성공적으로 등록되었어요.", postId);
-
-      setToastMessage("게시글 작성이 완료되었습니다.");
-      toastTimerRef.current = setTimeout(() => {
-        router.replace("/search");
-      }, 1200);
-    } catch (e) {
-      console.error(e);
-      // TODO: 에러 코드별 토스트 분기
-    }
-  }, [router]);
+    },
+    [router],
+  );
 
   const onInvalid = useCallback((errors: FieldErrors<PostCreateValues>) => {
     console.log("post create invalid", errors);

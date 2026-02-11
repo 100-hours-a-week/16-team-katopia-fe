@@ -7,13 +7,8 @@ import { useSignupStep2 } from "./hooks/useSignupStep2";
 
 export default function SignupStep2() {
   const router = useRouter();
-  const {
-    form,
-    onSubmit,
-    stylesRef,
-    setStylesRef,
-    styleErrorTimeoutRef,
-  } = useSignupStep2();
+  const { form, onSubmit, stylesRef, setStylesRef, styleErrorTimeoutRef } =
+    useSignupStep2();
 
   return (
     <SignupStep2View

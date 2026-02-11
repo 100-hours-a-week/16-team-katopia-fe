@@ -76,7 +76,6 @@ export default function CommentItem({
     }
   }, [draft, isEditing]);
 
-
   const handleProfileClick = () => {
     if (comment.authorId == null) return;
     router.push(`/profile/${comment.authorId}`);

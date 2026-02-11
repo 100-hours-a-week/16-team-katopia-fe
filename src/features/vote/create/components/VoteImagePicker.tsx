@@ -43,7 +43,7 @@ function SortablePreview({
       className="relative h-[400px] w-[78vw] max-w-[320px] shrink-0 overflow-hidden rounded-[14px] bg-gray-100"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={item.url} className="h-full w-full object-cover" />
+      <img src={item.url} alt="" className="h-full w-full object-cover" />
 
       <button
         type="button"
@@ -166,7 +166,7 @@ export default function VoteImagePicker({
     });
 
     prevCountRef.current = currentCount;
-  }, [previews.length]);
+  }, [onCountChange, previews.length]);
 
   return (
     <div>

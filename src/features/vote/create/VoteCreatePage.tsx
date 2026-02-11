@@ -11,7 +11,9 @@ export default function VoteCreatePage() {
   const [title, setTitle] = useState("");
   const [isOverLimit, setIsOverLimit] = useState(false);
   const [imageCount, setImageCount] = useState(0);
-  const titleHelperText = isOverLimit ? "최대 20자까지 입력할 수 있어요." : null;
+  const titleHelperText = isOverLimit
+    ? "최대 20자까지 입력할 수 있어요."
+    : null;
 
   const handleTitleChange = (next: string) => {
     if (next.length > 20) {

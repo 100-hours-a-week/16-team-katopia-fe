@@ -107,17 +107,7 @@ async function processImage(file: File): Promise<Blob> {
   if (!ctx) throw new Error("이미지 처리에 실패했습니다.");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(
-    bitmap,
-    sx,
-    sy,
-    sw,
-    sh,
-    0,
-    0,
-    targetWidth,
-    targetHeight,
-  );
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
 
   const blob = await new Promise<Blob>((resolve) =>
     canvas.toBlob(
@@ -209,8 +199,7 @@ export function useVoteImageUploader() {
       }
 
       const validSelected = selected.filter(
-        (file) =>
-          file.size <= MAX_FILE_SIZE && isSupportedImageFile(file),
+        (file) => file.size <= MAX_FILE_SIZE && isSupportedImageFile(file),
       );
       if (validSelected.length === 0) {
         resetInput();
@@ -236,9 +225,7 @@ export function useVoteImageUploader() {
         setHelperText(null);
       } catch (err) {
         setHelperText(
-          err instanceof Error
-            ? err.message
-            : "사진 업로드를 실패했습니다",
+          err instanceof Error ? err.message : "사진 업로드를 실패했습니다",
         );
       } finally {
         resetInput();

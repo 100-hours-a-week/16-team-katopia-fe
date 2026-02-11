@@ -52,18 +52,18 @@ export default function HomePostActions({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-5">
-        <ActionButton icon="/icons/heart.svg" label="좋아요" count={likeCount} />
+        <ActionButton
+          icon="/icons/heart.svg"
+          label="좋아요"
+          count={likeCount}
+        />
         <ActionButton
           icon="/icons/comment.svg"
           label="댓글"
           count={commentCount}
         />
       </div>
-      <button
-        type="button"
-        aria-label="저장"
-        className="text-neutral-900"
-      >
+      <button type="button" aria-label="저장" className="text-neutral-900">
         <BookmarkIcon />
       </button>
     </div>

@@ -75,7 +75,9 @@ export function useSearchPageController() {
 
   const handleDebouncedChange = useCallback((nextValue: string) => {
     const trimmed = nextValue.trim();
-    setQuery(trimmed.startsWith("#") ? normalizeHashtagQuery(trimmed) : trimmed);
+    setQuery(
+      trimmed.startsWith("#") ? normalizeHashtagQuery(trimmed) : trimmed,
+    );
   }, []);
 
   const trimmedQuery = query.trim();

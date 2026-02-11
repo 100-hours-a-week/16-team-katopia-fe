@@ -1,7 +1,6 @@
 "use client";
 
 import Avatar from "@/src/shared/components/Avatar";
-import Image from "next/image";
 
 type HomePostHeaderProps = {
   author: {

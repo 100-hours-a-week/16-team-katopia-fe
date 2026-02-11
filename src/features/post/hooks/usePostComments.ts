@@ -73,9 +73,7 @@ export function usePostComments(
       const res = await getComments(postId, {
         size: 30,
         after:
-          nextCursorRef.current != null
-            ? nextCursorRef.current
-            : undefined,
+          nextCursorRef.current != null ? nextCursorRef.current : undefined,
       });
 
       const mapped = mapComments(res.comments);
