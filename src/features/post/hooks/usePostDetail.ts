@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import { deletePost } from "../api/deletePost";
+import { dispatchPostCountChange } from "../utils/postCountEvents";
 import { getPostDetail } from "../api/getPostDetail";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
@@ -138,6 +139,7 @@ export function usePostDetail() {
   const handleDeleteConfirm = useCallback(async () => {
     if (!postId) return;
     await deletePost(postId);
+    dispatchPostCountChange(-1);
     const from = searchParams.get("from");
     router.replace(from === "profile" ? "/profile" : "/search");
   }, [postId, router, searchParams]);

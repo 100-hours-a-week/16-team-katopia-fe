@@ -36,7 +36,22 @@ export default function SearchPage() {
     handleDebouncedChange,
   } = useSearchPageController();
 
-  if (!ready || !isAuthenticated) {
+  if (!ready) {
+    return (
+      <div className="px-4 py-4">
+        <SearchInput
+          seedValue={inputSeed}
+          onDebouncedChange={handleDebouncedChange}
+          onFocus={handleFocus}
+          onBack={handleBack}
+          isSearching={isSearching}
+        />
+        <SearchGrid posts={[]} loading />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return null;
   }
 

@@ -65,7 +65,7 @@ export default function ProfileSummary({
 
   return (
     <section className="flex flex-col items-center py-13">
-      <div className="flex items-center gap-12">
+      <div className="flex items-center gap-7">
         <div className="flex flex-col items-center">
           <div className="mb-4">
             <Avatar
@@ -103,12 +103,14 @@ export default function ProfileSummary({
           )}
 
           {hasStyle && (
-            <p className="mt-2 text-xs text-gray-600">{styles.join(" · ")}</p>
+            <p className="mt-2 text-xs text-gray-600 whitespace-nowrap">
+              {styles.join(" · ")}
+            </p>
           )}
         </div>
 
         {hasStats && (
-          <div className="flex items-center gap-12 text-center">
+          <div className="flex items-center gap-10 text-center justify-start">
             {statsItems.map((item) => (
               <div key={item.label}>
                 {item.onClick ? (
@@ -120,7 +122,7 @@ export default function ProfileSummary({
                     <p className="text-[14px] font-semibold text-[#121212]">
                       {item.value}
                     </p>
-                    <p className="mt-1 text-[12px] text-gray-600">
+                    <p className="mt-1 text-[12px] text-gray-600 whitespace-nowrap">
                       {item.label}
                     </p>
                   </button>
@@ -129,7 +131,7 @@ export default function ProfileSummary({
                     <p className="text-[14px] font-semibold text-[#121212]">
                       {item.value}
                     </p>
-                    <p className="mt-1 text-[12px] text-gray-600">
+                    <p className="mt-1 text-[12px] text-gray-600 whitespace-nowrap">
                       {item.label}
                     </p>
                   </>

@@ -127,8 +127,10 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
 
 export default function VoteImagePicker({
   onCountChange,
+  onPreviewsChange,
 }: {
   onCountChange?: (count: number) => void;
+  onPreviewsChange?: (items: PreviewItem[]) => void;
 }) {
   const inputId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -149,6 +151,7 @@ export default function VoteImagePicker({
 
   useEffect(() => {
     onCountChange?.(previews.length);
+    onPreviewsChange?.(previews);
     const currentCount = previews.length;
     if (currentCount <= prevCountRef.current) {
       prevCountRef.current = currentCount;
@@ -166,7 +169,7 @@ export default function VoteImagePicker({
     });
 
     prevCountRef.current = currentCount;
-  }, [onCountChange, previews.length]);
+  }, [onCountChange, onPreviewsChange, previews]);
 
   return (
     <div>

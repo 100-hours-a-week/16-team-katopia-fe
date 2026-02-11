@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import {
   PointerSensor,
@@ -128,8 +128,19 @@ export function useVoteImageUploader() {
   const [inputKey, setInputKey] = useState(0);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [helperText, setHelperText] = useState<string | null>(null);
+  const previewsRef = useRef<PreviewItem[]>([]);
 
   const previewIds = useMemo(() => previews.map((p) => p.id), [previews]);
+
+  useEffect(() => {
+    previewsRef.current = previews;
+  }, [previews]);
+
+  useEffect(() => {
+    return () => {
+      previewsRef.current.forEach((item) => URL.revokeObjectURL(item.url));
+    };
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

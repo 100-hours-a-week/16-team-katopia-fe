@@ -11,9 +11,14 @@ type GridPost = {
 type SearchGridProps = {
   posts: GridPost[];
   loading?: boolean;
+  priorityCount?: number;
 };
 
-export default function SearchGrid({ posts, loading }: SearchGridProps) {
+export default function SearchGrid({
+  posts,
+  loading,
+  priorityCount = 3,
+}: SearchGridProps) {
   // 최초 로딩 스켈레톤
   if (loading && posts.length === 0) {
     return (
@@ -36,8 +41,13 @@ export default function SearchGrid({ posts, loading }: SearchGridProps) {
 
   return (
     <div className="grid grid-cols-3 gap-0.5">
-      {posts.map((post) => (
-        <SearchItem key={post.id} src={post.imageUrl} postId={post.id} />
+      {posts.map((post, index) => (
+        <SearchItem
+          key={post.id}
+          src={post.imageUrl}
+          postId={post.id}
+          priority={index < priorityCount}
+        />
       ))}
 
       {/* 추가 로딩용 스켈레톤 (선택) */}

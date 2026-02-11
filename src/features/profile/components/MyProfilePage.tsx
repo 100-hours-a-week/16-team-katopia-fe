@@ -13,6 +13,7 @@ import { authFetch, clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { withdrawMember } from "@/src/features/profile/api/withdrawMember";
+import { useOptimisticPostCount } from "@/src/features/profile/hooks/useOptimisticPostCount";
 
 type Profile = {
   userId: number;
@@ -69,6 +70,7 @@ export default function MyProfilePage() {
     size: 30,
     mode: "member",
   });
+  const optimisticPostCount = useOptimisticPostCount(posts.length);
 
   /* -------------------------
      내 정보 조회
@@ -154,7 +156,7 @@ export default function MyProfilePage() {
           profile={profile}
           loading={loading}
           stats={{
-            postCount: posts.length,
+            postCount: optimisticPostCount,
             followerCount: 0,
             followingCount: 0,
           }}

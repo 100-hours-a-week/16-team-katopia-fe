@@ -16,6 +16,7 @@ import PostImageUploader from "./components/PostImageUploader";
 import PostContentInput from "./components/PostContentInput";
 import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
 import PostSubmitButton from "./components/PostSubmitButton";
+import { dispatchPostCountChange } from "@/src/features/post/utils/postCountEvents";
 
 export default function PostCreatePage() {
   const router = useRouter();
@@ -81,6 +82,7 @@ export default function PostCreatePage() {
         const postId = res.data.id;
         console.log("게시글이 성공적으로 등록되었어요.", postId);
 
+        dispatchPostCountChange(1);
         setToastMessage("게시글 작성이 완료되었습니다.");
         toastTimerRef.current = setTimeout(() => {
           router.replace("/search");

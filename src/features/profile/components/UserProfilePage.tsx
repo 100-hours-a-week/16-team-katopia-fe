@@ -9,6 +9,7 @@ import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePost
 import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileSummary from "./ProfileSummary";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
+import { useOptimisticPostCount } from "@/src/features/profile/hooks/useOptimisticPostCount";
 
 interface Props {
   userId: string;
@@ -58,6 +59,7 @@ export default function UserProfilePage({ userId }: Props) {
     mode: "member",
     enabled: ready && isAuthenticated,
   });
+  const optimisticPostCount = useOptimisticPostCount(posts.length);
 
   /* ================= 프로필 ================= */
 
@@ -161,11 +163,33 @@ export default function UserProfilePage({ userId }: Props) {
         </button>
       </div>
 
-      <ProfileSummary
-        profile={profile}
-        loading={false}
-        stats={{ postCount: posts.length, friendCount: 0 }}
-      />
+      <div className="mx-auto w-full max-w-97.5">
+        <ProfileSummary
+          profile={profile}
+          loading={false}
+          stats={{
+            postCount: optimisticPostCount,
+            followerCount: 0,
+            followingCount: 0,
+          }}
+          onFollowerClick={() => {
+            const nickname = profile?.nickname ?? "";
+            router.push(
+              `/profile/follows?tab=follower&nickname=${encodeURIComponent(
+                nickname,
+              )}&followers=0&following=0`,
+            );
+          }}
+          onFollowingClick={() => {
+            const nickname = profile?.nickname ?? "";
+            router.push(
+              `/profile/follows?tab=following&nickname=${encodeURIComponent(
+                nickname,
+              )}&followers=0&following=0`,
+            );
+          }}
+        />
+      </div>
 
       <ProfilePostGrid posts={posts} loading={postsLoading} />
       {postsHasMore && <div ref={observePosts} className="h-24" />}

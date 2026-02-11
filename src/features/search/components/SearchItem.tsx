@@ -1,12 +1,14 @@
 import Link from "next/link";
+import Image from "next/image";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
 type Props = {
   src: string;
   postId: number;
+  priority?: boolean;
 };
 
-export default function SearchItem({ src, postId }: Props) {
+export default function SearchItem({ src, postId, priority }: Props) {
   const resolvedSrc = resolveMediaUrl(src);
 
   return (
@@ -16,12 +18,16 @@ export default function SearchItem({ src, postId }: Props) {
       className="relative aspect-3/4 bg-gray-100 overflow-hidden block"
     >
       {resolvedSrc && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={resolvedSrc}
           alt="검색 이미지"
-          className="absolute inset-0 h-full w-full object-cover"
-          loading="lazy"
+          fill
+          sizes="(max-width: 768px) 33vw, 200px"
+          className="object-cover"
+          priority={Boolean(priority)}
+          fetchPriority={priority ? "high" : "auto"}
+          loading={priority ? "eager" : "lazy"}
+          quality={70}
         />
       )}
     </Link>
