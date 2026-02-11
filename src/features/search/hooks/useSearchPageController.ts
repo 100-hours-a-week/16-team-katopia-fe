@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { useInfinitePostGrid } from "./useInfinitePostGrid";
@@ -46,6 +46,9 @@ export function useSearchPageController() {
 
   const [accountResults, setAccountResults] = useState<SearchUserItem[]>([]);
   const [accountLoading, setAccountLoading] = useState(false);
+  const [accountCursor, setAccountCursor] = useState<string | null>(null);
+  const [accountHasMore, setAccountHasMore] = useState(false);
+  const accountObserverRef = useRef<IntersectionObserver | null>(null);
 
   const {
     items: postResults,
@@ -88,20 +91,68 @@ export function useSearchPageController() {
     if (trimmedQuery.length < 2) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAccountResults([]);
+      setAccountCursor(null);
+      setAccountHasMore(false);
       return;
     }
 
     setAccountLoading(true);
 
-    searchUsers({ query: trimmedQuery })
+    searchUsers({ query: trimmedQuery, size: 20 })
       .then((data) => {
         setAccountResults(data.members);
+        setAccountCursor(data.nextCursor ?? null);
+        setAccountHasMore(Boolean(data.nextCursor));
       })
       .catch(() => {
         setAccountResults([]);
+        setAccountCursor(null);
+        setAccountHasMore(false);
       })
       .finally(() => setAccountLoading(false));
   }, [activeTab, trimmedQuery]);
+
+  const observeAccounts = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (accountObserverRef.current) {
+        accountObserverRef.current.disconnect();
+      }
+
+      accountObserverRef.current = new IntersectionObserver((entries) => {
+        if (!entries[0]?.isIntersecting) return;
+        if (accountLoading || !accountHasMore) return;
+
+        setAccountLoading(true);
+        searchUsers({
+          query: trimmedQuery,
+          size: 20,
+          cursor: accountCursor ?? undefined,
+        })
+          .then((data) => {
+            setAccountResults((prev) => [...prev, ...(data.members ?? [])]);
+            setAccountCursor(data.nextCursor ?? null);
+            setAccountHasMore(Boolean(data.nextCursor));
+          })
+          .catch(() => {
+            setAccountHasMore(false);
+          })
+          .finally(() => setAccountLoading(false));
+      });
+
+      if (node) accountObserverRef.current.observe(node);
+    },
+    [accountCursor, accountHasMore, accountLoading, trimmedQuery],
+  );
+
+  const markAccountFollowed = useCallback((userId: number | string) => {
+    setAccountResults((prev) =>
+      prev.map((account) =>
+        String(account.id) === String(userId)
+          ? { ...account, isFollowing: true }
+          : account,
+      ),
+    );
+  }, []);
 
   const shouldShowAccounts = activeTab === "계정" && trimmedQuery.length >= 2;
   const shouldShowAccountEmpty =
@@ -148,6 +199,9 @@ export function useSearchPageController() {
     observeGrid,
     accountResults,
     accountLoading,
+    accountHasMore,
+    observeAccounts,
+    markAccountFollowed,
     postResults,
     postLoading,
     postHasMore,

@@ -25,6 +25,9 @@ export default function SearchPage() {
     postLoading,
     postHasMore,
     observePosts,
+    accountHasMore,
+    observeAccounts,
+    markAccountFollowed,
     trimmedQuery,
     shouldShowAccounts,
     shouldShowAccountEmpty,
@@ -75,10 +78,14 @@ export default function SearchPage() {
               <SearchAccountList
                 accounts={accountResults}
                 searchQuery={trimmedQuery}
+                onFollowed={markAccountFollowed}
               />
             ) : (
               shouldShowAccountEmpty && <SearchResultEmpty query={query} />
             ))}
+          {shouldShowAccounts && accountHasMore && (
+            <div ref={observeAccounts} className="h-24" />
+          )}
 
           {/* 게시글 / 해시태그 검색 */}
           {shouldShowPosts &&

@@ -7,6 +7,7 @@ export type SearchUserItem = {
   nickname: string;
   profileImageUrl: string | null;
   profileImageObjectKey?: string | null;
+  isFollowing?: boolean;
 };
 
 export type SearchUsersResponse = {
@@ -18,6 +19,7 @@ export async function searchUsers(params: {
   query: string;
   size?: number;
   after?: string;
+  cursor?: string;
   height?: number;
   weight?: number;
   gender?: "M" | "F";
@@ -27,6 +29,7 @@ export async function searchUsers(params: {
   const query = params.query.trim();
   searchParams.set("query", query);
   if (params.size) searchParams.set("size", String(params.size));
+  if (params.cursor) searchParams.set("cursor", params.cursor);
   if (params.after) searchParams.set("after", params.after);
   if (params.height) searchParams.set("height", String(params.height));
   if (params.weight) searchParams.set("weight", String(params.weight));
