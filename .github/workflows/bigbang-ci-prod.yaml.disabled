@@ -1,0 +1,87 @@
+# name: CI (prod) - Next.js
+
+# on:
+#   pull_request:
+#     branches: ["main"]
+
+# concurrency:
+#   group: ci-prod-nextjs-${{ github.event.pull_request.number }}
+#   cancel-in-progress: true
+
+# permissions:
+#   contents: read
+
+# jobs:
+#   ci:
+#     name: CI - Analyze/Test/Build
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 10
+
+#     steps:
+#       - name: Checkout
+#         id: checkout
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 1
+
+#       # npm 의존성 캐시: setup-node에서 처리
+#       - name: Set up Node 20 (+ npm dependency cache)
+#         id: setup_node
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: "20"
+#           cache: "npm"
+#           cache-dependency-path: |
+#             package-lock.json
+#             **/package-lock.json
+
+#       # "중간 산출물" 캐시 (Next.js 빌드 캐시)
+#       - name: Cache Next.js build cache (.next/cache)
+#         id: cache_next_cache
+#         uses: actions/cache@v4
+#         with:
+#           path: .next/cache
+#           key: next-cache-${{ runner.os }}-${{ hashFiles('package-lock.json', '**/package-lock.json', 'next.config.*', 'tsconfig.json') }}
+#           restore-keys: |
+#             next-cache-${{ runner.os }}-
+
+#       # 의존성 설치
+#       - name: Install dependencies
+#         id: npm_ci
+#         run: npm ci
+
+#       # 정적 코드 분석
+#       # 코드를 예쁘게 만들기(ex: 줄 바꿈, 세미콜론 여부, 따옴표 종류 등)
+#       - name: Prettier (check)
+#         id: prettier_check
+#         run: npx prettier --check .
+#         continue-on-error: true # 에러 무시
+
+#       # 코드를 올바르게 만들기(ex: 안 쓰는 변수, 선언 전 호출, 논리적 오류 등)
+#       - name: ESLint
+#         id: eslint
+#         run: npm run lint
+#         continue-on-error: true # 에러 무시
+
+#       # ts 타입 확인
+#       - name: TypeScript typecheck
+#         id: ts_typecheck
+#         run: npx tsc --noEmit
+
+#       # 보안 취약점 탐색
+#       - name: npm audit (high+)
+#         id: npm_audit
+#         run: npm audit --audit-level=high
+
+#       # E2E 테스트
+#       # - name: E2E tests
+#       #   id: e2e_tests
+#       #   run: |
+#       #     npx playwright install --with-deps  # 브라우저 엔진 설치
+#       #     npm run dev &                       # 서버를 백그라운드에서 실행
+#       #     npx playwright test                 # E2E 테스트 수행
+
+#       # 빌드
+#       - name: Build (next build)
+#         id: build_next
+#         run: npm run build
