@@ -13,7 +13,6 @@ import { authFetch, clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { withdrawMember } from "@/src/features/profile/api/withdrawMember";
-import { useOptimisticPostCount } from "@/src/features/profile/hooks/useOptimisticPostCount";
 
 type Profile = {
   userId: number;
@@ -23,6 +22,12 @@ type Profile = {
   height: number | null;
   weight: number | null;
   style: string[];
+};
+
+type ApiAggregate = {
+  postCount?: number | null;
+  followerCount?: number | null;
+  followingCount?: number | null;
 };
 
 function BookmarkIcon({ active }: { active: boolean }) {
@@ -59,6 +64,9 @@ export default function MyProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"posts" | "bookmarks">("posts");
+  const [postCount, setPostCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   const {
     items: posts,
@@ -70,7 +78,6 @@ export default function MyProfilePage() {
     size: 30,
     mode: "member",
   });
-  const optimisticPostCount = useOptimisticPostCount(posts.length);
 
   /* -------------------------
      내 정보 조회
@@ -91,11 +98,14 @@ export default function MyProfilePage() {
         }
 
         const json = await res.json();
+        console.log("[profile] /api/members/me response", json);
         // console.log("[profile] /api/members/me response", {
         //   profileImageObjectKey: json?.data?.profile?.profileImageObjectKey,
         //   profileImageUrl: json?.data?.profile?.profileImageUrl,
         // });
         const rawProfile = json.data.profile;
+        const apiAggregate: ApiAggregate | undefined =
+          json.data?.aggregate ?? json.aggregate;
         const userId = json.data.id;
         const normalizedGender =
           rawProfile.gender === "M" || rawProfile.gender === "MALE"
@@ -114,6 +124,13 @@ export default function MyProfilePage() {
           height: rawProfile.height,
           weight: rawProfile.weight,
         });
+        setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
+        setFollowerCount(
+          Number(apiAggregate?.followerCount ?? 0) || 0,
+        );
+        setFollowingCount(
+          Number(apiAggregate?.followingCount ?? 0) || 0,
+        );
       } catch (err) {
         console.error(err);
       } finally {
@@ -156,24 +173,26 @@ export default function MyProfilePage() {
           profile={profile}
           loading={loading}
           stats={{
-            postCount: optimisticPostCount,
-            followerCount: 0,
-            followingCount: 0,
+            postCount,
+            followerCount,
+            followingCount,
           }}
           onFollowerClick={() => {
             const nickname = profile?.nickname ?? "";
+            const memberId = profile?.userId ?? "";
             router.push(
               `/profile/follows?tab=follower&nickname=${encodeURIComponent(
                 nickname,
-              )}&followers=0&following=0`,
+              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
             );
           }}
           onFollowingClick={() => {
             const nickname = profile?.nickname ?? "";
+            const memberId = profile?.userId ?? "";
             router.push(
               `/profile/follows?tab=following&nickname=${encodeURIComponent(
                 nickname,
-              )}&followers=0&following=0`,
+              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
             );
           }}
         />

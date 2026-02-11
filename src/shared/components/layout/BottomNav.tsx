@@ -48,26 +48,28 @@ export default function BottomNav() {
 
             // 중앙 FAB
             if (item.label === "작성") {
+              const iconSizeClass = "h-6 w-6";
               return (
                 <li
                   key={idx}
-                  className="relative -mt-8 flex flex-col items-center gap-1"
+                  className="relative flex flex-col items-center gap-1"
                 >
                   <button
                     type="button"
                     onClick={() => setCreateOpen(true)}
-                    className={cn(
-                      "flex h-14 w-14 items-center justify-center rounded-full shadow",
-                      isActive ? "bg-black" : "border bg-white",
-                    )}
+                    className="flex flex-col items-center gap-1"
                   >
                     <Image
                       src={item.icon!}
                       alt={item.label}
-                      width={55}
-                      height={55}
+                      width={20}
+                      height={20}
                       loading="eager"
-                      className={cn(isActive && "invert")}
+                      className={cn(
+                        "opacity-60",
+                        iconSizeClass,
+                        isActive && "opacity-100",
+                      )}
                     />
                   </button>
                   <span className="text-[11px] text-neutral-600">

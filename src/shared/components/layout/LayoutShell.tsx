@@ -110,7 +110,7 @@ export default function LayoutShell({ children }: Props) {
     <>
       <div
         className={`mx-auto min-h-screen w-full max-w-97.5 bg-[#ffffff] ${
-          hideBottomNav ? "" : "pb-20"
+          hideBottomNav ? "" : "pb-16"
         }`}
       >
         {children}
