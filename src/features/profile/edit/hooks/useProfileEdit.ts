@@ -178,9 +178,6 @@ export function useProfileEdit() {
         });
 
         setInitialNickname(profile.nickname ?? null);
-        setInitialGender(profile.gender === "F" ? "FEMALE" : "MALE");
-        setInitialHeight(profile.height ? String(profile.height) : "");
-        setInitialWeight(profile.weight ? String(profile.weight) : "");
         setInitialStyles(nextStyles);
         setStylesRef(nextStyles);
 
