@@ -43,13 +43,11 @@ export default function VotePage() {
 
   return (
     <div
-      className="min-h-svh px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
+      className="min-h-svh bg-black px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
       style={{
         fontFamily:
           '"NanumSquare", "Pretendard", "Apple SD Gothic Neo", sans-serif',
-        background: isFinished
-          ? "#000"
-          : "linear-gradient(135deg, #7c3aed 0%, #ec4899 45%, #fb923c 100%)",
+        background: "#000000",
       }}
     >
       <VoteHeader title="오늘의 투표" />
