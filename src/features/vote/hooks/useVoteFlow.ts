@@ -43,7 +43,11 @@ export function useVoteFlow() {
   const rotateY = useTransform(x, [-200, 0, 200], [-40, 0, 40]);
   const rotateZ = useTransform(x, [-200, 0, 200], [-14, 0, 14]);
   const scale = useTransform(x, [-220, 0, 220], [0.94, 1, 0.94]);
-  const opacity = useTransform(x, [-260, -140, 0, 140, 260], [0.25, 1, 1, 1, 0.25]);
+  const opacity = useTransform(
+    x,
+    [-260, -140, 0, 140, 260],
+    [0.25, 1, 1, 1, 0.25],
+  );
 
   const progressLabel = useMemo(
     () => `${Math.min(index + 1, total)}/${total}`,
@@ -109,10 +113,15 @@ export function useVoteFlow() {
         const items = (data.items ?? []).slice().sort((a, b) => {
           return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
         });
-        const mappedCards = items.map((item) => ({
-          id: String(item.id),
-          imageUrl: resolveMediaUrl(item.imageObjectKey ?? undefined) ?? "",
-        }));
+        const mappedCards = items.map((item) => {
+          const resolved =
+            resolveMediaUrl(item.imageObjectKey ?? undefined) ?? "";
+          const isInvalid = resolved.endsWith("/string");
+          return {
+            id: String(item.id),
+            imageUrl: isInvalid ? "/images/white.png" : resolved,
+          };
+        });
         const mappedStats = items.map((item) => ({
           likeCount: item.fitCount ?? 0,
           likePercent: item.fitRate ?? 0,
@@ -121,7 +130,7 @@ export function useVoteFlow() {
         setResultStats(mappedStats);
         const timer = window.setTimeout(() => {
           setShowResult(true);
-        }, 600);
+        }, 2000);
         return () => window.clearTimeout(timer);
       })
       .catch(() => {
