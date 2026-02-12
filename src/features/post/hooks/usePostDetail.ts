@@ -38,6 +38,7 @@ type PostDetail = {
   imageObjectKeys?: PostImageItem[] | string[];
   content: string;
   isLiked: boolean;
+  isBookmarked?: boolean;
   aggregate: {
     likeCount: number;
     commentCount: number;
@@ -69,6 +70,9 @@ export function usePostDetail() {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
+  const [bookmarkedOverride, setBookmarkedOverride] = useState<boolean | null>(
+    null,
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [me, setMe] = useState<{
     id?: number | string;
@@ -96,6 +100,8 @@ export function usePostDetail() {
 
   useEffect(() => {
     if (!postId) return;
+    setLikedOverride(null);
+    setBookmarkedOverride(null);
 
     getPostDetail(postId)
       .then((res) => setPost(res.data))
@@ -109,6 +115,8 @@ export function usePostDetail() {
   }, [postId, router]);
 
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
+  const effectiveBookmarked =
+    bookmarkedOverride ?? post?.isBookmarked ?? false;
 
   useEffect(() => {
     authFetch(`${API_BASE_URL}/api/members/me`, {
@@ -150,8 +158,10 @@ export function usePostDetail() {
     loading,
     sortedImageUrls,
     effectiveLiked,
+    effectiveBookmarked,
     likedOverride,
     setLikedOverride,
+    setBookmarkedOverride,
     deleteOpen,
     setDeleteOpen,
     isMine,
