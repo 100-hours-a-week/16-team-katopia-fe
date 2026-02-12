@@ -14,9 +14,14 @@ type VoteResultItem = {
 type Props = {
   totalVotes?: number;
   items?: VoteResultItem[];
+  onRefresh?: () => void;
 };
 
-export default function VoteResultView({ totalVotes = 0, items = [] }: Props) {
+export default function VoteResultView({
+  totalVotes = 0,
+  items = [],
+  onRefresh,
+}: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const CARD_WIDTH = 290;
@@ -74,7 +79,7 @@ export default function VoteResultView({ totalVotes = 0, items = [] }: Props) {
 
             return (
               <div
-                key={item.imageUrl}
+                key={position}
                 className="absolute left-1/2 top-0 will-change-transform [transform-style:preserve-3d]"
                 style={{
                   transform: `translateX(calc(-50% + ${translateX}px)) translateY(${translateY}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
@@ -156,7 +161,11 @@ export default function VoteResultView({ totalVotes = 0, items = [] }: Props) {
         </button>
       </div>
 
-      <button className="mt-6 h-12 w-full rounded-full bg-white text-[#121212] font-semibold">
+      <button
+        type="button"
+        onClick={onRefresh}
+        className="mt-6 h-12 w-full rounded-full bg-white text-[#121212] font-semibold"
+      >
         다른 투표 하러가기
       </button>
     </div>

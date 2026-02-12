@@ -31,6 +31,10 @@ export default function VotePage() {
     paginate,
     handleDragEnd,
     handleAnimationComplete,
+    refreshCandidates,
+    addSelection,
+    resultItems,
+    resultStats,
   } = useVoteFlow();
 
   const question = title || "어떤 룩이 저에게 더 잘어울릴까요?";
@@ -53,30 +57,15 @@ export default function VotePage() {
       {isFinished ? (
         showResult ? (
           <VoteResultView
-            totalVotes={1512}
-            items={[
-              {
-                imageUrl: "/images/vote_1.jpeg",
-                dislikePercent: 40,
-                dislikeCount: 1234,
-                likePercent: 60,
-                likeCount: 1734,
-              },
-              {
-                imageUrl: "/images/vote_2.jpeg",
-                dislikePercent: 37,
-                dislikeCount: 1234,
-                likePercent: 63,
-                likeCount: 1734,
-              },
-              {
-                imageUrl: "/images/vote_3.webp",
-                dislikePercent: 42,
-                dislikeCount: 1234,
-                likePercent: 58,
-                likeCount: 1734,
-              },
-            ]}
+            totalVotes={resultStats.reduce((sum, s) => sum + s.likeCount, 0)}
+            items={resultItems.map((item, i) => ({
+              imageUrl: item.imageUrl,
+              dislikePercent: 0,
+              dislikeCount: 0,
+              likePercent: resultStats[i]?.likePercent ?? 0,
+              likeCount: resultStats[i]?.likeCount ?? 0,
+            }))}
+            onRefresh={refreshCandidates}
           />
         ) : (
           <VoteResultLoading />
@@ -106,7 +95,7 @@ export default function VotePage() {
           />
           <VoteActions
             disabled={index >= total - 1}
-            onRefresh={() => paginate("right")}
+            onRefresh={refreshCandidates}
           />
         </>
       )}
