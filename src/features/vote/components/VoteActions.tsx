@@ -12,9 +12,9 @@ export default function VoteActions({ disabled, onRefresh }: Props) {
         type="button"
         onClick={onRefresh}
         disabled={disabled}
-        className="flex h-14 w-full max-w-55 items-center justify-center gap-2 rounded-full bg-black text-[15px] font-semibold text-white disabled:opacity-40"
+        className="flex h-14 w-full max-w-55 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-black disabled:opacity-40"
       >
-        {/* <Image
+        <Image
           src="/icons/refresh.svg"
           alt="다른 투표 불러오기"
           width={20}
@@ -22,7 +22,7 @@ export default function VoteActions({ disabled, onRefresh }: Props) {
           className="h-5 w-5"
           draggable={false}
           onDragStart={(e) => e.preventDefault()}
-        /> */}
+        />
         다른 투표 불러오기
       </button>
     </section>
