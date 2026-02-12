@@ -54,7 +54,7 @@ export default function VoteResultView({ totalVotes = 0, items = [] }: Props) {
       </p>
 
       <div className="mt-6">
-        <div className="relative mx-auto h-110 w-full max-w-90 overflow-hidden">
+        <div className="relative mx-auto h-110 w-full max-w-90 overflow-hidden [perspective:1200px]">
           {visibleItems.map(({ item, position }) => {
             const isCenter = position === "center";
             const translateX =
@@ -63,21 +63,27 @@ export default function VoteResultView({ totalVotes = 0, items = [] }: Props) {
                 : position === "right"
                   ? CARD_WIDTH * 0.45
                   : 0;
-            const rotate =
-              position === "left" ? -6 : position === "right" ? 6 : 0;
+            const rotateZ =
+              position === "left" ? -4 : position === "right" ? 4 : 0;
+            const rotateY = 0;
             const scale = isCenter ? 1 : 0.88;
             const zIndex = isCenter ? 20 : 10;
             const translateY = isCenter ? 0 : 12; // 👈 살짝 깊이감
+            const translateZ = isCenter ? 0 : -100;
+            const opacity = isCenter ? 1 : 0.85;
 
             return (
               <div
-                key={position}
-                className="absolute left-1/2 top-0 will-change-transform"
+                key={item.imageUrl}
+                className="absolute left-1/2 top-0 will-change-transform [transform-style:preserve-3d]"
                 style={{
-                  transform: `translateX(calc(-50% + ${translateX}px)) translateY(${translateY}px) rotate(${rotate}deg) scale(${scale})`,
+                  transform: `translateX(calc(-50% + ${translateX}px)) translateY(${translateY}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
                   zIndex,
                   width: CARD_WIDTH,
-                  transition: "transform 720ms cubic-bezier(0.22, 1, 0.36, 1)",
+                  opacity,
+                  transition:
+                    "transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease-out",
+                  backfaceVisibility: "hidden",
                 }}
               >
                 {position === "left" && (
@@ -97,24 +103,18 @@ export default function VoteResultView({ totalVotes = 0, items = [] }: Props) {
                   />
 
                   <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-black/40 px-5 py-4 text-white">
-                    <div className="flex justify-between text-[12px]">
+                    <div className="flex items-end justify-between">
                       <div>
-                        <p className="opacity-80">별로에요</p>
-                        <p className="mt-1 text-[16px] font-semibold">
-                          {item.dislikePercent}%
-                        </p>
-                        <p className="text-[11px] opacity-70">
-                          {item.dislikeCount.toLocaleString()}표
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="opacity-80">좋아요</p>
-                        <p className="mt-1 text-[16px] font-semibold">
+                        <p className="text-[20px] font-semibold">
                           {item.likePercent}%
                         </p>
-                        <p className="text-[11px] opacity-70">
+                        <p className="mt-1 text-[15px] opacity-80">
                           {item.likeCount.toLocaleString()}표
                         </p>
+                      </div>
+                      <div className="text-right text-[14px] opacity-80">
+                        <p>득표율</p>
+                        <p className="mt-1">득표수</p>
                       </div>
                     </div>
                   </div>

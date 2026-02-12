@@ -26,17 +26,20 @@ export default function VotePage() {
     rotateZ,
     scale,
     opacity,
+    title,
+    loading,
     paginate,
     handleDragEnd,
     handleAnimationComplete,
   } = useVoteFlow();
 
-  const question = "어떤 룩이 저에게 더 잘어울릴까요?";
-  const progressPercent = (Math.min(index + 1, total) / total) * 100;
+  const question = title || "어떤 룩이 저에게 더 잘어울릴까요?";
+  const progressPercent =
+    total > 0 ? (Math.min(index + 1, total) / total) * 100 : 0;
 
   return (
     <div
-      className="min-h-[100svh] px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
+      className="min-h-svh px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
       style={{
         fontFamily:
           '"NanumSquare", "Pretendard", "Apple SD Gothic Neo", sans-serif',
@@ -78,6 +81,8 @@ export default function VotePage() {
         ) : (
           <VoteResultLoading />
         )
+      ) : loading || total === 0 ? (
+        <VoteResultLoading />
       ) : (
         <>
           <VoteProgress
@@ -101,8 +106,7 @@ export default function VotePage() {
           />
           <VoteActions
             disabled={index >= total - 1}
-            onDislike={() => paginate("left")}
-            onLike={() => paginate("right")}
+            onRefresh={() => paginate("right")}
           />
         </>
       )}

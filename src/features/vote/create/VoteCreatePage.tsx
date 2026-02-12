@@ -9,10 +9,6 @@ import VoteImagePicker from "./components/VoteImagePicker";
 import VoteSubmitButton from "./components/VoteSubmitButton";
 import VoteCancelConfirmModal from "./components/VoteCancelConfirmModal";
 import type { PreviewItem } from "./hooks/useVoteImageUploader";
-import {
-  requestUploadPresign,
-  uploadToPresignedUrl,
-} from "@/src/features/upload/api/presignUpload";
 import { createVote } from "../api/createVote";
 
 export default function VoteCreatePage() {
@@ -47,27 +43,21 @@ export default function VoteCreatePage() {
     };
   }, []);
 
-  const trimEdgeSpaces = useCallback(
-    (value: string) => value.replace(/^\s+|\s+$/g, ""),
-    [],
-  );
+  const handleTitleChange = useCallback((next: string) => {
+    if (next.length > 20) {
+      setTitle(next.slice(0, 20));
+      setIsOverLimit(true);
+      return;
+    }
+    setIsOverLimit(false);
+    setTitle(next);
+  }, []);
 
-  const handleTitleChange = useCallback(
-    (next: string) => {
-      const normalized = trimEdgeSpaces(next);
-      if (normalized.length > 20) {
-        setTitle(normalized.slice(0, 20));
-        setIsOverLimit(true);
-        return;
-      }
-      setIsOverLimit(false);
-      setTitle(normalized);
-    },
-    [trimEdgeSpaces],
+  const isTitleValid = title.trim().length > 0 && !isOverLimit;
+  const hasPendingUpload = previews.some((p) =>
+    p.objectKey.startsWith("pending:"),
   );
-
-  const isTitleValid = title.length > 0 && !isOverLimit;
-  const canSubmit = isTitleValid && imageCount > 0;
+  const canSubmit = isTitleValid && imageCount > 0 && !hasPendingUpload;
 
   const handleBack = useCallback(() => {
     const isDirty = title.length > 0 || imageCount > 0;
@@ -84,28 +74,13 @@ export default function VoteCreatePage() {
     let success = false;
 
     try {
-      const extensions = previews.map((item) => {
-        const ext = item.internalName.split(".").pop();
-        return ext ? ext.toLowerCase() : "jpg";
-      });
-
-      const presigned = await requestUploadPresign("VOTE", extensions);
-      if (presigned.length !== previews.length) {
-        throw new Error("업로드 정보를 불러오지 못했습니다.");
+      if (hasPendingUpload) {
+        setToastMessage("이미지 업로드를 완료해주세요.");
+        return;
       }
 
-      await Promise.all(
-        presigned.map((item, index) =>
-          uploadToPresignedUrl(
-            item.uploadUrl,
-            previews[index].blob,
-            previews[index].blob.type || "image/jpeg",
-          ),
-        ),
-      );
-
-      const imageObjectKeys = presigned.map((p) =>
-        p.imageObjectKey.replace(/^\/+/, ""),
+      const imageObjectKeys = previews.map((p) =>
+        p.objectKey.replace(/^\/+/, ""),
       );
 
       const result = await createVote({
@@ -113,13 +88,13 @@ export default function VoteCreatePage() {
         imageObjectKeys,
       });
 
-      const voteId = result?.data?.id ?? result?.id;
+      const voteId = result?.id;
       if (!voteId) {
         throw new Error("투표 ID를 찾을 수 없습니다.");
       }
 
       success = true;
-      router.replace(`/vote/${voteId}`);
+      router.replace("/vote");
     } catch (error) {
       console.error(error);
       setToastMessage("잠시 후 다시 이용해주세요");
@@ -128,7 +103,7 @@ export default function VoteCreatePage() {
         setIsSubmitting(false);
       }
     }
-  }, [canSubmit, isSubmitting, previews, router, title]);
+  }, [canSubmit, hasPendingUpload, isSubmitting, previews, router, title]);
 
   return (
     <div className="min-h-screen bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6">
