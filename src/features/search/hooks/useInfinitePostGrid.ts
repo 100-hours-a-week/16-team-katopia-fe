@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPostList } from "../../post/api/getPostList";
 import { getMemberPosts } from "../../profile/api/getMemberPosts";
+import { getMemberBookmarks } from "../../profile/api/getMemberBookmarks";
 import { searchPosts } from "../api/searchPosts";
 import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
@@ -12,7 +13,7 @@ type GridPost = {
 type Params = {
   memberId?: number;
   size?: number;
-  mode?: "public" | "member" | "search";
+  mode?: "public" | "member" | "search" | "bookmarks";
   query?: string;
   enabled?: boolean;
 };
@@ -26,6 +27,7 @@ export function useInfinitePostGrid(params?: Params) {
   // ✅ mode로 명시적으로 제어
   const isMemberMode = params?.mode === "member";
   const isSearchMode = params?.mode === "search";
+  const isBookmarkMode = params?.mode === "bookmarks";
   const size = params?.size ?? 18;
   const memberId = params?.memberId;
   const enabled = params?.enabled ?? true;
@@ -82,6 +84,11 @@ export function useInfinitePostGrid(params?: Params) {
               size,
               after: afterForMember, // string
             })
+          : isBookmarkMode
+            ? await getMemberBookmarks({
+                size,
+                after: afterForMember, // string
+              })
           : await getPostList({
               size,
               after: afterForPost, // number
@@ -92,6 +99,7 @@ export function useInfinitePostGrid(params?: Params) {
           id: number;
           imageUrls?: string[];
           imageUrl?: string;
+          imageObjectKey?: string;
         }[]) ?? [];
       const rawCount = rawPosts.length;
       const lastRawId = rawPosts[rawCount - 1]?.id ?? null;
@@ -126,6 +134,7 @@ export function useInfinitePostGrid(params?: Params) {
       const shouldFallbackCursor =
         !isMemberMode &&
         !isSearchMode &&
+        !isBookmarkMode &&
         rawNextCursor == null &&
         lastRawId != null;
       const fallbackCursor = shouldFallbackCursor ? lastRawId : null;
@@ -147,7 +156,15 @@ export function useInfinitePostGrid(params?: Params) {
       inFlightRef.current = false;
       setLoading(false);
     }
-  }, [enabled, isMemberMode, isSearchMode, memberId, size, trimmedQuery]);
+  }, [
+    enabled,
+    isMemberMode,
+    isSearchMode,
+    isBookmarkMode,
+    memberId,
+    size,
+    trimmedQuery,
+  ]);
 
   const observe = useCallback(
     (node: HTMLDivElement | null) => {
@@ -199,6 +216,7 @@ export function useInfinitePostGrid(params?: Params) {
     enabled,
     isMemberMode,
     isSearchMode,
+    isBookmarkMode,
     memberId,
     size,
     trimmedQuery,
@@ -242,7 +260,15 @@ export function useInfinitePostGrid(params?: Params) {
     return () => {
       window.removeEventListener("scroll", onScroll);
     };
-  }, [enabled, isMemberMode, isSearchMode, memberId, trimmedQuery, loadMore]);
+  }, [
+    enabled,
+    isMemberMode,
+    isSearchMode,
+    isBookmarkMode,
+    memberId,
+    trimmedQuery,
+    loadMore,
+  ]);
 
   return { items, hasMore, observe, loading, loadMore };
 }
