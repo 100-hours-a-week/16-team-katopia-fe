@@ -61,6 +61,7 @@ export default function VoteResultView({
       <div className="mt-6">
         <div className="relative mx-auto h-110 w-full max-w-90 overflow-hidden [perspective:1200px]">
           {visibleItems.map(({ item, position }) => {
+            const safeSrc = item.imageUrl || "/images/logo.png";
             const isCenter = position === "center";
             const translateX =
               position === "left"
@@ -100,11 +101,16 @@ export default function VoteResultView({
                 <div className="relative h-105 overflow-hidden rounded-[28px] bg-gray-200 shadow-[0_18px_40px_rgba(0,0,0,0.25)] transition-all duration-700 ease-out">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={item.imageUrl}
+                    src={safeSrc}
                     alt=""
                     className="h-full w-full object-cover"
                     draggable={false}
                     onDragStart={(e) => e.preventDefault()}
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (target.src.endsWith("/images/logo.png")) return;
+                      target.src = "/images/logo.png";
+                    }}
                   />
 
                   <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-black/40 px-5 py-4 text-white">
@@ -161,13 +167,24 @@ export default function VoteResultView({
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onRefresh}
-        className="mt-6 h-12 w-full rounded-full bg-white text-[#121212] font-semibold"
-      >
-        다른 투표 하러가기
-      </button>
+      <div className="mt-8 flex justify-center">
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="flex h-14 w-full max-w-55 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-black"
+        >
+          <Image
+            src="/icons/refresh.svg"
+            alt="다른 투표 불러오기"
+            width={20}
+            height={20}
+            className="h-5 w-5"
+            draggable={false}
+            onDragStart={(e) => e.preventDefault()}
+          />
+          다른 투표 하러가기
+        </button>
+      </div>
     </div>
   );
 }
