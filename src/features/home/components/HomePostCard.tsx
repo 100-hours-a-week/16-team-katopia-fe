@@ -14,10 +14,13 @@ export default function HomePostCard({ post }: HomePostCardProps) {
   return (
     <article className="flex flex-col gap-4">
       <HomePostHeader author={post.author} />
-      <HomePostMedia imageUrl={post.imageUrl} />
+      <HomePostMedia postId={post.id} imageUrl={post.imageUrl} />
       <HomePostActions
+        postId={post.id}
         likeCount={post.likeCount}
         commentCount={post.commentCount}
+        isLiked={post.isLiked}
+        isBookmarked={post.isBookmarked}
       />
       <HomePostCaption username={post.author.username} caption={post.caption} />
     </article>
