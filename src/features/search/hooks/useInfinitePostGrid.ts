@@ -105,7 +105,7 @@ export function useInfinitePostGrid(params?: Params) {
             post.imageUrls ??
             post.imageUrl ??
             [];
-          console.log("[posts] imageObjectKey raw", rawKey);
+          // console.log("[posts] imageObjectKey raw", rawKey);
           const normalized = normalizeImageUrls(rawKey);
           return {
             id: post.id,

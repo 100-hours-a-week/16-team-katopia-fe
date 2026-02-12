@@ -2,107 +2,83 @@ import { useCallback, useRef, useState } from "react";
 import type { UseFormTrigger, FieldValues, Path } from "react-hook-form";
 import { API_BASE_URL } from "@/src/config/api";
 
+type CheckNicknameResponse = {
+  data?: { isAvailable?: boolean };
+  isAvailable?: boolean;
+};
+
 export function useNicknameHandlers<T extends FieldValues>(
   trigger: UseFormTrigger<T>,
-  nicknamePath: Path<T>, // 🔥 핵심
+  nicknamePath: Path<T>,
 ) {
-  const lastVerifiedNicknameRef = useRef<string>("");
-
-  const [isNicknameVerified, setIsNicknameVerified] = useState(false);
-  const [hasNicknameValue, setHasNicknameValue] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
   const [duplicateSuccess, setDuplicateSuccess] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [verifiedNickname, setVerifiedNickname] = useState<string>("");
 
-  const handleNicknameChangeCapture = useCallback(
-    (e: React.FormEvent<HTMLInputElement>) => {
-      const value = (e.target as HTMLInputElement).value;
-
-      if (value !== lastVerifiedNicknameRef.current) {
-        setIsNicknameVerified(false);
-        setDuplicateError(null);
-        setDuplicateSuccess(null);
-      }
-
-      setHasNicknameValue(value.length > 0);
-    },
-    [],
-  );
+  // 🔒 중복 클릭 방지 (race condition 방어)
+  const checkingRef = useRef(false);
 
   const handleDuplicateCheck = useCallback(
     async (nickname: string) => {
-      if (isChecking) return false;
+      if (checkingRef.current) return false;
+
+      checkingRef.current = true;
       setIsChecking(true);
       setDuplicateError(null);
       setDuplicateSuccess(null);
 
-      // ✅ 타입 완벽
-      const isValid = await trigger(nicknamePath);
-      if (!isValid) {
-        setIsNicknameVerified(false);
-        setDuplicateError("닉네임 형식을 확인해주세요.");
-        setIsChecking(false);
-        return false;
-      }
-
-      lastVerifiedNicknameRef.current = nickname;
-
       try {
+        const isValid = await trigger(nicknamePath);
+        if (!isValid) {
+          setDuplicateError("닉네임 형식을 확인해주세요.");
+          return false;
+        }
+
         const res = await fetch(
           `${API_BASE_URL}/api/members/check?nickname=${encodeURIComponent(
             nickname,
           )}`,
-          {
-            method: "GET",
-            credentials: "include",
-          },
+          { method: "GET", credentials: "include" },
         );
 
-        if (!res.ok) throw new Error();
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-        const payload = (await res.json()) as {
-          data?: { isAvailable?: boolean };
-          isAvailable?: boolean;
-        };
+        const payload = (await res.json()) as CheckNicknameResponse;
 
         const isAvailable =
-          payload.data?.isAvailable ?? payload.isAvailable ?? null;
+          payload?.data?.isAvailable ?? payload?.isAvailable ?? null;
 
         if (isAvailable === true) {
-          setIsNicknameVerified(true);
+          setVerifiedNickname(nickname);
           setDuplicateSuccess("사용 가능한 닉네임입니다.");
-          setIsChecking(false);
           return true;
         }
 
         if (isAvailable === false) {
-          setIsNicknameVerified(false);
           setDuplicateError("이미 사용 중인 닉네임입니다.");
-          setIsChecking(false);
           return false;
         }
 
-        setIsNicknameVerified(false);
-        setDuplicateError("닉네임 형식을 확인해주세요.");
-        setIsChecking(false);
+        setDuplicateError("닉네임 중복 검사 응답이 올바르지 않습니다.");
         return false;
-      } catch {
-        setIsNicknameVerified(false);
+      } catch (e) {
+        console.error("[useNicknameHandlers] duplicate check error:", e);
         setDuplicateError("닉네임 중복 검사에 실패했습니다.");
-        setIsChecking(false);
         return false;
+      } finally {
+        checkingRef.current = false;
+        setIsChecking(false);
       }
     },
-    [trigger, nicknamePath, isChecking],
+    [trigger, nicknamePath],
   );
 
   return {
-    isNicknameVerified,
-    hasNicknameValue,
+    verifiedNickname,
     duplicateError,
     duplicateSuccess,
     isChecking,
-    handleNicknameChangeCapture,
     handleDuplicateCheck,
   };
 }

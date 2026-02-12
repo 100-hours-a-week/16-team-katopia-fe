@@ -87,8 +87,7 @@ html {
 
 body {
   background: var(--background);
-
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-noto-sans-kr), Arial, Helvetica, sans-serif;
   color-scheme: light;
 }
 
@@ -109,6 +108,25 @@ select:-webkit-autofill {
   -webkit-text-fill-color: #000;
   box-shadow: 0 0 0px 1000px #fff inset;
   caret-color: #000;
+}
+
+.image-preview-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+.image-preview-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.image-preview-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.image-preview-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 999px;
 }
 
 .dark {

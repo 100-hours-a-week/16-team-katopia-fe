@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import CommentItem from "./CommentItem";
 
 export type Comment = {
@@ -13,33 +13,31 @@ export type Comment = {
 
 interface Props {
   comments: Comment[];
+  loading: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
   onDelete: (id: number) => void;
   onUpdate: (id: number, content: string) => void;
   currentUserId?: number | string;
   currentUserNickname?: string;
 }
 
-const PAGE_SIZE = 10;
-
 export default function CommentList({
   comments,
+  loading,
+  hasMore,
+  onLoadMore,
   onDelete,
   onUpdate,
   currentUserId,
   currentUserNickname,
 }: Props) {
-  const [page, setPage] = useState(1);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const items = useMemo(
-    () => comments.slice(0, page * PAGE_SIZE),
-    [comments, page],
-  );
-  const hasMore = items.length < comments.length;
-
   useEffect(() => {
     if (!hasMore) return;
+    if (loading) return;
     const node = sentinelRef.current;
     if (!node) return;
 
@@ -47,19 +45,19 @@ export default function CommentList({
     observerRef.current = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setPage((prev) => prev + 1);
+          onLoadMore();
         }
       },
-      { threshold: 0.4 },
+      { rootMargin: "200px 0px", threshold: 0.1 },
     );
     observerRef.current.observe(node);
 
     return () => observerRef.current?.disconnect();
-  }, [hasMore, items.length]);
+  }, [hasMore, loading, onLoadMore]);
 
   return (
     <div className="mt-6 space-y-3">
-      {items.map((comment) => (
+      {comments.map((comment) => (
         <CommentItem
           key={comment.id}
           comment={comment}
@@ -69,7 +67,7 @@ export default function CommentList({
           currentUserNickname={currentUserNickname}
         />
       ))}
-      <div ref={sentinelRef} />
+      {hasMore && <div ref={sentinelRef} className="h-24" />}
     </div>
   );
 }

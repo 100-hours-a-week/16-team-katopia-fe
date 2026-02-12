@@ -5,8 +5,8 @@ export type UpdateProfilePayload = {
   nickname?: string;
   profileImageObjectKey?: string | null;
   gender: "M" | "F";
-  height?: number | null;
-  weight?: number | null;
+  height?: number | "" | null;
+  weight?: number | "" | null;
   enableRealtimeNotification?: boolean;
   style: string[];
 };

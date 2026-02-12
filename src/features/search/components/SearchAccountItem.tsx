@@ -1,14 +1,17 @@
 "use client";
 
-import { memo } from "react";
-import Image from "next/image";
+import { memo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Avatar from "@/src/shared/components/Avatar";
+import { followMember } from "@/src/features/profile/api/followMember";
 
 interface Props {
   nickname: string;
   userId?: string | number;
   profileImage?: string;
   searchQuery?: string;
+  isFollowing?: boolean;
+  onFollowed?: (userId: number | string) => void;
 }
 
 function SearchAccountItem({
@@ -16,8 +19,11 @@ function SearchAccountItem({
   profileImage,
   userId,
   searchQuery,
+  isFollowing = false,
+  onFollowed,
 }: Props) {
   const router = useRouter();
+  const [followLoading, setFollowLoading] = useState(false);
 
   const handleClick = () => {
     if (!userId) return;
@@ -28,32 +34,48 @@ function SearchAccountItem({
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="flex w-full items-center gap-4 py-3 text-left"
-    >
-      <div className="relative h-10 w-10 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-        {profileImage ? (
-          <Image
-            src={profileImage}
-            alt={nickname}
-            fill
-            className="object-cover"
-          />
-        ) : (
-          <Image
-            src="/icons/profile.svg"
-            alt="기본 프로필"
-            width={20}
-            height={20}
-            className="opacity-60"
-          />
-        )}
-      </div>
+    <div className="flex w-full items-center gap-4 py-3">
+      <button
+        type="button"
+        onClick={handleClick}
+        className="flex flex-1 items-center gap-4 text-left"
+      >
+        <Avatar
+          src={profileImage}
+          alt={nickname || "기본 프로필"}
+          size={40}
+          fallbackSrc="/icons/profile.svg"
+          fallbackSize={20}
+          fallbackClassName="opacity-60"
+        />
 
-      <span className="text-sm font-medium">{nickname}</span>
-    </button>
+        <span className="text-sm font-medium">{nickname}</span>
+      </button>
+
+      {!isFollowing && (
+        <button
+          type="button"
+          disabled={followLoading}
+          onClick={async () => {
+            if (!userId || followLoading) return;
+            setFollowLoading(true);
+            try {
+              await followMember(userId);
+              onFollowed?.(userId);
+            } finally {
+              setFollowLoading(false);
+            }
+          }}
+          className={
+            followLoading
+              ? "rounded-full bg-gray-200 px-4 py-1.5 text-[12px] font-semibold text-gray-500"
+              : "rounded-full bg-black px-4 py-1.5 text-[12px] font-semibold text-white"
+          }
+        >
+          팔로우
+        </button>
+      )}
+    </div>
   );
 }
 

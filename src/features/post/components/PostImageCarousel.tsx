@@ -42,7 +42,7 @@ export default function PostImageCarousel({ images }: PostImageCarouselProps) {
       <CarouselContent>
         {images.map((src, i) => (
           <CarouselItem key={i}>
-            <div className="relative aspect-[3/4] bg-muted">
+            <div className="relative aspect-3/4 bg-muted">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={src}

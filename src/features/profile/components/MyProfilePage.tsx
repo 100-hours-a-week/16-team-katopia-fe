@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import ProfileHeader from "./ProfileHeader";
 import ProfileSummary from "./ProfileSummary";
 import ProfilePostGrid from "./ProfilePostGrid";
@@ -23,6 +24,31 @@ type Profile = {
   style: string[];
 };
 
+type ApiAggregate = {
+  postCount?: number | null;
+  followerCount?: number | null;
+  followingCount?: number | null;
+};
+
+function BookmarkIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className="h-7 w-7"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+    >
+      <path
+        d="M6 4.5h12a1 1 0 0 1 1 1v15l-7-4-7 4v-15a1 1 0 0 1 1-1z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function MyProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -37,6 +63,10 @@ export default function MyProfilePage() {
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"posts" | "bookmarks">("posts");
+  const [postCount, setPostCount] = useState(0);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
 
   const {
     items: posts,
@@ -68,26 +98,15 @@ export default function MyProfilePage() {
         }
 
         const json = await res.json();
-        console.log("[profile] /api/members/me response", {
-          profileImageObjectKey: json?.data?.profile?.profileImageObjectKey,
-          profileImageUrl: json?.data?.profile?.profileImageUrl,
-        });
+        console.log("[profile] /api/members/me response", json);
+        // console.log("[profile] /api/members/me response", {
+        //   profileImageObjectKey: json?.data?.profile?.profileImageObjectKey,
+        //   profileImageUrl: json?.data?.profile?.profileImageUrl,
+        // });
         const rawProfile = json.data.profile;
+        const apiAggregate: ApiAggregate | undefined =
+          json.data?.aggregate ?? json.aggregate;
         const userId = json.data.id;
-        let heightRemoved = false;
-        let weightRemoved = false;
-        try {
-          heightRemoved =
-            window.localStorage.getItem("katopia.profileHeightRemoved") === "1";
-          weightRemoved =
-            window.localStorage.getItem("katopia.profileWeightRemoved") === "1";
-        } catch {
-          heightRemoved = false;
-          weightRemoved = false;
-        }
-        const resolvedHeight = heightRemoved ? null : rawProfile.height;
-        const resolvedWeight = weightRemoved ? null : rawProfile.weight;
-
         const normalizedGender =
           rawProfile.gender === "M" || rawProfile.gender === "MALE"
             ? "male"
@@ -97,23 +116,21 @@ export default function MyProfilePage() {
 
         const profileImageKey =
           rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
-        let locallyRemoved = false;
-        try {
-          locallyRemoved =
-            window.localStorage.getItem("katopia.profileImageRemoved") === "1";
-        } catch {
-          locallyRemoved = false;
-        }
-        const resolvedProfileImageKey = locallyRemoved ? null : profileImageKey;
-
         setProfile({
           userId,
           ...rawProfile,
           gender: normalizedGender,
-          profileImageUrl: resolvedProfileImageKey ?? null,
-          height: resolvedHeight,
-          weight: resolvedWeight,
+          profileImageUrl: profileImageKey ?? null,
+          height: rawProfile.height,
+          weight: rawProfile.weight,
         });
+        setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
+        setFollowerCount(
+          Number(apiAggregate?.followerCount ?? 0) || 0,
+        );
+        setFollowingCount(
+          Number(apiAggregate?.followingCount ?? 0) || 0,
+        );
       } catch (err) {
         console.error(err);
       } finally {
@@ -152,15 +169,89 @@ export default function MyProfilePage() {
           onWithdraw={() => setWithdrawOpen(true)}
         />
 
-        <ProfileSummary profile={profile} loading={loading} />
-
-        <ProfilePostGrid
-          posts={posts}
-          loading={postsLoading}
-          detailQuery="from=profile"
+        <ProfileSummary
+          profile={profile}
+          loading={loading}
+          stats={{
+            postCount,
+            followerCount,
+            followingCount,
+          }}
+          onFollowerClick={() => {
+            const nickname = profile?.nickname ?? "";
+            const memberId = profile?.userId ?? "";
+            router.push(
+              `/profile/follows?tab=follower&nickname=${encodeURIComponent(
+                nickname,
+              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
+            );
+          }}
+          onFollowingClick={() => {
+            const nickname = profile?.nickname ?? "";
+            const memberId = profile?.userId ?? "";
+            router.push(
+              `/profile/follows?tab=following&nickname=${encodeURIComponent(
+                nickname,
+              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
+            );
+          }}
         />
 
-        {postsHasMore && <div ref={observePosts} className="h-24" />}
+        <div className="mt-6 border-b border-gray-200 px-8">
+          <div className="flex items-center justify-center gap-24">
+            <button
+              type="button"
+              onClick={() => setActiveTab("posts")}
+              className="relative flex h-12 w-12 items-center justify-center text-black"
+              aria-pressed={activeTab === "posts"}
+            >
+              <Image
+                src="/icons/grid.png"
+                alt="게시물"
+                width={28}
+                height={28}
+                className={activeTab === "posts" ? "opacity-100" : "opacity-40"}
+              />
+              {activeTab === "posts" && (
+                <span className="absolute bottom-0 h-[2px] w-8 bg-black" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("bookmarks")}
+              className="relative flex h-12 w-12 items-center justify-center text-black"
+              aria-pressed={activeTab === "bookmarks"}
+            >
+              <span
+                className={
+                  activeTab === "bookmarks" ? "opacity-100" : "opacity-40"
+                }
+              >
+                <BookmarkIcon active={activeTab === "bookmarks"} />
+              </span>
+              {activeTab === "bookmarks" && (
+                <span className="absolute bottom-0 h-[2px] w-8 bg-black" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {activeTab === "posts" && (
+          <>
+            <ProfilePostGrid
+              posts={posts}
+              loading={postsLoading}
+              detailQuery="from=profile"
+            />
+            {postsHasMore && <div ref={observePosts} className="h-24" />}
+          </>
+        )}
+
+        {activeTab === "bookmarks" && (
+          <div className="flex min-h-[280px] items-center justify-center text-sm text-gray-500">
+            북마크한 게시물이 없어요.
+          </div>
+        )}
       </div>
 
       <ProfileWithdrawModal

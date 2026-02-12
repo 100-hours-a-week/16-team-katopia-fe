@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,10 +12,11 @@ import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 import PostFormLayout from "../PostFormLayout";
 import PostFormHeader from "../components/PostFormHeader";
-
 import PostImageUploader from "./components/PostImageUploader";
 import PostContentInput from "./components/PostContentInput";
 import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
+import PostSubmitButton from "./components/PostSubmitButton";
+import { dispatchPostCountChange } from "@/src/features/post/utils/postCountEvents";
 
 export default function PostCreatePage() {
   const router = useRouter();
@@ -52,56 +53,56 @@ export default function PostCreatePage() {
 
   const {
     handleSubmit,
-    watch,
-    formState: { isDirty, isSubmitting },
+    formState: { isDirty },
   } = methods;
-
-  /* ---------------- submit 가능 여부 ---------------- */
-  const [imageObjectKeys, content] = watch([
-    "imageObjectKeys", // ✅ 수정: 기준 필드 통일
-    "content",
-  ]);
-
-  const canSubmit = (imageObjectKeys?.length ?? 0) > 0 && !!content?.trim();
 
   usePostUnsavedGuard(isDirty);
 
   /* ---------------- submit ---------------- */
-  const onSubmit = async (data: PostCreateValues) => {
-    try {
-      console.log("post create submit", data);
+  const onSubmit = useCallback(
+    async (data: PostCreateValues) => {
+      try {
+        console.log("post create submit", data);
 
-      // ✅ 수정: pending 상태 체크 대상 통일
-      if (data.imageObjectKeys.some((key) => key.startsWith("pending:"))) {
-        throw new Error("이미지 업로드가 완료되지 않았습니다.");
+        // ✅ 수정: pending 상태 체크 대상 통일
+        if (data.imageObjectKeys.some((key) => key.startsWith("pending:"))) {
+          throw new Error("이미지 업로드가 완료되지 않았습니다.");
+        }
+
+        // ✅ 수정: images → imageObjectKeys
+        const imageObjectKeys = data.imageObjectKeys.map((key) =>
+          key.replace(/^\/+/, ""),
+        );
+
+        const res = await createPost({
+          content: data.content,
+          imageObjectKeys,
+        });
+
+        const postId = res.data.id;
+        console.log("게시글이 성공적으로 등록되었어요.", postId);
+
+        dispatchPostCountChange(1);
+        setToastMessage("게시글 작성이 완료되었습니다.");
+        toastTimerRef.current = setTimeout(() => {
+          router.replace("/search");
+        }, 1200);
+      } catch (e) {
+        console.error(e);
+        // TODO: 에러 코드별 토스트 분기
       }
+    },
+    [router],
+  );
 
-      // ✅ 수정: images → imageObjectKeys
-      const imageObjectKeys = data.imageObjectKeys.map((key) =>
-        key.replace(/^\/+/, ""),
-      );
-
-      const res = await createPost({
-        content: data.content,
-        imageObjectKeys,
-      });
-
-      const postId = res.data.id;
-      console.log("게시글이 성공적으로 등록되었어요.", postId);
-
-      setToastMessage("게시글 작성이 완료되었습니다.");
-      toastTimerRef.current = setTimeout(() => {
-        router.replace("/search");
-      }, 1200);
-    } catch (e) {
-      console.error(e);
-      // TODO: 에러 코드별 토스트 분기
-    }
-  };
-
-  const onInvalid = (errors: FieldErrors<PostCreateValues>) => {
+  const onInvalid = useCallback((errors: FieldErrors<PostCreateValues>) => {
     console.log("post create invalid", errors);
-  };
+  }, []);
+
+  const handleBack = useCallback(() => {
+    if (isDirty) setShowCancelModal(true);
+    else router.back();
+  }, [isDirty, router]);
 
   /* ---------------- render ---------------- */
   return (
@@ -109,12 +110,13 @@ export default function PostCreatePage() {
       <PostFormLayout>
         <PostFormHeader
           title="새 게시물"
-          onBack={() => {
-            if (isDirty) setShowCancelModal(true);
-            else router.back();
-          }}
-          formId="post-create-form"
-          submitDisabled={!canSubmit || isSubmitting || Boolean(toastMessage)}
+          onBack={handleBack}
+          rightSlot={
+            <PostSubmitButton
+              formId="post-create-form"
+              disabled={Boolean(toastMessage)}
+            />
+          }
         />
 
         <form

@@ -7,9 +7,10 @@ import type { SearchUserItem } from "../api/searchUsers";
 interface Props {
   accounts: SearchUserItem[];
   searchQuery: string;
+  onFollowed?: (userId: number | string) => void;
 }
 
-function SearchAccountList({ accounts, searchQuery }: Props) {
+function SearchAccountList({ accounts, searchQuery, onFollowed }: Props) {
   return (
     <div className="mt-4">
       {accounts.map((account) => (
@@ -19,6 +20,8 @@ function SearchAccountList({ accounts, searchQuery }: Props) {
           userId={account.id}
           profileImage={account.profileImageUrl ?? undefined}
           searchQuery={searchQuery}
+          isFollowing={account.isFollowing}
+          onFollowed={onFollowed}
         />
       ))}
     </div>

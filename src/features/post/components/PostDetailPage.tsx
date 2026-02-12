@@ -1,317 +1,37 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-
-import { deletePost } from "../api/deletePost";
-import { getPostDetail } from "../api/getPostDetail";
-import { createComment } from "../api/createComment";
-import { deleteComment } from "../api/deleteComment";
-import { getComments } from "../api/getComments";
-import { updateComment } from "../api/updateComment";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
+import { usePostDetail } from "../hooks/usePostDetail";
 
 import PostHeader from "./PostHeader";
 import PostDeleteConfirmModal from "./PostDeleteConfirmModal";
 import PostImageCarousel from "./PostImageCarousel";
 import PostContent from "./PostContent";
-import CommentInput from "./CommentInput";
-import CommentList, { type Comment as CommentListItem } from "./CommentList";
+import PostCommentSection from "./PostCommentSection";
 import {
-  normalizeImageUrls,
-  pickImageUrl,
-} from "@/src/features/upload/utils/normalizeImageUrls";
-
-/* ================= 타입 ================= */
-
-type PostAuthor = {
-  nickname: string;
-  profileImageUrl?: string | null;
-  profileImageObjectKey?: string | null;
-  gender?: "M" | "F" | null;
-  height?: number | null;
-  weight?: number | null;
-  memberId?: number | string;
-  id?: number | string;
-  userId?: number | string;
-};
-
-type PostImageItem = {
-  imageObjectKey?: string;
-  imageUrl?: string;
-  accessUrl?: string;
-  url?: string;
-  sortOrder?: number;
-};
-
-type PostDetail = {
-  imageUrls?: PostImageItem[] | string[];
-  imageObjectKeys?: PostImageItem[] | string[];
-  content: string;
-  isLiked: boolean;
-  aggregate: {
-    likeCount: number;
-    commentCount: number;
-  };
-  createdAt: string;
-  author: PostAuthor;
-};
-
-type CommentItem = CommentListItem;
-
-/* ================= 유틸 ================= */
-
-const PROFILE_IMAGE_REMOVED_KEY = "katopia.profileImageRemoved";
-const PROFILE_HEIGHT_REMOVED_KEY = "katopia.profileHeightRemoved";
-const PROFILE_WEIGHT_REMOVED_KEY = "katopia.profileWeightRemoved";
-
-function normalizePostImageUrls(
-  value: PostImageItem[] | string[] | undefined,
-): string[] {
-  if (!value || value.length === 0) return [];
-
-  if (typeof value[0] === "string") {
-    return normalizeImageUrls(value as string[]);
-  }
-
-  return [...(value as PostImageItem[])]
-    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    .map((img) => pickImageUrl(img))
-    .filter(Boolean) as string[];
-}
-
-function dedupeComments(items: CommentItem[]) {
-  const seen = new Set<number>();
-  const next: CommentItem[] = [];
-  for (const item of items) {
-    if (seen.has(item.id)) continue;
-    seen.add(item.id);
-    next.push(item);
-  }
-  return next;
-}
-
-/* ================= 페이지 ================= */
+  CommentCountProvider,
+  useCommentCountStore,
+} from "../hooks/useCommentCountStore";
 
 export default function PostDetailPage() {
-  const { postId } = useParams<{ postId: string }>();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const {
+    postId,
+    post,
+    loading,
+    sortedImageUrls,
+    effectiveLiked,
+    setLikedOverride,
+    deleteOpen,
+    setDeleteOpen,
+    isMine,
+    me,
+    handleEdit,
+    handleDeleteConfirm,
+  } = usePostDetail();
 
-  const [post, setPost] = useState<PostDetail | null>(null);
-  const [comments, setComments] = useState<CommentItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [profileImageRemoved, setProfileImageRemoved] = useState(false);
-  const [heightRemoved, setHeightRemoved] = useState(false);
-  const [weightRemoved, setWeightRemoved] = useState(false);
-  const [me, setMe] = useState<{
-    id?: number | string;
-    nickname?: string;
-    profileImageUrl?: string | null;
-  } | null>(null);
-
-  const sortedImageUrls = useMemo(
-    () => normalizePostImageUrls(post?.imageObjectKeys ?? post?.imageUrls),
-    [post],
+  const commentCountStore = useCommentCountStore(
+    post?.aggregate.commentCount ?? 0,
+    postId ?? "unknown",
   );
-
-  const isMine = useMemo(() => {
-    if (!post?.author) return false;
-    const authorId =
-      post.author.memberId ?? post.author.id ?? post.author.userId;
-    if (authorId != null && me?.id != null) {
-      return String(authorId) === String(me.id);
-    }
-    if (post.author.nickname && me?.nickname) {
-      return post.author.nickname === me.nickname;
-    }
-    return false;
-  }, [post, me]);
-
-  const authorForHeader = useMemo<PostAuthor | null>(() => {
-    if (!post?.author) return null;
-
-    if (!isMine || (!profileImageRemoved && !heightRemoved && !weightRemoved)) {
-      return post.author;
-    }
-
-    return {
-      ...post.author,
-      profileImageObjectKey: profileImageRemoved
-        ? null
-        : (post.author.profileImageObjectKey ?? post.author.profileImageUrl),
-      profileImageUrl: profileImageRemoved ? null : post.author.profileImageUrl,
-      height: heightRemoved ? null : post.author.height,
-      weight: weightRemoved ? null : post.author.weight,
-    };
-  }, [post, isMine, profileImageRemoved, heightRemoved, weightRemoved]);
-
-  /* ================= 게시글 ================= */
-
-  useEffect(() => {
-    if (!postId) return;
-
-    getPostDetail(postId)
-      .then((res) => setPost(res.data))
-      .catch((e) => {
-        if (e?.code === "POST-E-005") {
-          alert("게시글을 찾을 수 없습니다.");
-          router.replace("/");
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [postId, router]);
-
-  const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
-
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProfileImageRemoved(
-        window.localStorage.getItem(PROFILE_IMAGE_REMOVED_KEY) === "1",
-      );
-      setHeightRemoved(
-        window.localStorage.getItem(PROFILE_HEIGHT_REMOVED_KEY) === "1",
-      );
-      setWeightRemoved(
-        window.localStorage.getItem(PROFILE_WEIGHT_REMOVED_KEY) === "1",
-      );
-    } catch {
-      setProfileImageRemoved(false);
-      setHeightRemoved(false);
-      setWeightRemoved(false);
-    }
-  }, []);
-
-  /* ================= 댓글 ================= */
-
-  useEffect(() => {
-    if (!postId) return;
-
-    getComments(postId, { size: 30 })
-      .then((res) => {
-        const mapped = res.comments.map((comment) => ({
-          id: comment.id,
-          content: comment.content,
-          createdAt: comment.createdAt,
-          nickname: comment.author.nickname,
-          profileImageUrl:
-            comment.author.profileImageObjectKey ??
-            comment.author.profileImageUrl ??
-            null,
-          authorId: comment.author.id,
-        }));
-        setComments(dedupeComments(mapped));
-      })
-      .catch(() => {});
-  }, [postId]);
-
-  /* ================= 내 정보 ================= */
-
-  useEffect(() => {
-    authFetch(`${API_BASE_URL}/api/members/me`, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (!json) return;
-        const profile = json.data?.profile ?? {};
-        const memberId = json.data?.id ?? profile.memberId ?? profile.id;
-        setMe({
-          id: memberId,
-          nickname: profile.nickname,
-          profileImageUrl:
-            profile.profileImageObjectKey ?? profile.profileImageUrl ?? null,
-        });
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!me?.id) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setComments((prev) =>
-      prev.map((comment) => {
-        if (String(comment.authorId) !== String(me.id)) return comment;
-        return {
-          ...comment,
-          profileImageUrl: profileImageRemoved
-            ? null
-            : (me.profileImageUrl ?? null),
-        };
-      }),
-    );
-  }, [me?.id, me?.profileImageUrl, profileImageRemoved]);
-
-  /* ================= 댓글 핸들러 ================= */
-
-  const handleCreateComment = async (content: string) => {
-    if (!postId) return;
-
-    const newComment = await createComment({ postId, content });
-
-    setComments((prev) =>
-      dedupeComments([
-        {
-          id: newComment.id,
-          content: newComment.content,
-          createdAt: newComment.createdAt,
-          nickname: me?.nickname ?? "나",
-          authorId: me?.id,
-          profileImageUrl: profileImageRemoved
-            ? null
-            : (me?.profileImageUrl ?? null),
-          isMine: true,
-        },
-        ...prev,
-      ]),
-    );
-
-    setPost((prev) =>
-      prev
-        ? {
-            ...prev,
-            aggregate: {
-              ...prev.aggregate,
-              commentCount: prev.aggregate.commentCount + 1,
-            },
-          }
-        : prev,
-    );
-  };
-
-  const handleUpdateComment = async (id: number, content: string) => {
-    if (!postId) return;
-    await updateComment({ postId, commentId: id, content });
-    setComments((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, content } : c)),
-    );
-  };
-
-  const handleDeleteComment = async (id: number) => {
-    if (!postId) return;
-    await deleteComment({ postId, commentId: id });
-
-    setComments((prev) => prev.filter((c) => c.id !== id));
-    setPost((prev) =>
-      prev
-        ? {
-            ...prev,
-            aggregate: {
-              ...prev.aggregate,
-              commentCount: Math.max(0, prev.aggregate.commentCount - 1),
-            },
-          }
-        : prev,
-    );
-  };
-
-  /* ================= 렌더 ================= */
 
   if (loading) {
     return (
@@ -324,51 +44,41 @@ export default function PostDetailPage() {
   if (!post) return null;
 
   return (
-    <div className="min-h-screen px-4 py-4">
-      {authorForHeader && (
+    <CommentCountProvider value={commentCountStore}>
+      <div className="min-h-screen px-4 py-4">
         <PostHeader
-          author={authorForHeader}
+          author={post.author}
           createdAt={post.createdAt}
           isMine={isMine}
-          onEdit={() => router.push(`/post/edit/${postId}`)}
+          onEdit={handleEdit}
           onDelete={() => setDeleteOpen(true)}
         />
-      )}
 
-      <PostImageCarousel images={sortedImageUrls} />
+        <PostImageCarousel images={sortedImageUrls} />
 
-      <PostContent
-        postId={postId}
-        content={post.content}
-        likeCount={post.aggregate.likeCount}
-        commentCount={post.aggregate.commentCount}
-        isLiked={effectiveLiked}
-        onLikedChange={(next) => {
-          setLikedOverride(next);
-        }}
-      />
+        <PostContent
+          postId={postId ?? ""}
+          content={post.content}
+          likeCount={post.aggregate.likeCount}
+          isLiked={effectiveLiked}
+          onLikedChange={(next) => {
+            setLikedOverride(next);
+          }}
+        />
 
-      <div className="mt-8 border-t pt-6">
-        <CommentInput onSubmit={handleCreateComment} />
-        <CommentList
-          comments={comments}
-          onDelete={handleDeleteComment}
-          onUpdate={handleUpdateComment}
+        <PostCommentSection
+          postId={postId}
           currentUserId={me?.id}
           currentUserNickname={me?.nickname}
+          currentUserProfileImageUrl={me?.profileImageUrl}
+        />
+
+        <PostDeleteConfirmModal
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={handleDeleteConfirm}
         />
       </div>
-
-      <PostDeleteConfirmModal
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={async () => {
-          if (!postId) return;
-          await deletePost(postId);
-          const from = searchParams.get("from");
-          router.replace(from === "profile" ? "/profile" : "/search");
-        }}
-      />
-    </div>
+    </CommentCountProvider>
   );
 }
