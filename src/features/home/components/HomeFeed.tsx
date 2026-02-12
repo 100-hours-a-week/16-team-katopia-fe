@@ -1,20 +1,7 @@
 "use client";
 
 import HomePostCard from "./HomePostCard";
-
-export type HomePost = {
-  id: string;
-  author: {
-    displayName: string;
-    username: string;
-    avatarUrl?: string | null;
-  };
-  imageUrl?: string | null;
-  imageCount?: number;
-  likeCount: number;
-  commentCount: number;
-  caption: string;
-};
+import type { HomePost } from "../hooks/useInfiniteHomeFeed";
 
 type HomeFeedProps = {
   posts: HomePost[];
