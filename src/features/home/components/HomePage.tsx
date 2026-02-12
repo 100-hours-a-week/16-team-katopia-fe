@@ -4,63 +4,70 @@ import AppHeader from "@/src/shared/components/layout/AppHeader";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import HomeFeed, { type HomePost } from "./HomeFeed";
+import HomeFeed from "./HomeFeed";
 import HomeRecommendationSection, {
   type HomeRecommendationMember,
 } from "./HomeRecommendationSection";
 import HomeInfoCarousel from "./HomeInfoCarousel";
-
-const MOCK_POSTS: HomePost[] = [
-  {
-    id: "home-1",
-    author: {
-      displayName: "닉네임",
-      username: "joody",
-      avatarUrl: null,
-    },
-    imageUrl: null,
-    imageCount: 4,
-    likeCount: 50,
-    commentCount: 15,
-    caption: "안녕하세요!",
-  },
-];
-const MOCK_RECOMMENDATIONS: HomeRecommendationMember[] = [
-  {
-    id: "rec-1",
-    name: "닉네임 1",
-    heightCm: 160,
-    weightKg: 60,
-    styles: ["캐주얼", "미니멀"],
-    avatarUrl: null,
-  },
-  {
-    id: "rec-2",
-    name: "닉네임 2",
-    heightCm: 165,
-    weightKg: 55,
-    styles: ["스트릿", "빈티지"],
-    avatarUrl: null,
-  },
-  {
-    id: "rec-3",
-    name: "닉네임 3",
-    heightCm: 158,
-    weightKg: 52,
-    styles: ["페미닌", "클래식"],
-    avatarUrl: null,
-  },
-];
+import { useInfiniteHomeFeed } from "../hooks/useInfiniteHomeFeed";
+import { getHomeMembers } from "../api/getHomeMembers";
 
 export default function HomePage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  useAuth();
+  const { ready, isAuthenticated } = useAuth();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const restoreAttemptedRef = useRef(false);
+  const pendingScrollYRef = useRef<number | null>(null);
   const isActiveState = searchParams.get("STATE") === "ACTIVE";
   const isPendingSignup = searchParams.get("status") === "PENDING";
+  const feedEnabled = ready && isAuthenticated;
+  const [recommendations, setRecommendations] = useState<
+    HomeRecommendationMember[]
+  >([]);
+
+  const {
+    items: posts,
+    hasMore: postsHasMore,
+    observe: observePosts,
+  } = useInfiniteHomeFeed({
+    size: 10,
+    enabled: feedEnabled,
+  });
+
+  useEffect(() => {
+    if (!feedEnabled) {
+      setRecommendations([]);
+      return;
+    }
+    let cancelled = false;
+
+    const fetchRecommendations = async () => {
+      try {
+        const data = await getHomeMembers();
+        if (cancelled) return;
+        const mapped = (data.members ?? []).map((member) => ({
+          id: member.id,
+          name: member.nickname ?? "",
+          heightCm: member.height ?? 0,
+          weightKg: member.weight ?? 0,
+          styles: member.styles ?? [],
+          avatarUrl: member.profileImageUrl ?? null,
+        }));
+        setRecommendations(mapped);
+      } catch {
+        if (cancelled) return;
+        setRecommendations([]);
+      }
+    };
+
+    fetchRecommendations();
+    return () => {
+      cancelled = true;
+    };
+  }, [feedEnabled]);
 
   useEffect(() => {
     if (!isActiveState) return;
@@ -97,14 +104,112 @@ export default function HomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const key = "katopia.home.scrollY";
+    const readScroll = () => {
+      try {
+        const stored = window.sessionStorage.getItem(key);
+        if (!stored) return null;
+        const y = Number(stored);
+        return Number.isFinite(y) ? y : null;
+      } catch {
+        return null;
+      }
+    };
+
+    pendingScrollYRef.current = readScroll();
+
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    const saveScroll = () => {
+      try {
+        window.sessionStorage.setItem(key, String(window.scrollY));
+      } catch {
+        // ignore storage errors
+      }
+    };
+    const onScroll = () => {
+      saveScroll();
+    };
+    const onPageHide = () => {
+      saveScroll();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        saveScroll();
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pagehide", onPageHide);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pagehide", onPageHide);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      try {
+        window.sessionStorage.setItem(key, String(window.scrollY));
+      } catch {
+        // ignore storage errors
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (restoreAttemptedRef.current) return;
+    const targetY = pendingScrollYRef.current;
+    if (targetY == null) return;
+
+    let tries = 0;
+    const maxTries = 40;
+    let intervalId: number | null = null;
+
+    const attempt = () => {
+      const doc = document.documentElement;
+      const canScroll =
+        doc.scrollHeight >= targetY + window.innerHeight - 20;
+
+      if (canScroll || tries >= maxTries) {
+        window.scrollTo(0, targetY);
+        restoreAttemptedRef.current = true;
+        if (intervalId != null) {
+          window.clearInterval(intervalId);
+        }
+        return;
+      }
+
+      tries += 1;
+      requestAnimationFrame(attempt);
+    };
+
+    requestAnimationFrame(attempt);
+    intervalId = window.setInterval(attempt, 200);
+    const onLoad = () => attempt();
+    window.addEventListener("load", onLoad);
+    return () => {
+      if (intervalId != null) {
+        window.clearInterval(intervalId);
+      }
+      window.removeEventListener("load", onLoad);
+    };
+  }, [posts.length]);
+
   return (
     <>
       <div className="relative min-h-screen flex flex-col">
         <AppHeader />
         <main className="flex-1 px-6 pb-12 pt-16">
           <HomeInfoCarousel />
-          <HomeFeed posts={MOCK_POSTS} />
-          <HomeRecommendationSection members={MOCK_RECOMMENDATIONS} />
+          <HomeFeed posts={posts} />
+          {feedEnabled && postsHasMore && (
+            <div ref={observePosts} className="h-24" />
+          )}
+          <HomeRecommendationSection members={recommendations} />
         </main>
 
         {toastMessage && (

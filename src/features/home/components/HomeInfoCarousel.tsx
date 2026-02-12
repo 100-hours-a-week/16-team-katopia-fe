@@ -130,8 +130,45 @@ export default function HomeInfoCarousel() {
 
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = "katopia.home.weather";
+    const ttlMs = 10 * 60 * 1000;
+
+    const loadCache = () => {
+      if (typeof window === "undefined") return null;
+      try {
+        const raw = window.sessionStorage.getItem(cacheKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as {
+          ts: number;
+          data: WeatherState[];
+        };
+        if (!parsed?.ts || !Array.isArray(parsed.data)) return null;
+        if (Date.now() - parsed.ts > ttlMs) return null;
+        return parsed.data;
+      } catch {
+        return null;
+      }
+    };
+
+    const saveCache = (data: WeatherState[]) => {
+      if (typeof window === "undefined") return;
+      try {
+        window.sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({ ts: Date.now(), data }),
+        );
+      } catch {
+        // ignore storage errors
+      }
+    };
 
     const fetchWeather = async () => {
+      const cached = loadCache();
+      if (cached) {
+        setWeatherList(cached);
+        return;
+      }
+
       try {
         const results = await Promise.all(
           DEFAULT_LOCATIONS.map(async (location) => {
@@ -171,6 +208,7 @@ export default function HomeInfoCarousel() {
 
         if (cancelled) return;
         setWeatherList(results);
+        saveCache(results);
       } catch {
         if (cancelled) return;
         setWeatherList((prev) =>
