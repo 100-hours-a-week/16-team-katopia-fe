@@ -28,11 +28,9 @@ export default function VotePage() {
     opacity,
     title,
     loading,
-    paginate,
     handleDragEnd,
     handleAnimationComplete,
     refreshCandidates,
-    addSelection,
     resultItems,
     resultStats,
   } = useVoteFlow();
