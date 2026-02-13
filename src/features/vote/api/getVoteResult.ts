@@ -7,6 +7,10 @@ export type VoteResultItem = {
   sortOrder?: number | null;
   fitCount?: number | null;
   fitRate?: number | null;
+  likeCount?: number | null;
+  likePercent?: number | null;
+  voteCount?: number | null;
+  voteRate?: number | null;
 };
 
 export type VoteResultResponse = {
