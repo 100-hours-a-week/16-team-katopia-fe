@@ -168,18 +168,18 @@ export function useVoteImageUploader() {
     });
   }, []);
 
-  const handleDragEnd = useCallback(
-    ({ active, over }: DragEndEvent) => {
-      if (!over || active.id === over.id) return;
-      const activeId = String(active.id);
-      const overId = String(over.id);
-      const oldIndex = previews.findIndex((p) => p.id === activeId);
-      const newIndex = previews.findIndex((p) => p.id === overId);
-      if (oldIndex < 0 || newIndex < 0) return;
-      setPreviews((p) => arrayMove(p, oldIndex, newIndex));
-    },
-    [previews],
-  );
+  const handleDragEnd = useCallback(({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    setPreviews((prev) => {
+      const oldIndex = prev.findIndex((p) => p.id === activeId);
+      const newIndex = prev.findIndex((p) => p.id === overId);
+      if (oldIndex < 0 || newIndex < 0) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }, []);
 
   const handleFileChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -270,9 +270,7 @@ export function useVoteImageUploader() {
         );
 
         setHelperText(
-          err instanceof Error
-            ? err.message
-            : "이미지 업로드에 실패했습니다.",
+          err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.",
         );
       } finally {
         setIsUploading(false);
