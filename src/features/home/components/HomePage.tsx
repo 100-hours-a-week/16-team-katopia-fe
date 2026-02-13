@@ -39,6 +39,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!feedEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRecommendations([]);
       return;
     }
@@ -171,8 +172,7 @@ export default function HomePage() {
 
     const attempt = () => {
       const doc = document.documentElement;
-      const canScroll =
-        doc.scrollHeight >= targetY + window.innerHeight - 20;
+      const canScroll = doc.scrollHeight >= targetY + window.innerHeight - 20;
 
       if (canScroll || tries >= maxTries) {
         window.scrollTo(0, targetY);
