@@ -9,7 +9,6 @@ import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePost
 import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileSummary from "./ProfileSummary";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import { useOptimisticPostCount } from "@/src/features/profile/hooks/useOptimisticPostCount";
 import { followMember } from "@/src/features/profile/api/followMember";
 import { unfollowMember } from "@/src/features/profile/api/unfollowMember";
 
@@ -72,7 +71,6 @@ export default function UserProfilePage({ userId }: Props) {
     mode: "member",
     enabled: ready && isAuthenticated,
   });
-  const optimisticPostCount = useOptimisticPostCount(posts.length);
 
   /* ================= 프로필 ================= */
 
