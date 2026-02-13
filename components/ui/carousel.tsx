@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface CarouselContextValue {
@@ -116,7 +117,13 @@ export function CarouselPrevious({ className, ...props }: ControlProps) {
       )}
       {...props}
     >
-      <span className="text-xl leading-none">‹</span>
+      <Image
+        src="/icons/chevron-left.svg"
+        alt=""
+        width={20}
+        height={20}
+        className="h-5 w-5 invert"
+      />
     </button>
   );
 }
@@ -136,7 +143,13 @@ export function CarouselNext({ className, ...props }: ControlProps) {
       )}
       {...props}
     >
-      <span className="text-xl leading-none">›</span>
+      <Image
+        src="/icons/chevron-right.svg"
+        alt=""
+        width={20}
+        height={20}
+        className="h-5 w-5 invert"
+      />
     </button>
   );
 }
