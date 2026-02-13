@@ -13,17 +13,15 @@ import { createVote } from "../api/createVote";
 
 export default function VoteCreatePage() {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [isOverLimit, setIsOverLimit] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const [isTitleValid, setIsTitleValid] = useState(false);
+  const [isTitleDirty, setIsTitleDirty] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const titleHelperText = isOverLimit
-    ? "최대 20자까지 입력할 수 있어요."
-    : null;
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -43,30 +41,19 @@ export default function VoteCreatePage() {
     };
   }, []);
 
-  const handleTitleChange = useCallback((next: string) => {
-    if (next.length > 20) {
-      setTitle(next.slice(0, 20));
-      setIsOverLimit(true);
-      return;
-    }
-    setIsOverLimit(false);
-    setTitle(next);
-  }, []);
-
-  const isTitleValid = title.trim().length > 0 && !isOverLimit;
   const hasPendingUpload = previews.some((p) =>
     p.objectKey.startsWith("pending:"),
   );
   const canSubmit = isTitleValid && imageCount > 0 && !hasPendingUpload;
 
   const handleBack = useCallback(() => {
-    const isDirty = title.length > 0 || imageCount > 0;
+    const isDirty = isTitleDirty || imageCount > 0;
     if (isDirty) {
       setShowCancelModal(true);
       return;
     }
     router.back();
-  }, [imageCount, router, title.length]);
+  }, [imageCount, isTitleDirty, router]);
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || isSubmitting) return;
@@ -79,12 +66,19 @@ export default function VoteCreatePage() {
         return;
       }
 
+      const titleValue = titleRef.current?.value ?? "";
+      const trimmedTitle = titleValue.trim();
+      if (!trimmedTitle) {
+        setToastMessage("제목을 입력해주세요.");
+        return;
+      }
+
       const imageObjectKeys = previews.map((p) =>
         p.objectKey.replace(/^\/+/, ""),
       );
 
       const result = await createVote({
-        title: title.trim(),
+        title: trimmedTitle,
         imageObjectKeys,
       });
 
@@ -103,7 +97,7 @@ export default function VoteCreatePage() {
         setIsSubmitting(false);
       }
     }
-  }, [canSubmit, hasPendingUpload, isSubmitting, previews, router, title]);
+  }, [canSubmit, hasPendingUpload, isSubmitting, previews, router]);
 
   return (
     <div className="min-h-screen bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6">
@@ -112,10 +106,9 @@ export default function VoteCreatePage() {
       <section className="mt-8">
         <VoteCreateTitle />
         <VoteTitleInput
-          value={title}
-          onChange={handleTitleChange}
-          isOverLimit={isOverLimit}
-          helperText={titleHelperText}
+          inputRef={titleRef}
+          onValidityChange={setIsTitleValid}
+          onDirtyChange={setIsTitleDirty}
         />
         <VoteImagePicker
           onCountChange={setImageCount}
