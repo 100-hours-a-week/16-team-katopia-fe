@@ -100,6 +100,7 @@ export function usePostDetail() {
 
   useEffect(() => {
     if (!postId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLikedOverride(null);
     setBookmarkedOverride(null);
 
@@ -115,8 +116,7 @@ export function usePostDetail() {
   }, [postId, router]);
 
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
-  const effectiveBookmarked =
-    bookmarkedOverride ?? post?.isBookmarked ?? false;
+  const effectiveBookmarked = bookmarkedOverride ?? post?.isBookmarked ?? false;
 
   useEffect(() => {
     authFetch(`${API_BASE_URL}/api/members/me`, {

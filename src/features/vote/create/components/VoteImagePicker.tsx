@@ -51,7 +51,7 @@ const SortablePreview = memo(function SortablePreview({
       }}
       {...attributes}
       {...listeners}
-      className="relative h-[400px] w-[78vw] max-w-[320px] shrink-0 overflow-hidden rounded-[14px] bg-gray-100"
+      className="relative h-100 w-[78vw] max-w-[320px] shrink-0 overflow-hidden rounded-[14px] bg-gray-100"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={item.url} alt="" className="h-full w-full object-cover" />
@@ -120,7 +120,7 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
               <button
                 type="button"
                 onClick={onAddClick}
-                className="flex h-[380px] w-[78vw] max-w-[320px] flex-col items-center justify-center rounded-[14px] bg-gray-100 text-gray-400"
+                className="flex h-95 w-[78vw] max-w-[320px] flex-col items-center justify-center rounded-[14px] bg-gray-100 text-gray-400"
               >
                 <span className="text-[30px] leading-none">+</span>
                 <span className="mt-2 text-[12px]">투표 사진 올리기</span>

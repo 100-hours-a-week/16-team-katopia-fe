@@ -172,7 +172,7 @@ export function useVoteFlow() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [x]);
 
   useEffect(() => {
     refreshCandidates();

@@ -137,12 +137,8 @@ export default function MyProfilePage() {
           weight: rawProfile.weight,
         });
         setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(
-          Number(apiAggregate?.followerCount ?? 0) || 0,
-        );
-        setFollowingCount(
-          Number(apiAggregate?.followingCount ?? 0) || 0,
-        );
+        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
+        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
       } catch (err) {
         console.error(err);
       } finally {
@@ -244,7 +240,7 @@ export default function MyProfilePage() {
                 className={activeTab === "posts" ? "opacity-100" : "opacity-40"}
               />
               {activeTab === "posts" && (
-                <span className="absolute bottom-0 h-[2px] w-8 bg-black" />
+                <span className="absolute bottom-0 h-0.5 w-8 bg-black" />
               )}
             </button>
             <button
@@ -261,7 +257,7 @@ export default function MyProfilePage() {
                 <BookmarkIcon active={activeTab === "bookmarks"} />
               </span>
               {activeTab === "bookmarks" && (
-                <span className="absolute bottom-0 h-[2px] w-8 bg-black" />
+                <span className="absolute bottom-0 h-0.5 w-8 bg-black" />
               )}
             </button>
           </div>

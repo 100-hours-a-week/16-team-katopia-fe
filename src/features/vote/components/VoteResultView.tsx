@@ -59,7 +59,7 @@ export default function VoteResultView({
       </p>
 
       <div className="mt-6">
-        <div className="relative mx-auto h-110 w-full max-w-90 overflow-hidden [perspective:1200px]">
+        <div className="relative mx-auto h-110 w-full max-w-90 overflow-hidden perspective-distant">
           {visibleItems.map(({ item, position }) => {
             const safeSrc = item.imageUrl || "/images/logo.png";
             const isCenter = position === "center";
@@ -81,7 +81,7 @@ export default function VoteResultView({
             return (
               <div
                 key={position}
-                className="absolute left-1/2 top-0 will-change-transform [transform-style:preserve-3d]"
+                className="absolute left-1/2 top-0 will-change-transform transform-3d"
                 style={{
                   transform: `translateX(calc(-50% + ${translateX}px)) translateY(${translateY}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
                   zIndex,

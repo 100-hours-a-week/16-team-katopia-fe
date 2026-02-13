@@ -86,7 +86,7 @@ export function CarouselContent({
       {...props}
     >
       {slides.map((child, i) => (
-        <div key={i} className="min-w-full flex-shrink-0">
+        <div key={i} className="min-w-full shrink-0">
           {child}
         </div>
       ))}
