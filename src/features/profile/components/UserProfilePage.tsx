@@ -126,12 +126,8 @@ export default function UserProfilePage({ userId }: Props) {
         });
 
         setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(
-          Number(apiAggregate?.followerCount ?? 0) || 0,
-        );
-        setFollowingCount(
-          Number(apiAggregate?.followingCount ?? 0) || 0,
-        );
+        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
+        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
 
         if (typeof apiIsFollowingRaw === "boolean") {
           setIsFollowing(apiIsFollowingRaw);

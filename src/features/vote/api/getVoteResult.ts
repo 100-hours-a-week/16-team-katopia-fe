@@ -25,9 +25,7 @@ export async function getVoteResult(voteId: number | string) {
   });
 
   const raw = await res.text();
-  const parsed = raw
-    ? ((JSON.parse(raw) as VoteResultApiResponse) ?? {})
-    : {};
+  const parsed = raw ? ((JSON.parse(raw) as VoteResultApiResponse) ?? {}) : {};
   const data = parsed.data ?? (parsed as VoteResultResponse);
 
   if (!res.ok) {

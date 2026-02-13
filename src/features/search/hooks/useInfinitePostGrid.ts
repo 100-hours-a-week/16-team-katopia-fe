@@ -89,10 +89,10 @@ export function useInfinitePostGrid(params?: Params) {
                 size,
                 after: afterForMember, // string
               })
-          : await getPostList({
-              size,
-              after: afterForPost, // number
-            });
+            : await getPostList({
+                size,
+                after: afterForPost, // number
+              });
 
       const rawPosts =
         (data.posts as {

@@ -21,8 +21,7 @@ export async function participateVote(
   voteId: number | string,
   voteItemIds: Array<number | string>,
 ) {
-  const payload =
-    voteItemIds.length > 0 ? { voteItemIds } : undefined;
+  const payload = voteItemIds.length > 0 ? { voteItemIds } : undefined;
   const res = await authFetch(
     `${API_BASE_URL}/api/votes/${voteId}/participations`,
     {
