@@ -85,7 +85,7 @@ export default function PostCreatePage() {
         dispatchPostCountChange(1);
         setToastMessage("게시글 작성이 완료되었습니다.");
         toastTimerRef.current = setTimeout(() => {
-          router.replace("/search");
+          router.replace("/home");
         }, 1200);
       } catch (e) {
         console.error(e);
