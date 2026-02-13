@@ -282,7 +282,7 @@ export default function HomeInfoCarousel() {
 
   return (
     <section className="mt-4 mb-6">
-      <div className="relative h-[86px] overflow-hidden rounded-[999px] bg-white/80 backdrop-blur">
+      <div className="relative h-21.5 overflow-hidden rounded-[999px] bg-white/80 backdrop-blur">
         <div
           className="flex h-full flex-col transition-transform duration-500 ease-out"
           style={{
@@ -290,12 +290,9 @@ export default function HomeInfoCarousel() {
           }}
         >
           {slides.map((slide) => (
-            <div
-              key={slide.id}
-              className="h-[86px] w-full flex-shrink-0 bg-white/80"
-            >
+            <div key={slide.id} className="h-21.5 w-full shrink-0 bg-white/80">
               <div className="flex h-full items-center text-black">
-                <div className="flex h-full w-[78px] items-center justify-center border-r border-white/30">
+                <div className="flex h-full w-19.5 items-center justify-center border-r border-white/30">
                   <span className="text-[30px]" aria-hidden="true">
                     {slide.icon}
                   </span>
