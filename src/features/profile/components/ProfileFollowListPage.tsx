@@ -201,9 +201,7 @@ export default function ProfileFollowListPage() {
                   </li>
                 ))}
               </ul>
-              {hasMore && (
-                <div id="followings-sentinel" className="h-12" />
-              )}
+              {hasMore && <div id="followings-sentinel" className="h-12" />}
               {!loading && items.length === 0 && (
                 <p className="mt-10 text-center text-[12px] text-gray-500">
                   {activeTab === "following"

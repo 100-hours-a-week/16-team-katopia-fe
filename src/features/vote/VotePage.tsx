@@ -26,23 +26,26 @@ export default function VotePage() {
     rotateZ,
     scale,
     opacity,
-    paginate,
+    title,
+    loading,
     handleDragEnd,
     handleAnimationComplete,
+    refreshCandidates,
+    resultItems,
+    resultStats,
   } = useVoteFlow();
 
-  const question = "어떤 룩이 저에게 더 잘어울릴까요?";
-  const progressPercent = (Math.min(index + 1, total) / total) * 100;
+  const question = title || "어떤 룩이 저에게 더 잘어울릴까요?";
+  const progressPercent =
+    total > 0 ? (Math.min(index + 1, total) / total) * 100 : 0;
 
   return (
     <div
-      className="min-h-[100svh] px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
+      className="min-h-svh bg-black px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
       style={{
         fontFamily:
           '"NanumSquare", "Pretendard", "Apple SD Gothic Neo", sans-serif',
-        background: isFinished
-          ? "#000"
-          : "linear-gradient(135deg, #7c3aed 0%, #ec4899 45%, #fb923c 100%)",
+        background: "#000000",
       }}
     >
       <VoteHeader title="오늘의 투표" />
@@ -50,34 +53,21 @@ export default function VotePage() {
       {isFinished ? (
         showResult ? (
           <VoteResultView
-            totalVotes={1512}
-            items={[
-              {
-                imageUrl: "/images/vote_1.jpeg",
-                dislikePercent: 40,
-                dislikeCount: 1234,
-                likePercent: 60,
-                likeCount: 1734,
-              },
-              {
-                imageUrl: "/images/vote_2.jpeg",
-                dislikePercent: 37,
-                dislikeCount: 1234,
-                likePercent: 63,
-                likeCount: 1734,
-              },
-              {
-                imageUrl: "/images/vote_3.webp",
-                dislikePercent: 42,
-                dislikeCount: 1234,
-                likePercent: 58,
-                likeCount: 1734,
-              },
-            ]}
+            totalVotes={resultStats.reduce((sum, s) => sum + s.likeCount, 0)}
+            items={resultItems.map((item, i) => ({
+              imageUrl: item.imageUrl,
+              dislikePercent: 0,
+              dislikeCount: 0,
+              likePercent: resultStats[i]?.likePercent ?? 0,
+              likeCount: resultStats[i]?.likeCount ?? 0,
+            }))}
+            onRefresh={refreshCandidates}
           />
         ) : (
           <VoteResultLoading />
         )
+      ) : loading || total === 0 ? (
+        <VoteResultLoading />
       ) : (
         <>
           <VoteProgress
@@ -101,8 +91,7 @@ export default function VotePage() {
           />
           <VoteActions
             disabled={index >= total - 1}
-            onDislike={() => paginate("left")}
-            onLike={() => paginate("right")}
+            onRefresh={refreshCandidates}
           />
         </>
       )}

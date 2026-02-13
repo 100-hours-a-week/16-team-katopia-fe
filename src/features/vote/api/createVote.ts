@@ -9,8 +9,12 @@ export type CreateVotePayload = {
 type CreateVoteResponse = {
   data?: {
     id?: number | string;
+    title?: string;
+    imageObjectKeys?: string[];
   };
   id?: number | string;
+  title?: string;
+  imageObjectKeys?: string[];
   message?: string;
 };
 
@@ -29,5 +33,10 @@ export async function createVote(payload: CreateVotePayload) {
     throw new Error(`(${res.status}) ${message}`);
   }
 
-  return parsed;
+  const data = parsed?.data ?? parsed ?? null;
+  return {
+    id: data?.id,
+    title: data?.title,
+    imageObjectKeys: data?.imageObjectKeys ?? [],
+  };
 }

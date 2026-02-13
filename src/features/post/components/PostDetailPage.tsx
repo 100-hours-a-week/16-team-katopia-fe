@@ -19,7 +19,9 @@ export default function PostDetailPage() {
     loading,
     sortedImageUrls,
     effectiveLiked,
+    effectiveBookmarked,
     setLikedOverride,
+    setBookmarkedOverride,
     deleteOpen,
     setDeleteOpen,
     isMine,
@@ -61,8 +63,12 @@ export default function PostDetailPage() {
           content={post.content}
           likeCount={post.aggregate.likeCount}
           isLiked={effectiveLiked}
+          isBookmarked={effectiveBookmarked}
           onLikedChange={(next) => {
             setLikedOverride(next);
+          }}
+          onBookmarkedChange={(next) => {
+            setBookmarkedOverride(next);
           }}
         />
 

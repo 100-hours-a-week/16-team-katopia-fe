@@ -3,7 +3,7 @@
 import HomeRecommendationCard from "./HomeRecommendationCard";
 
 export type HomeRecommendationMember = {
-  id: string;
+  id: number;
   name: string;
   heightCm: number;
   weightKg: number;

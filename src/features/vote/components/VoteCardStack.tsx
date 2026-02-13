@@ -160,7 +160,7 @@ export default function VoteCardStack({
                     }
                     aria-hidden="true"
                   />
-                  <span className="text-[11px] font-semibold">별로에요</span>
+                  <span className="text-[11px] font-semibold">넘겨요</span>
                 </div>
               </div>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white">
@@ -183,7 +183,7 @@ export default function VoteCardStack({
                     }
                     aria-hidden="true"
                   />
-                  <span className="text-[11px] font-semibold">좋아요</span>
+                  <span className="text-[11px] font-semibold">어울려요</span>
                 </div>
               </div>
             </motion.div>

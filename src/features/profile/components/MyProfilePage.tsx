@@ -77,6 +77,18 @@ export default function MyProfilePage() {
     memberId: profile?.userId,
     size: 30,
     mode: "member",
+    enabled: activeTab === "posts",
+  });
+
+  const {
+    items: bookmarks,
+    loading: bookmarksLoading,
+    hasMore: bookmarksHasMore,
+    observe: observeBookmarks,
+  } = useInfinitePostGrid({
+    size: 30,
+    mode: "bookmarks",
+    enabled: activeTab === "bookmarks",
   });
 
   /* -------------------------
@@ -125,12 +137,8 @@ export default function MyProfilePage() {
           weight: rawProfile.weight,
         });
         setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(
-          Number(apiAggregate?.followerCount ?? 0) || 0,
-        );
-        setFollowingCount(
-          Number(apiAggregate?.followingCount ?? 0) || 0,
-        );
+        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
+        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
       } catch (err) {
         console.error(err);
       } finally {
@@ -147,6 +155,25 @@ export default function MyProfilePage() {
       router.replace("/home");
     }
   }, [ready, isAuthenticated, router, withdrawRedirecting]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "bookmarks") {
+      setActiveTab("bookmarks");
+      return;
+    }
+    if (tab === "posts") {
+      setActiveTab("posts");
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (nextTab: "posts" | "bookmarks") => {
+    setActiveTab(nextTab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", nextTab);
+    const nextQuery = params.toString();
+    router.replace(nextQuery ? `/profile?${nextQuery}` : "/profile");
+  };
 
   /* -------------------------
      게시글 로딩
@@ -201,7 +228,7 @@ export default function MyProfilePage() {
           <div className="flex items-center justify-center gap-24">
             <button
               type="button"
-              onClick={() => setActiveTab("posts")}
+              onClick={() => handleTabChange("posts")}
               className="relative flex h-12 w-12 items-center justify-center text-black"
               aria-pressed={activeTab === "posts"}
             >
@@ -213,12 +240,12 @@ export default function MyProfilePage() {
                 className={activeTab === "posts" ? "opacity-100" : "opacity-40"}
               />
               {activeTab === "posts" && (
-                <span className="absolute bottom-0 h-[2px] w-8 bg-black" />
+                <span className="absolute bottom-0 h-0.5 w-8 bg-black" />
               )}
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("bookmarks")}
+              onClick={() => handleTabChange("bookmarks")}
               className="relative flex h-12 w-12 items-center justify-center text-black"
               aria-pressed={activeTab === "bookmarks"}
             >
@@ -230,7 +257,7 @@ export default function MyProfilePage() {
                 <BookmarkIcon active={activeTab === "bookmarks"} />
               </span>
               {activeTab === "bookmarks" && (
-                <span className="absolute bottom-0 h-[2px] w-8 bg-black" />
+                <span className="absolute bottom-0 h-0.5 w-8 bg-black" />
               )}
             </button>
           </div>
@@ -241,16 +268,23 @@ export default function MyProfilePage() {
             <ProfilePostGrid
               posts={posts}
               loading={postsLoading}
-              detailQuery="from=profile"
+              detailQuery="from=profile&tab=posts"
             />
             {postsHasMore && <div ref={observePosts} className="h-24" />}
           </>
         )}
 
         {activeTab === "bookmarks" && (
-          <div className="flex min-h-[280px] items-center justify-center text-sm text-gray-500">
-            북마크한 게시물이 없어요.
-          </div>
+          <>
+            <ProfilePostGrid
+              posts={bookmarks}
+              loading={bookmarksLoading}
+              detailQuery="from=profile&tab=bookmarks"
+            />
+            {bookmarksHasMore && (
+              <div ref={observeBookmarks} className="h-24" />
+            )}
+          </>
         )}
       </div>
 

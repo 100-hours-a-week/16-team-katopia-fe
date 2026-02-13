@@ -9,7 +9,6 @@ import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePost
 import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileSummary from "./ProfileSummary";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import { useOptimisticPostCount } from "@/src/features/profile/hooks/useOptimisticPostCount";
 import { followMember } from "@/src/features/profile/api/followMember";
 import { unfollowMember } from "@/src/features/profile/api/unfollowMember";
 
@@ -72,7 +71,6 @@ export default function UserProfilePage({ userId }: Props) {
     mode: "member",
     enabled: ready && isAuthenticated,
   });
-  const optimisticPostCount = useOptimisticPostCount(posts.length);
 
   /* ================= 프로필 ================= */
 
@@ -128,12 +126,8 @@ export default function UserProfilePage({ userId }: Props) {
         });
 
         setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(
-          Number(apiAggregate?.followerCount ?? 0) || 0,
-        );
-        setFollowingCount(
-          Number(apiAggregate?.followingCount ?? 0) || 0,
-        );
+        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
+        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
 
         if (typeof apiIsFollowingRaw === "boolean") {
           setIsFollowing(apiIsFollowingRaw);
