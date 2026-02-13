@@ -42,8 +42,13 @@ function normalizeHomeImageUrls(post: HomePostApiItem) {
   const rawKeys = post.imageObjectKeys ?? [];
   if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
     const fallback =
-      (post as { imageObjectKey?: unknown; imageUrls?: unknown; imageUrl?: unknown })
-        .imageObjectKey ??
+      (
+        post as {
+          imageObjectKey?: unknown;
+          imageUrls?: unknown;
+          imageUrl?: unknown;
+        }
+      ).imageObjectKey ??
       (post as { imageUrls?: unknown }).imageUrls ??
       (post as { imageUrl?: unknown }).imageUrl ??
       [];
@@ -52,7 +57,9 @@ function normalizeHomeImageUrls(post: HomePostApiItem) {
   const sorted = [...rawKeys].sort(
     (a, b) => (a?.sortOrder ?? 0) - (b?.sortOrder ?? 0),
   );
-  return normalizeImageUrls(sorted as unknown as Array<{ imageObjectKey?: string }>);
+  return normalizeImageUrls(
+    sorted as unknown as Array<{ imageObjectKey?: string }>,
+  );
 }
 
 export async function getHomePosts(params?: {
