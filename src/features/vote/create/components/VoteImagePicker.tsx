@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { memo, useEffect, useId, useRef } from "react";
+import { memo, useEffect, useId, useRef, useCallback } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -21,15 +21,26 @@ import {
   useVoteImageUploader,
 } from "../hooks/useVoteImageUploader";
 
-function SortablePreview({
+const SortablePreview = memo(function SortablePreview({
   item,
-  onRemove,
+  index,
+  onRemoveAt,
 }: {
   item: PreviewItem;
-  onRemove: () => void;
+  index: number;
+  onRemoveAt: (index: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
+
+  const handleRemove = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onRemoveAt(index);
+    },
+    [index, onRemoveAt],
+  );
 
   return (
     <div
@@ -47,18 +58,14 @@ function SortablePreview({
 
       <button
         type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onRemove();
-        }}
+        onClick={handleRemove}
         className="absolute right-2 top-2 rounded-full bg-white p-1"
       >
         <Image src="/icons/delete.svg" alt="삭제" width={24} height={24} />
       </button>
     </div>
   );
-}
+});
 
 const VoteImagePreviewList = memo(function VoteImagePreviewList({
   previews,
@@ -104,7 +111,8 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
               <SortablePreview
                 key={p.id}
                 item={p}
-                onRemove={() => onRemoveAt(i)}
+                index={i}
+                onRemoveAt={onRemoveAt}
               />
             ))}
 
