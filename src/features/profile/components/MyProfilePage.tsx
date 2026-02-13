@@ -1,34 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import ProfileHeader from "./ProfileHeader";
 import ProfileSummary from "./ProfileSummary";
 import ProfilePostGrid from "./ProfilePostGrid";
 import ProfileWithdrawModal from "./ProfileWithdrawModal";
 import ProfileLogoutModal from "./ProfileLogoutModal";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch, clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
-import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
+import MyProfileVotesTab from "./MyProfileVotesTab";
+import VoteDeleteConfirmModal from "./VoteDeleteConfirmModal";
+import { clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { withdrawMember } from "@/src/features/profile/api/withdrawMember";
-
-type Profile = {
-  userId: number;
-  nickname: string;
-  profileImageUrl: string | null;
-  gender: "male" | "female" | null;
-  height: number | null;
-  weight: number | null;
-  style: string[];
-};
-
-type ApiAggregate = {
-  postCount?: number | null;
-  followerCount?: number | null;
-  followingCount?: number | null;
-};
+import { useMyProfilePage } from "@/src/features/profile/hooks/useMyProfilePage";
 
 function BookmarkIcon({ active }: { active: boolean }) {
   return (
@@ -50,10 +34,39 @@ function BookmarkIcon({ active }: { active: boolean }) {
 }
 
 export default function MyProfilePage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const searchParamsKey = searchParams.toString();
-  const { ready, isAuthenticated, setAuthenticated } = useAuth();
+  const { setAuthenticated } = useAuth();
+  const {
+    router,
+    ready,
+    isAuthenticated,
+    profile,
+    loading,
+    activeTab,
+    handleTabChange,
+    stats,
+    handleFollowerClick,
+    handleFollowingClick,
+    posts,
+    postsLoading,
+    postsHasMore,
+    observePosts,
+    bookmarks,
+    bookmarksLoading,
+    bookmarksHasMore,
+    observeBookmarks,
+    votes,
+    votesLoading,
+    votesHasMore,
+    observeVotes,
+    voteMenuOpenId,
+    setVoteMenuOpenId,
+    voteDeleteOpen,
+    pendingDeleteTitle,
+    voteDeleting,
+    openDeleteModal,
+    closeDeleteModal,
+    confirmDeleteVote,
+  } = useMyProfilePage();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -61,119 +74,12 @@ export default function MyProfilePage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawRedirecting, setWithdrawRedirecting] = useState(false);
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"posts" | "bookmarks">("posts");
-  const [postCount, setPostCount] = useState(0);
-  const [followerCount, setFollowerCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
-
-  const {
-    items: posts,
-    loading: postsLoading,
-    hasMore: postsHasMore,
-    observe: observePosts,
-  } = useInfinitePostGrid({
-    memberId: profile?.userId,
-    size: 30,
-    mode: "member",
-    enabled: activeTab === "posts",
-  });
-
-  const {
-    items: bookmarks,
-    loading: bookmarksLoading,
-    hasMore: bookmarksHasMore,
-    observe: observeBookmarks,
-  } = useInfinitePostGrid({
-    size: 30,
-    mode: "bookmarks",
-    enabled: activeTab === "bookmarks",
-  });
-
-  /* -------------------------
-     내 정보 조회
-  ------------------------- */
-  useEffect(() => {
-    if (!ready || !isAuthenticated) return;
-
-    const fetchMe = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          throw new Error("내 정보 조회 실패");
-        }
-
-        const json = await res.json();
-        console.log("[profile] /api/members/me response", json);
-        // console.log("[profile] /api/members/me response", {
-        //   profileImageObjectKey: json?.data?.profile?.profileImageObjectKey,
-        //   profileImageUrl: json?.data?.profile?.profileImageUrl,
-        // });
-        const rawProfile = json.data.profile;
-        const apiAggregate: ApiAggregate | undefined =
-          json.data?.aggregate ?? json.aggregate;
-        const userId = json.data.id;
-        const normalizedGender =
-          rawProfile.gender === "M" || rawProfile.gender === "MALE"
-            ? "male"
-            : rawProfile.gender === "F" || rawProfile.gender === "FEMALE"
-              ? "female"
-              : null;
-
-        const profileImageKey =
-          rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
-        setProfile({
-          userId,
-          ...rawProfile,
-          gender: normalizedGender,
-          profileImageUrl: profileImageKey ?? null,
-          height: rawProfile.height,
-          weight: rawProfile.weight,
-        });
-        setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
-        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMe();
-  }, [ready, isAuthenticated, searchParamsKey]);
-
   useEffect(() => {
     if (!ready) return;
     if (!isAuthenticated && !withdrawRedirecting) {
       router.replace("/home");
     }
   }, [ready, isAuthenticated, router, withdrawRedirecting]);
-
-  useEffect(() => {
-    const tab = searchParams.get("tab");
-    if (tab === "bookmarks") {
-      setActiveTab("bookmarks");
-      return;
-    }
-    if (tab === "posts") {
-      setActiveTab("posts");
-    }
-  }, [searchParams]);
-
-  const handleTabChange = (nextTab: "posts" | "bookmarks") => {
-    setActiveTab(nextTab);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", nextTab);
-    const nextQuery = params.toString();
-    router.replace(nextQuery ? `/profile?${nextQuery}` : "/profile");
-  };
 
   /* -------------------------
      게시글 로딩
@@ -199,29 +105,9 @@ export default function MyProfilePage() {
         <ProfileSummary
           profile={profile}
           loading={loading}
-          stats={{
-            postCount,
-            followerCount,
-            followingCount,
-          }}
-          onFollowerClick={() => {
-            const nickname = profile?.nickname ?? "";
-            const memberId = profile?.userId ?? "";
-            router.push(
-              `/profile/follows?tab=follower&nickname=${encodeURIComponent(
-                nickname,
-              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
-            );
-          }}
-          onFollowingClick={() => {
-            const nickname = profile?.nickname ?? "";
-            const memberId = profile?.userId ?? "";
-            router.push(
-              `/profile/follows?tab=following&nickname=${encodeURIComponent(
-                nickname,
-              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
-            );
-          }}
+          stats={stats}
+          onFollowerClick={handleFollowerClick}
+          onFollowingClick={handleFollowingClick}
         />
 
         <div className="mt-6 border-b border-gray-200 px-8">
@@ -260,6 +146,23 @@ export default function MyProfilePage() {
                 <span className="absolute bottom-0 h-0.5 w-8 bg-black" />
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange("votes")}
+              className="relative flex h-12 w-12 items-center justify-center text-black"
+              aria-pressed={activeTab === "votes"}
+            >
+              <Image
+                src="/icons/votee.svg"
+                alt="투표"
+                width={28}
+                height={28}
+                className={activeTab === "votes" ? "opacity-100" : "opacity-40"}
+              />
+              {activeTab === "votes" && (
+                <span className="absolute bottom-0 h-0.5 w-8 bg-black" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -285,6 +188,20 @@ export default function MyProfilePage() {
               <div ref={observeBookmarks} className="h-24" />
             )}
           </>
+        )}
+
+        {activeTab === "votes" && (
+          <MyProfileVotesTab
+            votes={votes}
+            loading={votesLoading}
+            hasMore={votesHasMore}
+            observe={observeVotes}
+            voteMenuOpenId={voteMenuOpenId}
+            onToggleMenu={(id) =>
+              setVoteMenuOpenId((prev) => (prev === id ? null : id))
+            }
+            onDeleteClick={openDeleteModal}
+          />
         )}
       </div>
 
@@ -317,6 +234,14 @@ export default function MyProfilePage() {
       <ProfileLogoutModal
         open={logoutOpen}
         onClose={() => setLogoutOpen(false)}
+      />
+
+      <VoteDeleteConfirmModal
+        open={voteDeleteOpen}
+        title={pendingDeleteTitle}
+        deleting={voteDeleting}
+        onClose={closeDeleteModal}
+        onConfirm={confirmDeleteVote}
       />
     </>
   );
