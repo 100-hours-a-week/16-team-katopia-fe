@@ -84,7 +84,7 @@ export default function HomePostMedia({
 
       {hasMultiple && (
         <>
-          <div className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/50 px-2 py-1 text-[11px] text-white">
+          <div className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/50 px-2 py-1 text-[11px] text-white">
             <CarouselCount total={total} />
           </div>
           <CarouselPrevious />
