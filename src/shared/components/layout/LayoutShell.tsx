@@ -8,7 +8,7 @@ import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { hasLoggedInFlag } from "@/src/lib/auth";
 import LoginBottomSheet from "@/src/features/home/components/LoginBottomsSheet";
 
-const HIDE_BOTTOM_NAV_PATHS = ["/", "/withdraw/success"];
+const HIDE_BOTTOM_NAV_PATHS = ["/", "/withdraw/success", "/notifications"];
 const LOGIN_GUARD_PATHS = ["/post", "/vote", "/search", "/home"];
 const LOGIN_GUARD_EXCLUDED_PATHS = ["/"];
 
