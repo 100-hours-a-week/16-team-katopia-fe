@@ -95,8 +95,5 @@ export default function AuthProvider({
     [isAuthenticated, ready, authInvalidated],
   );
 
-  // ✅ return은 Hook 이후에만
-  if (!ready) return null; // or Skeleton
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

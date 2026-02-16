@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -12,11 +13,16 @@ import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 
 import PostFormLayout from "../PostFormLayout";
 import PostFormHeader from "../components/PostFormHeader";
-import PostImageUploader from "./components/PostImageUploader";
+import PostImageUploaderShell from "./components/PostImageUploaderShell";
 import PostContentInput from "./components/PostContentInput";
 import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
 import PostSubmitButton from "./components/PostSubmitButton";
 import { dispatchPostCountChange } from "@/src/features/post/utils/postCountEvents";
+
+const PostImageUploaderClient = dynamic(
+  () => import("./components/PostImageUploaderClient"),
+  { ssr: false, loading: () => <PostImageUploaderShell /> },
+);
 
 export default function PostCreatePage() {
   const router = useRouter();
@@ -123,7 +129,7 @@ export default function PostCreatePage() {
           id="post-create-form"
           onSubmit={handleSubmit(onSubmit, onInvalid)}
         >
-          <PostImageUploader />
+          <PostImageUploaderClient />
           <PostContentInput />
         </form>
 

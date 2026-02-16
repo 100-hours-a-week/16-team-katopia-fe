@@ -9,7 +9,6 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import heic2any from "heic2any";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useController, useFormContext } from "react-hook-form";
 
@@ -61,6 +60,7 @@ async function resizeAndCompress(
       const heicBlob = new Blob([buffer], {
         type: file.type || "image/heic",
       });
+      const { default: heic2any } = await import("heic2any");
       const converted = await heic2any({
         blob: heicBlob,
         toType: "image/jpeg",

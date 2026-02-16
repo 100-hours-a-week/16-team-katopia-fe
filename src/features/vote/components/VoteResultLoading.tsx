@@ -12,15 +12,15 @@ export default function VoteResultLoading() {
       <div className="mt-6">
         <div className="relative mx-auto h-110 w-full max-w-90 overflow-hidden perspective-distant">
           <div className="absolute left-1/2 top-0 -translate-x-1/2">
-            <div className="h-105 w-[290px] rounded-[28px] bg-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
-              <div className="h-full w-full animate-pulse rounded-[28px] bg-gradient-to-br from-white/10 via-white/5 to-white/10" />
+            <div className="h-105 w-72.5 rounded-[28px] bg-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+              <div className="h-full w-full animate-pulse rounded-[28px] bg-linear-to-br from-white/10 via-white/5 to-white/10" />
             </div>
           </div>
           <div className="absolute left-1/2 top-0 -translate-x-[70%] translate-y-3 scale-[0.88] opacity-80">
-            <div className="h-105 w-[290px] rounded-[28px] bg-white/5" />
+            <div className="h-105 w-72.5 rounded-[28px] bg-white/5" />
           </div>
           <div className="absolute left-1/2 top-0 -translate-x-[30%] translate-y-3 scale-[0.88] opacity-80">
-            <div className="h-105 w-[290px] rounded-[28px] bg-white/5" />
+            <div className="h-105 w-72.5 rounded-[28px] bg-white/5" />
           </div>
         </div>
       </div>

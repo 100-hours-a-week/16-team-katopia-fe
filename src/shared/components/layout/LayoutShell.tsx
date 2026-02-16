@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BottomNav from "./BottomNav";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
@@ -22,6 +22,7 @@ export default function LayoutShell({ children }: Props) {
   const hideBottomNav = HIDE_BOTTOM_NAV_PATHS.includes(pathname ?? "");
   const { ready, isAuthenticated, authInvalidated } = useAuth();
   const hasAlertedRef = useRef(false);
+  const [showBottomNav, setShowBottomNav] = useState(false);
   const isPendingSignup = searchParams.get("status") === "PENDING";
   const isActiveLogin = searchParams.get("status") === "ACTIVE";
   const isWithdrawnState = searchParams.get("STATE") === "WITHDRAWN";
@@ -63,6 +64,20 @@ export default function LayoutShell({ children }: Props) {
     if (typeof document === "undefined") return;
     document.body.style.backgroundColor = "#ffffff";
   }, [pathname]);
+
+  useEffect(() => {
+    if (hideBottomNav) return;
+    if (typeof window === "undefined") return;
+    let idleId: number | null = null;
+    if ("requestIdleCallback" in window) {
+      idleId = window.requestIdleCallback(() => setShowBottomNav(true));
+      return () => {
+        if (idleId !== null) window.cancelIdleCallback(idleId);
+      };
+    }
+    const timeoutId = window.setTimeout(() => setShowBottomNav(true), 300);
+    return () => window.clearTimeout(timeoutId);
+  }, [hideBottomNav]);
 
   useEffect(() => {
     if (!isWithdrawnState) return;
@@ -115,7 +130,7 @@ export default function LayoutShell({ children }: Props) {
       >
         {children}
       </div>
-      {!hideBottomNav && <BottomNav />}
+      {!hideBottomNav && showBottomNav && <BottomNav />}
       {shouldLock && <LoginBottomSheet persist />}
     </>
   );

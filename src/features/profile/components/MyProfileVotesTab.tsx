@@ -43,7 +43,7 @@ export default function MyProfileVotesTab({
                   <Link
                     href={`/vote/${String(vote.id)}`}
                     prefetch
-                    className="flex w-full items-center justify-between rounded-4xl bg-[#f2f2f2] px-6 py-5 text-left text-[13px] font-semibold text-black"
+                    className="flex w-full items-center justify-between rounded-4xl bg-[#121212] px-6 py-5 text-left text-[12px] font-medium text-white"
                     aria-label={`${vote.title ?? ""} 더보기`}
                   >
                     <span className="truncate">{vote.title}</span>
@@ -63,6 +63,7 @@ export default function MyProfileVotesTab({
                           alt=""
                           width={18}
                           height={18}
+                          className="invert"
                         />
                       </button>
                       {voteMenuOpenId === vote.id && (

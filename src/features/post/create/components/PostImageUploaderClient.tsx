@@ -40,7 +40,7 @@ function SortablePreview({
       }}
       {...attributes}
       {...listeners}
-      className="relative h-[55vh] w-88.75 shrink-0 overflow-hidden rounded-[5px] bg-gray-200"
+    className="relative h-[60vh] w-88.75 shrink-0 overflow-hidden rounded-[5px] bg-gray-200"
     >
       {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
       <img src={item.url} className="h-full w-full object-cover" />
@@ -112,7 +112,7 @@ const PostImagePreviewList = memo(function PostImagePreviewList({
               <button
                 type="button"
                 onClick={onAddClick}
-                className="flex h-[52vh] w-88.75 flex-col items-center justify-center rounded-xl bg-gray-200 text-gray-400"
+                className="flex h-[60vh] w-88.75 flex-col items-center justify-center rounded-xl bg-gray-200 text-gray-400"
               >
                 <span className="text-[30px] leading-none">+</span>
                 <span className="mt-2 text-[12px]">게시글 사진 올리기</span>
@@ -132,7 +132,7 @@ const PostImagePreviewList = memo(function PostImagePreviewList({
 });
 
 /* ---------------- PostImageUploader ---------------- */
-export default function PostImageUploader() {
+export default function PostImageUploaderClient() {
   const inputId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevCountRef = useRef(0);
