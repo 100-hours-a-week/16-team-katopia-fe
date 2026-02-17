@@ -28,7 +28,6 @@ type ApiAggregate = {
 export function useMyProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const searchParamsKey = searchParams.toString();
   const { ready, isAuthenticated } = useAuth();
 
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -122,7 +121,10 @@ export function useMyProfilePage() {
           height: rawProfile.height,
           weight: rawProfile.weight,
         });
-        setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
+        setPostCount((prev) => {
+          const next = Number(apiAggregate?.postCount ?? 0) || 0;
+          return Math.max(prev, next);
+        });
         setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
         setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
       } catch (err) {
@@ -133,7 +135,7 @@ export function useMyProfilePage() {
     };
 
     fetchMe();
-  }, [ready, isAuthenticated, searchParamsKey]);
+  }, [ready, isAuthenticated]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -149,6 +151,11 @@ export function useMyProfilePage() {
       setActiveTab("posts");
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (posts.length === 0) return;
+    setPostCount((prev) => (prev > posts.length ? prev : posts.length));
+  }, [posts.length]);
 
   const handleTabChange = (nextTab: "posts" | "bookmarks" | "votes") => {
     setActiveTab(nextTab);
