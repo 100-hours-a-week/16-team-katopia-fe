@@ -17,6 +17,8 @@ type Params = {
   toastEnabled?: boolean;
   heartbeatTimeoutMs?: number;
   reconnectIntervalMs?: number;
+  reconnectMaxIntervalMs?: number;
+  seenIdsLimit?: number;
 };
 
 const isNotificationItem = (value: unknown): value is NotificationItem => {
@@ -43,14 +45,17 @@ export function useNotificationStream({
   enabled = true,
   onNotifications,
   toastEnabled = true,
-  heartbeatTimeoutMs = 45_000, // 서버 idle timeout(보통 60s)보다 짧게
+  heartbeatTimeoutMs = 60_000, // 프록시 기본 keep-alive(약 60s)보다 약간 짧게
   reconnectIntervalMs = 3_000,
+  reconnectMaxIntervalMs = 30_000,
+  seenIdsLimit = 200,
 }: Params) {
   const prependItems = useNotificationsStore((state) => state.prependItems);
   const seenIdsRef = useRef<Set<number>>(new Set());
   const esRef = useRef<EventSource | EventSourcePolyfill | null>(null);
   const closedRef = useRef(false);
   const reconnectTimerRef = useRef<number | null>(null);
+  const reconnectAttemptRef = useRef(0);
   const onNotificationsRef = useRef(onNotifications);
 
   useEffect(() => {
@@ -76,6 +81,12 @@ export function useNotificationStream({
           return;
         }
       }
+      if (closedRef.current) return;
+      console.log("[notifications:sse] token", {
+        hasToken: Boolean(token),
+        length: token?.length ?? 0,
+        prefix: token ? token.slice(0, 10) : null,
+      });
 
       const EventSourceImpl = EventSourcePolyfill;
 
@@ -95,6 +106,7 @@ export function useNotificationStream({
 
       es.onopen = () => {
         console.log("[notifications:sse] connected");
+        reconnectAttemptRef.current = 0;
       };
 
       const handleMessage = (event: MessageEvent) => {
@@ -119,7 +131,15 @@ export function useNotificationStream({
               if (!item) return;
               const id = item.id;
               if (typeof id === "number" && seenIdsRef.current.has(id)) return;
-              if (typeof id === "number") seenIdsRef.current.add(id);
+              if (typeof id === "number") {
+                seenIdsRef.current.add(id);
+                if (seenIdsRef.current.size > seenIdsLimit) {
+                  const first = seenIdsRef.current.values().next().value;
+                  if (typeof first === "number") {
+                    seenIdsRef.current.delete(first);
+                  }
+                }
+              }
 
               const message = item.message?.trim();
               if (!message) return;
@@ -143,7 +163,10 @@ export function useNotificationStream({
       es.addEventListener("notification", handleMessage as EventListener);
 
       es.onerror = async () => {
-        console.warn("[notifications:sse] error, reconnecting...");
+        const state = esRef.current?.readyState ?? es.readyState;
+        console.warn(
+          `[notifications:sse] error, reconnecting... readyState=${state}`,
+        );
         es.close();
 
         // 토큰 만료 가능성 → 재발급 시도
@@ -161,10 +184,16 @@ export function useNotificationStream({
       if (closedRef.current) return;
       if (reconnectTimerRef.current) return;
 
+      reconnectAttemptRef.current += 1;
+      const base = reconnectIntervalMs * Math.pow(2, reconnectAttemptRef.current - 1);
+      const capped = Math.min(base, reconnectMaxIntervalMs);
+      const jitter = Math.round(capped * (0.2 * Math.random()));
+      const delay = capped + jitter;
+
       reconnectTimerRef.current = window.setTimeout(() => {
         reconnectTimerRef.current = null;
         connect();
-      }, reconnectIntervalMs);
+      }, delay);
     };
 
     connect();
@@ -176,6 +205,7 @@ export function useNotificationStream({
       }
       esRef.current?.close();
       esRef.current = null;
+      reconnectAttemptRef.current = 0;
     };
   }, [
     enabled,
@@ -183,5 +213,7 @@ export function useNotificationStream({
     prependItems,
     heartbeatTimeoutMs,
     reconnectIntervalMs,
+    reconnectMaxIntervalMs,
+    seenIdsLimit,
   ]);
 }

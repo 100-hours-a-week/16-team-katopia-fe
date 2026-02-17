@@ -50,7 +50,9 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (markedAllRef.current) return;
     if (notifications.length === 0) return;
-    const unreadIds = notifications.filter((item) => !item.readAt).map((item) => item.id);
+    const unreadIds = notifications
+      .filter((item) => !item.readAt)
+      .map((item) => item.id);
     if (unreadIds.length === 0) return;
     markedAllRef.current = true;
 
@@ -136,7 +138,7 @@ export default function NotificationsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f2f2f2]">
+    <div className="min-h-screen bg-[#f9f9f9]">
       <header className="relative flex h-14 items-center justify-center px-4">
         <Link
           href="/home"
@@ -177,7 +179,7 @@ export default function NotificationsPage() {
                 return (
                   <li
                     key={item.id}
-                    className="relative flex items-center gap-4 rounded-2xl bg-white px-4 py-5 shadow-[0_2px_10px_rgba(0,0,0,0.05)]"
+                    className="relative flex items-center gap-4 rounded-2xl bg-white px-4 py-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
                   >
                     <button
                       type="button"
