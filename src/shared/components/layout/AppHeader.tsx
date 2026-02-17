@@ -24,6 +24,7 @@ export default function AppHeader({
 
   useEffect(() => {
     if (!ready || !isAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUnreadCount(0);
       return;
     }
@@ -32,9 +33,11 @@ export default function AppHeader({
 
     const fetchUnreadCount = async () => {
       try {
-        const data = await getNotifications();
+        const data = await getNotifications({ size: 100 });
         if (cancelled) return;
-        const count = data.filter((item) => !item.readAt).length;
+        const count = (data.notifications ?? []).filter(
+          (item) => !item.readAt,
+        ).length;
         setUnreadCount(count);
       } catch {
         if (!cancelled) setUnreadCount(0);
@@ -71,7 +74,7 @@ export default function AppHeader({
           <Image src="/icons/bell.svg" alt="" width={20} height={20} />
           {unreadCount > 0 && (
             <span className="absolute right-0 top-0 min-w-5 translate-x-1/4 -translate-y-1/4 rounded-full bg-[#ff58c3] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-              {unreadCount > 99 ? "99+" : unreadCount}
+              {unreadCount > 999 ? "999+" : unreadCount}
             </span>
           )}
         </Link>
