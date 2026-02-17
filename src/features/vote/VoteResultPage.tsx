@@ -146,6 +146,9 @@ export default function VoteResultPage({ voteId }: Props) {
               likeCount: item.likeCount,
             }))}
             onRefresh={handleRefresh}
+            showRefresh={false}
+            cardWidth={320}
+            cardHeight={460}
           />
           {loading && (
             <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-6">
