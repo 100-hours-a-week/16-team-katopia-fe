@@ -159,6 +159,11 @@ export default function UserProfilePage({ userId }: Props) {
     }
   }, [ready, isAuthenticated, router]);
 
+  useEffect(() => {
+    if (posts.length === 0) return;
+    setPostCount((prev) => (prev > posts.length ? prev : posts.length));
+  }, [posts.length]);
+
   /* ================= 게시글 ================= */
 
   /* ================= UI ================= */
