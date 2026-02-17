@@ -6,6 +6,7 @@ import Link from "next/link";
 type VoteItem = {
   id: number | string | null;
   title?: string | null;
+  isClosed?: boolean | null;
 };
 
 type Props = {
@@ -38,12 +39,17 @@ export default function MyProfileVotesTab({
           <ul className="space-y-4">
             {votes
               .filter((vote) => vote.id != null)
+              .sort((a, b) => Number(Boolean(a.isClosed)) - Number(Boolean(b.isClosed)))
               .map((vote) => (
                 <li key={vote.id} className="relative">
                   <Link
                     href={`/vote/${String(vote.id)}`}
                     prefetch
-                    className="flex w-full items-center justify-between rounded-4xl bg-[#121212] px-6 py-5 text-left text-[12px] font-medium text-white"
+                    className={`flex w-full items-center justify-between rounded-4xl px-6 py-5 text-left text-[12px] font-medium ${
+                      vote.isClosed
+                        ? "bg-[#121212]/60 text-white/60"
+                        : "bg-[#121212] text-white"
+                    }`}
                     aria-label={`${vote.title ?? ""} 더보기`}
                   >
                     <span className="truncate">{vote.title}</span>
