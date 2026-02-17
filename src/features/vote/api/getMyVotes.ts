@@ -35,6 +35,11 @@ export async function getMyVotes(params?: {
   const raw = await res.text();
   const parsed = raw ? ((JSON.parse(raw) as VoteListApiResponse) ?? {}) : {};
   const data = parsed.data ?? (parsed as VoteListResponse);
+  console.log("[vote] my votes response", {
+    status: res.status,
+    raw,
+    parsed,
+  });
 
   if (!res.ok) {
     throw new Error("투표 목록을 불러오지 못했습니다.");
