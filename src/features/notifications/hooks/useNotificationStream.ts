@@ -46,8 +46,8 @@ export function useNotificationStream({
   onNotifications,
   toastEnabled = true,
   heartbeatTimeoutMs = 60_000, // 프록시 기본 keep-alive(약 60s)보다 약간 짧게
-  reconnectIntervalMs = 3_000,
-  reconnectMaxIntervalMs = 30_000,
+  reconnectIntervalMs = 5_000,
+  reconnectMaxIntervalMs = 60_000,
   seenIdsLimit = 200,
 }: Params) {
   const prependItems = useNotificationsStore((state) => state.prependItems);
