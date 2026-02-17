@@ -8,6 +8,7 @@ import VoteProgress from "./components/VoteProgress";
 import VoteResultLoading from "./components/VoteResultLoading";
 import VoteResultView from "./components/VoteResultView";
 import { useVoteFlow } from "./hooks/useVoteFlow";
+import Image from "next/image";
 
 export default function VotePage() {
   const {
@@ -33,6 +34,7 @@ export default function VotePage() {
     refreshCandidates,
     resultItems,
     resultStats,
+    noActiveVote,
   } = useVoteFlow();
 
   const question = title || "어떤 룩이 저에게 더 잘어울릴까요?";
@@ -50,7 +52,20 @@ export default function VotePage() {
     >
       <VoteHeader title="오늘의 투표" />
 
-      {isFinished ? (
+      {noActiveVote && !loading ? (
+        <div className="flex min-h-[70vh] flex-col items-center justify-center gap-6 text-center text-white">
+          <Image
+            src="/icons/circle-alert.svg"
+            alt=""
+            width={72}
+            height={72}
+            className="opacity-70 invert"
+          />
+          <p className="text-[15px] font-semibold">
+            현재 투표 가능한 투표가 존재하지 않습니다.
+          </p>
+        </div>
+      ) : isFinished ? (
         showResult ? (
           <VoteResultView
             totalVotes={resultStats.reduce((sum, s) => sum + s.likeCount, 0)}
