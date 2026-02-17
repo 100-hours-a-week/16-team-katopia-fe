@@ -18,7 +18,14 @@ type VoteCandidatesApiResponse = {
   data?: VoteCandidatesResponse;
 };
 
-export async function getVoteCandidates() {
+export async function getVoteCandidates(): Promise<
+  | {
+      id?: number | string;
+      title: string;
+      items: { id: string; imageUrl: string }[];
+    }
+  | null
+> {
   const res = await authFetch(`${API_BASE_URL}/api/votes/candidates`, {
     method: "GET",
   });
@@ -30,6 +37,7 @@ export async function getVoteCandidates() {
   const data = parsed.data ?? (parsed as VoteCandidatesResponse);
 
   if (!res.ok) {
+    if (res.status === 404) return null;
     throw new Error("투표 목록을 불러오지 못했습니다.");
   }
 
