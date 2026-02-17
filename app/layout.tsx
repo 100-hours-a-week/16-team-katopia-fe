@@ -1,5 +1,6 @@
 // app/layout.tsx
 import "./globals.css";
+import "react-toastify/dist/ReactToastify.css";
 import LayoutShell from "@/src/shared/components/layout/LayoutShell";
 import AuthProvider from "@/src/features/auth/providers/AuthProvider";
 import ReactQueryProvider from "@/src/features/auth/providers/ReactQueryProvider";
