@@ -32,6 +32,7 @@ export function useVoteFlow() {
   >([]);
   const [submitting, setSubmitting] = useState(false);
   const submitAttemptedRef = useRef(false);
+  const [noActiveVote, setNoActiveVote] = useState(false);
 
   const total = cards.length;
   const active = cards[index];
@@ -151,9 +152,17 @@ export function useVoteFlow() {
       setLoading(true);
       const result = await getVoteCandidates();
       console.log("[vote] candidates response", result);
-      setCards(result.items);
-      setTitle(result.title);
-      setVoteId(result.id ?? null);
+      if (!result) {
+        setCards([]);
+        setTitle("");
+        setVoteId(null);
+        setNoActiveVote(true);
+      } else {
+        setCards(result.items);
+        setTitle(result.title);
+        setVoteId(result.id ?? null);
+        setNoActiveVote(false);
+      }
       setIndex(0);
       selectedIdsRef.current = [];
       selectedByIndexRef.current = {};
@@ -169,6 +178,7 @@ export function useVoteFlow() {
       setCards([]);
       setTitle("");
       setVoteId(null);
+      setNoActiveVote(false);
     } finally {
       setLoading(false);
     }
@@ -206,5 +216,6 @@ export function useVoteFlow() {
     addSelection,
     resultItems,
     resultStats,
+    noActiveVote,
   };
 }
