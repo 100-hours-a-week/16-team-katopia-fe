@@ -17,16 +17,33 @@ export type NotificationItem = {
   readAt?: string | null;
 };
 
-type NotificationApiResponse = {
-  data?:
-    | NotificationItem[]
-    | {
-        notifications?: NotificationItem[];
-      };
+export type NotificationsResponse = {
+  notifications?: NotificationItem[];
+  nextCursor?: string | null;
 };
 
-export async function getNotifications(): Promise<NotificationItem[]> {
-  const res = await authFetch(`${API_BASE_URL}/api/notifications`, {
+type NotificationApiResponse = {
+  data?: NotificationsResponse | NotificationItem[];
+  notifications?: NotificationItem[];
+  nextCursor?: string | null;
+};
+
+export async function getNotifications(params?: {
+  size?: number;
+  after?: string | null;
+}): Promise<NotificationsResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.size) searchParams.set("size", String(params.size));
+  if (params?.after) {
+    searchParams.set("after", params.after);
+    searchParams.set("cursor", params.after);
+  }
+  const query = searchParams.toString();
+  const url = query
+    ? `${API_BASE_URL}/api/notifications?${query}`
+    : `${API_BASE_URL}/api/notifications`;
+
+  const res = await authFetch(url, {
     method: "GET",
     cache: "no-store",
   });
@@ -34,13 +51,18 @@ export async function getNotifications(): Promise<NotificationItem[]> {
   const result = (await res.json().catch(() => ({}))) as NotificationApiResponse;
 
   if (!res.ok) {
-    if (res.status === 401) return [];
+    if (res.status === 401) return { notifications: [], nextCursor: null };
     throw result;
   }
 
   const data = result.data ?? result;
 
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data.notifications)) return data.notifications;
-  return [];
+  if (Array.isArray(data)) {
+    return { notifications: data, nextCursor: null };
+  }
+
+  return {
+    notifications: data.notifications ?? [],
+    nextCursor: data.nextCursor ?? null,
+  };
 }
