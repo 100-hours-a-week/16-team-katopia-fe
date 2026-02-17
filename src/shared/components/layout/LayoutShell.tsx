@@ -7,6 +7,9 @@ import BottomNav from "./BottomNav";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { hasLoggedInFlag } from "@/src/lib/auth";
 import LoginBottomSheet from "@/src/features/home/components/LoginBottomsSheet";
+import { ToastContainer } from "react-toastify";
+import { useNotificationStream } from "@/src/features/notifications/hooks/useNotificationStream";
+import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
 
 const HIDE_BOTTOM_NAV_PATHS = ["/", "/withdraw/success", "/notifications"];
 const LOGIN_GUARD_PATHS = ["/post", "/vote", "/search", "/home"];
@@ -23,6 +26,7 @@ export default function LayoutShell({ children }: Props) {
   const { ready, isAuthenticated, authInvalidated } = useAuth();
   const hasAlertedRef = useRef(false);
   const [showBottomNav, setShowBottomNav] = useState(false);
+  const clearNotifications = useNotificationsStore((state) => state.clear);
   const isPendingSignup = searchParams.get("status") === "PENDING";
   const isActiveLogin = searchParams.get("status") === "ACTIVE";
   const isWithdrawnState = searchParams.get("STATE") === "WITHDRAWN";
@@ -61,6 +65,12 @@ export default function LayoutShell({ children }: Props) {
   }, [authInvalidated, isActiveLogin, isPendingSignup, isWithdrawnState]);
 
   useEffect(() => {
+    if (!ready) return;
+    if (isAuthenticated) return;
+    clearNotifications();
+  }, [ready, isAuthenticated, clearNotifications]);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.style.backgroundColor = "#ffffff";
   }, [pathname]);
@@ -68,15 +78,19 @@ export default function LayoutShell({ children }: Props) {
   useEffect(() => {
     if (hideBottomNav) return;
     if (typeof window === "undefined") return;
+    const win = window as Window & {
+      requestIdleCallback?: (cb: IdleRequestCallback) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
     let idleId: number | null = null;
-    if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(() => setShowBottomNav(true));
+    if (win.requestIdleCallback) {
+      idleId = win.requestIdleCallback(() => setShowBottomNav(true));
       return () => {
-        if (idleId !== null) window.cancelIdleCallback(idleId);
+        if (idleId !== null) win.cancelIdleCallback?.(idleId);
       };
     }
-    const timeoutId = window.setTimeout(() => setShowBottomNav(true), 300);
-    return () => window.clearTimeout(timeoutId);
+    const timeoutId = win.setTimeout(() => setShowBottomNav(true), 300);
+    return () => win.clearTimeout(timeoutId);
   }, [hideBottomNav]);
 
   useEffect(() => {
@@ -110,6 +124,10 @@ export default function LayoutShell({ children }: Props) {
     window.close();
   }, [isWithdrawnState, isWithdrawnPopup]);
 
+  useNotificationStream({
+    enabled: ready && isAuthenticated,
+  });
+
   const shouldLock =
     ready &&
     !isAuthenticated &&
@@ -132,6 +150,12 @@ export default function LayoutShell({ children }: Props) {
       </div>
       {!hideBottomNav && showBottomNav && <BottomNav />}
       {shouldLock && <LoginBottomSheet persist />}
+      <ToastContainer
+        newestOnTop
+        closeOnClick
+        limit={3}
+        theme="light"
+      />
     </>
   );
 }
