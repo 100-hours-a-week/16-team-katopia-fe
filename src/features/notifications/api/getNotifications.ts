@@ -49,6 +49,14 @@ export async function getNotifications(params?: {
   });
 
   const result = (await res.json().catch(() => ({}))) as NotificationApiResponse;
+  if (typeof window !== "undefined") {
+    console.log("[notifications] list response", {
+      ok: res.ok,
+      status: res.status,
+      url,
+      result,
+    });
+  }
 
   if (!res.ok) {
     if (res.status === 401) return { notifications: [], nextCursor: null };

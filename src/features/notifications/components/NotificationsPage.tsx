@@ -171,10 +171,22 @@ export default function NotificationsPage() {
           <>
             <ul className="flex flex-col gap-4">
               {notifications.map((item) => {
+                const meta = (
+                  item as {
+                    meta?: {
+                      profileImageObjectKeySnapshot?: string | null;
+                      imageObjectKeySnapshot?: string | null;
+                    };
+                  }
+                ).meta;
                 const profileSrc = resolveMediaUrl(
-                  item.actor?.profileImageObjectKeySnapshot ?? null,
+                  item.actor?.profileImageObjectKeySnapshot ??
+                    meta?.profileImageObjectKeySnapshot ??
+                    meta?.imageObjectKeySnapshot ??
+                    null,
                 );
                 const imageSrc = profileSrc ?? null;
+                const isFollow = item.type === "FOLLOW";
 
                 return (
                   <li
@@ -194,14 +206,20 @@ export default function NotificationsPage() {
                       className="flex w-full items-center gap-4 text-left"
                       aria-label="알림 상세 이동"
                     >
-                      <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-[#d9d9d9]">
+                      <div
+                        className={`flex items-center justify-center overflow-hidden bg-[#d9d9d9] ${
+                          isFollow ? "h-12 w-12 rounded-full" : "h-14 w-12 rounded-sm"
+                        }`}
+                      >
                         {imageSrc ? (
                           <Image
                             src={imageSrc}
                             alt=""
                             width={48}
                             height={48}
-                            className="h-full w-full object-cover"
+                            className={`h-full w-full object-cover ${
+                              isFollow ? "rounded-full" : "rounded-sm"
+                            }`}
                           />
                         ) : (
                           <Image

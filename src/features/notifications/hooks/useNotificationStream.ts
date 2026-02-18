@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { EventSourcePolyfill } from "event-source-polyfill";
 import { toast } from "react-toastify";
 import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken, issueAccessToken } from "@/src/lib/auth";
+import { getAccessToken, issueAccessToken, notifyAuthInvalid } from "@/src/lib/auth";
 import type { NotificationItem } from "@/src/features/notifications/api/getNotifications";
 import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
 
@@ -20,6 +20,8 @@ type Params = {
   reconnectMaxIntervalMs?: number;
   seenIdsLimit?: number;
 };
+
+const MAX_RETRY = 5;
 
 const isNotificationItem = (value: unknown): value is NotificationItem => {
   if (!value || typeof value !== "object") return false;
@@ -45,7 +47,7 @@ export function useNotificationStream({
   enabled = true,
   onNotifications,
   toastEnabled = true,
-  heartbeatTimeoutMs = 60_000, // 프록시 기본 keep-alive(약 60s)보다 약간 짧게
+  heartbeatTimeoutMs = 1000 * 60 * 2, // 2분 (20s heartbeat 대비 여유)
   reconnectIntervalMs = 5_000,
   reconnectMaxIntervalMs = 60_000,
   seenIdsLimit = 200,
@@ -56,6 +58,9 @@ export function useNotificationStream({
   const closedRef = useRef(false);
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
+  const tokenRefreshTriedRef = useRef(false);
+  const lastActivityRef = useRef<number>(Date.now());
+  const authFailedRef = useRef(false);
   const onNotificationsRef = useRef(onNotifications);
 
   useEffect(() => {
@@ -63,13 +68,23 @@ export function useNotificationStream({
   }, [onNotifications]);
 
   useEffect(() => {
-    if (!enabled) return;
-    if (typeof window === "undefined") return;
+    if (!enabled || typeof window === "undefined") return;
 
     closedRef.current = false;
 
     const connect = async () => {
       if (closedRef.current) return;
+
+      // 재시도 횟수 제한
+      if (reconnectAttemptRef.current >= MAX_RETRY) {
+        console.warn("[notifications:sse] max retry reached. stop reconnect.");
+        return;
+      }
+
+      // 이미 열려있으면 중복 연결 방지
+      if (esRef.current && esRef.current.readyState === EventSource.OPEN) {
+        return;
+      }
 
       let token = getAccessToken();
       if (!token) {
@@ -77,27 +92,28 @@ export function useNotificationStream({
           token = await issueAccessToken();
         } catch (e) {
           console.warn("[notifications:sse] token issue failed", e);
-          scheduleReconnect();
-          return;
+          return; // 🔥 토큰 못 받으면 재연결 중단
         }
       }
-      if (closedRef.current) return;
-      console.log("[notifications:sse] token", {
-        hasToken: Boolean(token),
-        length: token?.length ?? 0,
-        prefix: token ? token.slice(0, 10) : null,
-      });
-
-      const EventSourceImpl = EventSourcePolyfill;
 
       console.log("[notifications:sse] connecting...");
-      const es = new EventSourceImpl(
+      console.log("[notifications:sse] request headers", {
+        Authorization: `Bearer ${token}`,
+      });
+
+      const recordActivity = () => {
+        lastActivityRef.current = Date.now();
+      };
+
+      recordActivity();
+
+      const es = new EventSourcePolyfill(
         `${API_BASE_URL}/api/notifications/stream`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          withCredentials: false, // JWT 헤더 쓰면 false 권장
+          withCredentials: false,
           heartbeatTimeout: heartbeatTimeoutMs,
         },
       );
@@ -107,18 +123,19 @@ export function useNotificationStream({
       es.onopen = () => {
         console.log("[notifications:sse] connected");
         reconnectAttemptRef.current = 0;
+        tokenRefreshTriedRef.current = false;
+        recordActivity();
       };
 
       const handleMessage = (event: MessageEvent) => {
         const raw = event?.data;
         if (!raw || typeof raw !== "string") return;
+        recordActivity();
 
         try {
           const parsed = JSON.parse(raw) as NotificationPayload;
           const list = normalizePayload(parsed);
           if (!list.length) return;
-
-          console.log("[notifications:sse] message", list);
 
           const handler =
             onNotificationsRef.current ??
@@ -128,9 +145,9 @@ export function useNotificationStream({
 
           if (toastEnabled) {
             list.forEach((item) => {
-              if (!item) return;
-              const id = item.id;
+              const id = item?.id;
               if (typeof id === "number" && seenIdsRef.current.has(id)) return;
+
               if (typeof id === "number") {
                 seenIdsRef.current.add(id);
                 if (seenIdsRef.current.size > seenIdsLimit) {
@@ -141,7 +158,7 @@ export function useNotificationStream({
                 }
               }
 
-              const message = item.message?.trim();
+              const message = item?.message?.trim();
               if (!message) return;
 
               toast(message, {
@@ -161,19 +178,51 @@ export function useNotificationStream({
 
       es.onmessage = handleMessage;
       es.addEventListener("notification", handleMessage as EventListener);
+      es.addEventListener("ping", () => {
+        recordActivity();
+      });
 
-      es.onerror = async () => {
-        const state = esRef.current?.readyState ?? es.readyState;
-        console.warn(
-          `[notifications:sse] error, reconnecting... readyState=${state}`,
-        );
+      es.onerror = async (event) => {
+        const state = es.readyState;
+        const status =
+          (event as { status?: number } | null)?.status ??
+          (event as { target?: { status?: number } } | null)?.target?.status ??
+          (es as { xhr?: { status?: number } } | null)?.xhr?.status ??
+          null;
+        console.warn(`[notifications:sse] error, readyState=${state}`, {
+          status,
+        });
+
+        if (closedRef.current) return;
+
+        if (status === 401) {
+          authFailedRef.current = true;
+          es.close();
+          notifyAuthInvalid();
+          return;
+        }
+
+        const inactiveMs = Date.now() - lastActivityRef.current;
         es.close();
 
-        // 토큰 만료 가능성 → 재발급 시도
-        try {
-          await issueAccessToken();
-        } catch {
-          // 무시하고 재연결 시도
+        if (inactiveMs < heartbeatTimeoutMs) {
+          console.warn("[notifications:sse] recent activity detected, delay reconnect", {
+            inactiveMs,
+          });
+          scheduleReconnect();
+          return;
+        }
+
+        reconnectAttemptRef.current += 1;
+
+        // 🔥 토큰 재발급은 1번만 시도
+        if (!tokenRefreshTriedRef.current) {
+          tokenRefreshTriedRef.current = true;
+          try {
+            await issueAccessToken();
+          } catch {
+            console.warn("[notifications:sse] token refresh failed");
+          }
         }
 
         scheduleReconnect();
@@ -182,30 +231,39 @@ export function useNotificationStream({
 
     const scheduleReconnect = () => {
       if (closedRef.current) return;
+      if (authFailedRef.current) return;
       if (reconnectTimerRef.current) return;
 
-      reconnectAttemptRef.current += 1;
-      const base = reconnectIntervalMs * Math.pow(2, reconnectAttemptRef.current - 1);
+      if (reconnectAttemptRef.current >= MAX_RETRY) {
+        console.warn("[notifications:sse] too many retries. stop.");
+        return;
+      }
+
+      const base =
+        reconnectIntervalMs * Math.pow(2, reconnectAttemptRef.current - 1);
       const capped = Math.min(base, reconnectMaxIntervalMs);
-      const jitter = Math.round(capped * (0.2 * Math.random()));
-      const delay = capped + jitter;
 
       reconnectTimerRef.current = window.setTimeout(() => {
         reconnectTimerRef.current = null;
         connect();
-      }, delay);
+      }, capped);
     };
 
     connect();
 
     return () => {
       closedRef.current = true;
+
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
       }
+
       esRef.current?.close();
       esRef.current = null;
       reconnectAttemptRef.current = 0;
+      tokenRefreshTriedRef.current = false;
+      authFailedRef.current = false;
     };
   }, [
     enabled,
