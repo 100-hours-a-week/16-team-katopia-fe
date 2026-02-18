@@ -8,6 +8,8 @@ import {
   issueAccessToken,
   isLoggedOutFlag,
   isAuthInvalidated,
+  getAccessToken,
+  isAccessTokenExpired,
 } from "@/src/lib/auth";
 
 type AuthContextValue = {
@@ -59,7 +61,10 @@ export default function AuthProvider({
           setAuthInvalidated(true);
           return;
         }
-        await issueAccessToken(); // RT → AT
+        const existing = getAccessToken();
+        if (!existing || isAccessTokenExpired(existing)) {
+          await issueAccessToken(); // RT → AT
+        }
 
         // 토큰 발급이 되더라도 실제 로그인 상태인지 한 번 더 확인합니다.
         const meRes = await authFetch(`${API_BASE_URL}/api/members/me`, {
