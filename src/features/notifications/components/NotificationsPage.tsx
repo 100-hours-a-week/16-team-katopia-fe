@@ -1,23 +1,37 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import { patchNotificationRead } from "@/src/features/notifications/api/patchNotificationRead";
 import { useInfiniteNotifications } from "@/src/features/notifications/hooks/useInfiniteNotifications";
 
-const formatDate = (value?: string | null) => {
+const formatDayLabel = (value?: string | null) => {
   if (!value) return "";
-  const date = new Date(value);
+  const hasZone = /Z$/i.test(value) || /[+-]\d{2}:\d{2}$/.test(value);
+  const normalized = hasZone ? value : `${value}+09:00`;
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return "";
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, "0");
-  const dd = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const min = String(date.getMinutes()).padStart(2, "0");
-  return `${yyyy}.${mm}.${dd} ${hh}:${min}`;
+
+  const now = new Date();
+  const dayKey = (d: Date) =>
+    `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+  if (dayKey(date) === dayKey(now)) return "오늘";
+
+  const formatter = new Intl.DateTimeFormat("ko-KR", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+
+  const parts = formatter.formatToParts(date);
+  const part = (type: string) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+
+  return `${part("year")}. ${part("month")}. ${part("day")}`;
 };
 
 export default function NotificationsPage() {
@@ -137,20 +151,29 @@ export default function NotificationsPage() {
     [notifications, router, setItems],
   );
 
+  const unreadItems = useMemo(
+    () => notifications.filter((item) => !item.readAt),
+    [notifications],
+  );
+  const readItems = useMemo(
+    () => notifications.filter((item) => item.readAt),
+    [notifications],
+  );
+
   return (
-    <div className="min-h-screen bg-[#f9f9f9]">
-      <header className="relative flex h-14 items-center justify-center px-4">
-        <Link
-          href="/home"
-          aria-label="홈으로 이동"
-          className="absolute left-4 flex h-9 w-9 items-center justify-center"
+    <div className="min-h-screen bg-white">
+      <header className="flex h-14 items-center px-4">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          aria-label="뒤로 가기"
+          className="-ml-1 flex h-9 w-9 items-center justify-center"
         >
-          <Image src="/icons/home.svg" alt="" width={22} height={22} />
-        </Link>
-        <h1 className="text-[13px] font-semibold text-[#121212]">알림</h1>
+          <Image src="/icons/back.svg" alt="" width={22} height={22} />
+        </button>
       </header>
 
-      <main className="px-4 pb-16 pt-2">
+      <main className="px-6 pb-16">
         {notifications.length === 0 && !loading ? (
           <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 py-10 text-center">
             <Image
@@ -169,95 +192,148 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <>
-            <ul className="flex flex-col gap-4">
-              {notifications.map((item) => {
-                const meta = (
-                  item as {
-                    meta?: {
-                      profileImageObjectKeySnapshot?: string | null;
-                      imageObjectKeySnapshot?: string | null;
-                    };
-                  }
-                ).meta;
-                const profileSrc = resolveMediaUrl(
-                  item.actor?.profileImageObjectKeySnapshot ??
-                    meta?.profileImageObjectKeySnapshot ??
-                    meta?.imageObjectKeySnapshot ??
-                    null,
-                );
-                const imageSrc = profileSrc ?? null;
-                const isFollow = item.type === "FOLLOW";
+            <h1 className="mt-7 text-[26px] font-semibold text-[#1c1c1c]">
+              알림
+            </h1>
 
-                return (
-                  <li
-                    key={item.id}
-                    className="relative flex items-center gap-4 rounded-2xl bg-white px-4 py-5 shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleNavigate(
-                          item.id,
-                          item.type ?? null,
-                          item.referenceId ?? null,
-                          item.actor?.id ?? null,
-                        )
+            {unreadItems.length > 0 && (
+              <section className="mt-6">
+                <h2 className="text-[14px] font-semibold text-[#2b2b2b]">
+                  새로운 알림
+                </h2>
+                <ul className="mt-4 flex flex-col gap-6">
+                  {unreadItems.map((item) => {
+                    const meta = (
+                      item as {
+                        meta?: {
+                          profileImageObjectKeySnapshot?: string | null;
+                          imageObjectKeySnapshot?: string | null;
+                        };
                       }
-                      className="flex w-full items-center gap-4 text-left"
-                      aria-label="알림 상세 이동"
-                    >
-                      <div
-                        className={`flex items-center justify-center overflow-hidden bg-[#d9d9d9] ${
-                          isFollow ? "h-12 w-12 rounded-full" : "h-14 w-12 rounded-sm"
-                        }`}
-                      >
-                        {imageSrc ? (
-                          <Image
-                            src={imageSrc}
-                            alt=""
-                            width={48}
-                            height={48}
-                            className={`h-full w-full object-cover ${
-                              isFollow ? "rounded-full" : "rounded-sm"
-                            }`}
-                          />
-                        ) : (
-                          <Image
-                            src="/icons/user.svg"
-                            alt=""
-                            width={26}
-                            height={26}
-                          />
-                        )}
-                      </div>
+                    ).meta;
+                    const profileSrc = resolveMediaUrl(
+                      item.actor?.profileImageObjectKeySnapshot ??
+                        meta?.profileImageObjectKeySnapshot ??
+                        meta?.imageObjectKeySnapshot ??
+                        null,
+                    );
+                    const imageSrc = profileSrc ?? null;
 
-                      <div className="flex-1">
-                        <div className="flex items-start gap-2">
-                          {!item.readAt && (
-                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-black" />
+                    return (
+                      <li key={item.id} className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e9ecf1]">
+                          {imageSrc ? (
+                            <Image
+                              src={imageSrc}
+                              alt=""
+                              width={36}
+                              height={36}
+                              className="h-9 w-9 rounded-full object-cover"
+                            />
+                          ) : (
+                            <Image
+                              src="/icons/bell.svg"
+                              alt=""
+                              width={22}
+                              height={22}
+                              className="text-[#8b8f97]"
+                            />
                           )}
-                          <div className="flex-1">
-                            <p className="text-[11px] font-medium text-[#121212]">
-                              {item.message ?? ""}
-                            </p>
-                            <p className="mt-1 text-[10px] text-[#c1c1c1]">
-                              {formatDate(item.createdAt)}
-                            </p>
-                          </div>
                         </div>
-                      </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleNavigate(
+                              item.id,
+                              item.type ?? null,
+                              item.referenceId ?? null,
+                              item.actor?.id ?? null,
+                            )
+                          }
+                          className="flex-1 text-left"
+                          aria-label="알림 상세 이동"
+                        >
+                          <p className="text-[15px] font-medium text-[#2b2b2b]">
+                            {item.message ?? ""}
+                          </p>
+                          <p className="mt-1 text-[13px] text-[#9aa0a6]">
+                            {formatDayLabel(item.createdAt)}
+                          </p>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
 
-                      <Image
-                        src="/icons/chevron-right.svg"
-                        alt=""
-                        width={20}
-                        height={20}
-                      />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+            {readItems.length > 0 && (
+              <section className="mt-10">
+                <h2 className="text-[14px] font-semibold text-[#2b2b2b]">
+                  지난 알림
+                </h2>
+                <ul className="mt-6 flex flex-col gap-8">
+                  {readItems.map((item) => {
+                    const meta = (
+                      item as {
+                        meta?: {
+                          profileImageObjectKeySnapshot?: string | null;
+                          imageObjectKeySnapshot?: string | null;
+                        };
+                      }
+                    ).meta;
+                    const profileSrc = resolveMediaUrl(
+                      meta?.imageObjectKeySnapshot ?? null,
+                    );
+                    const imageSrc = profileSrc ?? null;
+
+                    return (
+                      <li key={item.id} className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e9ecf1]">
+                          {imageSrc ? (
+                            <Image
+                              src={imageSrc}
+                              alt=""
+                              width={36}
+                              height={36}
+                              className="h-9 w-9 rounded-full object-cover"
+                            />
+                          ) : (
+                            <Image
+                              src="/icons/bell.svg"
+                              alt=""
+                              width={22}
+                              height={22}
+                              className="text-[#8b8f97]"
+                            />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleNavigate(
+                              item.id,
+                              item.type ?? null,
+                              item.referenceId ?? null,
+                              item.actor?.id ?? null,
+                            )
+                          }
+                          className="flex-1 text-left"
+                          aria-label="알림 상세 이동"
+                        >
+                          <p className="text-[14px] font-medium text-[#2b2b2b]">
+                            {item.message ?? ""}
+                          </p>
+                          <p className="mt-1 text-[12px] text-[#9aa0a6]">
+                            {formatDayLabel(item.createdAt)}
+                          </p>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
             {hasMore && (
               <div ref={observe} className="h-16 w-full" aria-hidden />
             )}
