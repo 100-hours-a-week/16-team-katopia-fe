@@ -1,277 +1,381 @@
-import { useEffect, useRef } from "react";
-import { EventSourcePolyfill } from "event-source-polyfill";
-import { toast } from "react-toastify";
-import { API_BASE_URL } from "@/src/config/api";
-import { getAccessToken, issueAccessToken, notifyAuthInvalid } from "@/src/lib/auth";
-import type { NotificationItem } from "@/src/features/notifications/api/getNotifications";
-import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
+import { useEffect, useRef } from "react"; // React 훅
+import { EventSourcePolyfill } from "event-source-polyfill"; // 헤더 지원 SSE 폴리필
+import { toast } from "react-toastify"; // 토스트 알림
+import { API_BASE_URL } from "@/src/config/api"; // API 기본 주소
+import {
+  getAccessToken,
+  issueAccessToken,
+  notifyAuthInvalid,
+} from "@/src/lib/auth"; // 인증 유틸
+import type { NotificationItem } from "@/src/features/notifications/api/getNotifications"; // 알림 타입
+import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore"; // 알림 스토어
 
-type NotificationPayload =
-  | NotificationItem
-  | NotificationItem[]
-  | { data?: NotificationItem | NotificationItem[] };
+type NotificationPayload = // SSE 페이로드 형태
+  | NotificationItem // 단일 아이템
+  | NotificationItem[] // 아이템 배열
+  | { data?: NotificationItem | NotificationItem[] }; // data로 감싼 형태
 
 type Params = {
-  enabled?: boolean;
-  onNotifications?: (items: NotificationItem[]) => void;
-  toastEnabled?: boolean;
-  heartbeatTimeoutMs?: number;
-  reconnectIntervalMs?: number;
-  reconnectMaxIntervalMs?: number;
-  seenIdsLimit?: number;
+  // 훅 옵션
+  enabled?: boolean; // SSE 활성화 여부
+  onNotifications?: (items: NotificationItem[]) => void; // 외부 핸들러
+  toastEnabled?: boolean; // 토스트 표시 여부
+  heartbeatTimeoutMs?: number; // 하트비트 타임아웃
+  reconnectIntervalMs?: number; // 재연결 기본 간격
+  reconnectMaxIntervalMs?: number; // 재연결 최대 간격
+  seenIdsLimit?: number; // 토스트 중복 방지 크기
 };
 
-const MAX_RETRY = 5;
+const MAX_RETRY = 5; // 최대 재시도 횟수
 
 const isNotificationItem = (value: unknown): value is NotificationItem => {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as { id?: unknown };
-  return typeof candidate.id === "number";
+  // 런타임 타입 가드
+  if (!value || typeof value !== "object") return false; // 객체인지 확인
+  const candidate = value as { id?: unknown }; // id 확인용 캐스팅
+  return typeof candidate.id === "number"; // id가 숫자면 통과
 };
 
 const normalizePayload = (payload: NotificationPayload): NotificationItem[] => {
+  // 배열로 정규화
   if (payload && typeof payload === "object" && "data" in payload) {
+    // data 래핑 형태
     const data = (payload as { data?: NotificationItem | NotificationItem[] })
-      ?.data;
-    if (Array.isArray(data)) return data;
-    if (isNotificationItem(data)) return [data];
-    return [];
+      ?.data; // data 추출
+    if (Array.isArray(data)) return data; // 배열 그대로
+    if (isNotificationItem(data)) return [data]; // 단일이면 배열로
+    return []; // 알 수 없는 형태
   }
 
-  if (Array.isArray(payload)) return payload;
-  if (isNotificationItem(payload)) return [payload];
-  return [];
+  if (Array.isArray(payload)) return payload; // 원본 배열
+  if (isNotificationItem(payload)) return [payload]; // 원본 단일
+  return []; // 알 수 없는 형태
 };
 
 export function useNotificationStream({
-  enabled = true,
-  onNotifications,
-  toastEnabled = true,
-  heartbeatTimeoutMs = 1000 * 60 * 2, // 2분 (20s heartbeat 대비 여유)
-  reconnectIntervalMs = 5_000,
-  reconnectMaxIntervalMs = 60_000,
-  seenIdsLimit = 200,
+  // 훅 진입
+  enabled = true, // 기본 활성화
+  onNotifications, // 외부 핸들러
+  toastEnabled = true, // 기본 토스트 표시
+  heartbeatTimeoutMs = 1000 * 60 * 10, // 10분 (20s 하트비트 대비 여유)
+  reconnectIntervalMs = 5_000, // 기본 재연결 간격
+  reconnectMaxIntervalMs = 60_000, // 최대 재연결 간격
+  seenIdsLimit = 200, // 토스트 중복 방지 크기
 }: Params) {
-  const prependItems = useNotificationsStore((state) => state.prependItems);
-  const seenIdsRef = useRef<Set<number>>(new Set());
-  const esRef = useRef<EventSource | EventSourcePolyfill | null>(null);
-  const closedRef = useRef(false);
-  const reconnectTimerRef = useRef<number | null>(null);
-  const reconnectAttemptRef = useRef(0);
-  const tokenRefreshTriedRef = useRef(false);
-  const lastActivityRef = useRef<number>(Date.now());
-  const authFailedRef = useRef(false);
-  const onNotificationsRef = useRef(onNotifications);
+  // 파라미터 타입
+  const prependItems = useNotificationsStore((state) => state.prependItems); // 스토어 prepend
+  const seenIdsRef = useRef<Set<number>>(new Set()); // 토스트 중복 방지 Set
+  const esRef = useRef<EventSource | EventSourcePolyfill | null>(null); // SSE 인스턴스
+  const closedRef = useRef(false); // 수동 종료 여부
+  const reconnectTimerRef = useRef<number | null>(null); // 재연결 타이머
+  const reconnectAttemptRef = useRef(0); // 재연결 시도 횟수
+  const tokenRefreshTriedRef = useRef(false); // 토큰 재발급 시도 여부
+  const lastActivityRef = useRef<number>(Date.now()); // 마지막 이벤트 시각
+  const authFailedRef = useRef(false); // 인증 실패 플래그
+  const onNotificationsRef = useRef(onNotifications); // 핸들러 ref
 
   useEffect(() => {
-    onNotificationsRef.current = onNotifications;
-  }, [onNotifications]);
+    // 핸들러 ref 동기화
+    onNotificationsRef.current = onNotifications; // 최신 핸들러 저장
+  }, [onNotifications]); // 핸들러 변경 시 업데이트
 
   useEffect(() => {
-    if (!enabled || typeof window === "undefined") return;
+    // SSE 라이프사이클
+    if (!enabled || typeof window === "undefined") return; // 비활성/SSR이면 중단
 
-    closedRef.current = false;
+    closedRef.current = false; // 활성 상태로 설정
 
     const connect = async () => {
-      if (closedRef.current) return;
+      // 연결 루틴
+      if (closedRef.current) return; // 이미 닫혔으면 중단
 
       // 재시도 횟수 제한
       if (reconnectAttemptRef.current >= MAX_RETRY) {
-        console.warn("[notifications:sse] max retry reached. stop reconnect.");
-        return;
+        // 최대 재시도 초과
+        console.warn("[notifications:sse] max retry reached. stop reconnect."); // 로그
+        return; // 종료
       }
 
       // 이미 열려있으면 중복 연결 방지
       if (esRef.current && esRef.current.readyState === EventSource.OPEN) {
-        return;
+        // 이미 연결됨
+        return; // 중복 방지
       }
 
-      let token = getAccessToken();
+      let token = getAccessToken(); // 캐시 토큰
       if (!token) {
+        // 토큰 없으면
         try {
-          token = await issueAccessToken();
+          // 재발급 시도
+          token = await issueAccessToken(); // 토큰 발급
         } catch (e) {
-          console.warn("[notifications:sse] token issue failed", e);
+          // 발급 실패
+          console.warn("[notifications:sse] token issue failed", e); // 로그
           return; // 🔥 토큰 못 받으면 재연결 중단
         }
       }
 
-      console.log("[notifications:sse] connecting...");
+      console.log("[notifications:sse] connecting..."); // 연결 로그
       console.log("[notifications:sse] request headers", {
-        Authorization: `Bearer ${token}`,
-      });
+        // 헤더 로그
+        Authorization: `Bearer ${token}`, // Bearer 토큰
+      }); // 로그 끝
+
+      const streamPath = "/api/notifications/stream";
+      const streamUrl = (() => {
+        if (typeof window === "undefined") {
+          return `${API_BASE_URL}${streamPath}`;
+        }
+        try {
+          const apiOrigin = new URL(API_BASE_URL).origin;
+          return window.location.origin === apiOrigin
+            ? streamPath
+            : `${apiOrigin}${streamPath}`;
+        } catch {
+          return `${API_BASE_URL}${streamPath}`;
+        }
+      })();
+
+      try {
+        // 토큰 유효성 확인
+        const meCheck = await fetch(`${API_BASE_URL}/api/members/me`, {
+          // me 엔드포인트
+          method: "GET", // 메서드
+          headers: {
+            // 인증 헤더
+            Authorization: `Bearer ${token}`, // Bearer 토큰
+          }, // 헤더 끝
+          credentials: "include", // 쿠키 포함
+          cache: "no-store", // 캐시 방지
+        }); // fetch 끝
+        console.log("[notifications:sse] token check", {
+          // 결과 로그
+          status: meCheck.status, // 상태 코드
+          ok: meCheck.ok, // ok 여부
+        }); // 로그 끝
+      } catch (error) {
+        // 체크 실패
+        console.warn("[notifications:sse] token check failed", error); // 경고 로그
+      }
 
       const recordActivity = () => {
-        lastActivityRef.current = Date.now();
-      };
+        // 활동 기록 함수
+        lastActivityRef.current = Date.now(); // 현재 시각 저장
+      }; // 함수 끝
 
-      recordActivity();
+      recordActivity(); // 연결 시점 활동 기록
 
-      const es = new EventSourcePolyfill(
-        `${API_BASE_URL}/api/notifications/stream`,
+      const es = new EventSourcePolyfill( // SSE 연결 생성
+        streamUrl, // 스트림 URL (동일 오리진 우선)
         {
+          // 옵션
           headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          withCredentials: false,
-          heartbeatTimeout: heartbeatTimeoutMs,
-        },
-      );
+            // 커스텀 헤더
+            Authorization: `Bearer ${token}`, // Bearer 토큰
+          }, // 헤더 끝
+          withCredentials: true, // fetch(credentials: include)와 일치
+          heartbeatTimeout: heartbeatTimeoutMs, // 하트비트 타임아웃
+        }, // 옵션 끝
+      ); // 생성 끝
 
-      esRef.current = es;
+      esRef.current = es; // 인스턴스 저장
 
       es.onopen = () => {
-        console.log("[notifications:sse] connected");
-        reconnectAttemptRef.current = 0;
-        tokenRefreshTriedRef.current = false;
-        recordActivity();
-      };
+        // 연결 성공 핸들러
+        console.log("[notifications:sse] connected"); // 연결 로그
+        reconnectAttemptRef.current = 0; // 재시도 횟수 초기화
+        tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
+        recordActivity(); // 활동 기록
+      }; // onopen 끝
 
       const handleMessage = (event: MessageEvent) => {
-        const raw = event?.data;
-        if (!raw || typeof raw !== "string") return;
-        recordActivity();
+        // 메시지 핸들러
+        const raw = event?.data; // 원본 데이터
+        if (!raw || typeof raw !== "string") return; // 문자열 아니면 무시
+        recordActivity(); // 활동 기록
 
         try {
-          const parsed = JSON.parse(raw) as NotificationPayload;
-          const list = normalizePayload(parsed);
-          if (!list.length) return;
+          // JSON 파싱
+          const parsed = JSON.parse(raw) as NotificationPayload; // 파싱
+          const list = normalizePayload(parsed); // 배열 정규화
+          if (!list.length) return; // 비어있으면 무시
 
-          const handler =
-            onNotificationsRef.current ??
-            ((items: NotificationItem[]) => prependItems(items));
+          const handler = // 핸들러 선택
+            onNotificationsRef.current ?? // 외부 핸들러
+            ((items: NotificationItem[]) => prependItems(items)); // 기본 prepend
 
-          handler(list);
+          handler(list); // 알림 전달
 
           if (toastEnabled) {
+            // 토스트 활성 시
             list.forEach((item) => {
-              const id = item?.id;
-              if (typeof id === "number" && seenIdsRef.current.has(id)) return;
+              // 아이템 순회
+              const id = item?.id; // id 추출
+              if (typeof id === "number" && seenIdsRef.current.has(id)) return; // 중복 방지
 
               if (typeof id === "number") {
-                seenIdsRef.current.add(id);
+                // id 유효
+                seenIdsRef.current.add(id); // Set에 추가
                 if (seenIdsRef.current.size > seenIdsLimit) {
-                  const first = seenIdsRef.current.values().next().value;
+                  // 크기 초과 시
+                  const first = seenIdsRef.current.values().next().value; // 가장 오래된 id
                   if (typeof first === "number") {
-                    seenIdsRef.current.delete(first);
-                  }
-                }
-              }
+                    // 타입 확인
+                    seenIdsRef.current.delete(first); // 제거
+                  } // 타입 확인 끝
+                } // 크기 초과 처리 끝
+              } // id 처리 끝
 
-              const message = item?.message?.trim();
-              if (!message) return;
+              const message = item?.message?.trim(); // 메시지 텍스트
+              if (!message) return; // 비어있으면 무시
 
               toast(message, {
-                position: "top-center",
-                autoClose: 3000,
-                hideProgressBar: true,
-                closeButton: false,
-                pauseOnHover: true,
-                draggable: false,
-              });
-            });
-          }
+                // 토스트 표시
+                position: "top-center", // 상단 중앙
+                autoClose: 3000, // 3초 후 닫힘
+                hideProgressBar: true, // 진행바 숨김
+                closeButton: false, // 닫기 버튼 없음
+                pauseOnHover: true, // 호버 시 정지
+                draggable: false, // 드래그 불가
+              }); // 토스트 끝
+            }); // forEach 끝
+          } // toastEnabled 끝
         } catch {
-          console.warn("[notifications:sse] non-JSON message", raw);
-        }
-      };
+          // JSON 파싱 실패
+          console.warn("[notifications:sse] non-JSON message", raw); // 원본 로그
+        } // try/catch 끝
+      }; // handleMessage 끝
 
-      es.onmessage = handleMessage;
-      es.addEventListener("notification", handleMessage as EventListener);
+      es.onmessage = handleMessage; // 기본 메시지 이벤트
+      es.addEventListener("notification", handleMessage as EventListener); // 커스텀 이벤트
       es.addEventListener("ping", () => {
-        recordActivity();
-      });
+        // 하트비트 이벤트
+        recordActivity(); // 활동 기록
+      }); // ping 핸들러 끝
 
       es.onerror = async (event) => {
-        const state = es.readyState;
-        const status =
-          (event as { status?: number } | null)?.status ??
-          (event as { target?: { status?: number } } | null)?.target?.status ??
-          (es as { xhr?: { status?: number } } | null)?.xhr?.status ??
-          null;
+        // 에러 핸들러
+        const state = es.readyState; // 현재 상태
+        const status = // 상태 코드 추출
+          (event as { status?: number } | null)?.status ?? // 직접 status
+          (event as { target?: { status?: number } } | null)?.target?.status ?? // target status
+          (es as { xhr?: { status?: number } } | null)?.xhr?.status ?? // polyfill xhr
+          null; // 기본값
         console.warn(`[notifications:sse] error, readyState=${state}`, {
-          status,
-        });
+          // 로그
+          status, // 상태 코드
+        }); // 로그 끝
 
-        if (closedRef.current) return;
+        if (closedRef.current) return; // 수동 종료면 무시
 
         if (status === 401) {
-          authFailedRef.current = true;
-          es.close();
-          notifyAuthInvalid();
-          return;
+          // 인증 실패
+          authFailedRef.current = true; // 인증 실패 플래그
+          es.close(); // 스트림 종료
+          notifyAuthInvalid(); // 인증 무효 처리
+          return; // 종료
         }
 
-        const inactiveMs = Date.now() - lastActivityRef.current;
-        es.close();
+        const inactiveMs = Date.now() - lastActivityRef.current; // 비활동 시간
+        es.close(); // 재연결 전 닫기
+
+        if (status && status >= 500) {
+          // 서버 에러
+          reconnectAttemptRef.current += 1; // 재시도 증가
+          const retryDelay = Math.min(
+            // 백오프 계산
+            reconnectMaxIntervalMs * 2, // 하드 캡
+            Math.max(30_000, reconnectIntervalMs * 4), // 최소 30초 또는 4배
+          ); // 계산 끝
+          console.warn("[notifications:sse] server error, backoff reconnect", {
+            // 로그
+            status, // 상태 코드
+            retryDelay, // 지연 시간
+          }); // 로그 끝
+          scheduleReconnect(retryDelay); // 재연결 예약
+          return; // 종료
+        }
 
         if (inactiveMs < heartbeatTimeoutMs) {
-          console.warn("[notifications:sse] recent activity detected, delay reconnect", {
-            inactiveMs,
-          });
-          scheduleReconnect();
-          return;
+          // 최근 활동 있음
+          console.warn(
+            "[notifications:sse] recent activity detected, delay reconnect",
+            {
+              // 로그
+              inactiveMs, // 비활동 시간
+            },
+          ); // 로그 끝
+          scheduleReconnect(); // 재연결 예약
+          return; // 종료
         }
 
-        reconnectAttemptRef.current += 1;
+        reconnectAttemptRef.current += 1; // 재시도 증가
 
         // 🔥 토큰 재발급은 1번만 시도
         if (!tokenRefreshTriedRef.current) {
-          tokenRefreshTriedRef.current = true;
+          // 1회만 시도
+          tokenRefreshTriedRef.current = true; // 시도 플래그
           try {
-            await issueAccessToken();
+            // 토큰 재발급
+            await issueAccessToken(); // 토큰 재발급
           } catch {
-            console.warn("[notifications:sse] token refresh failed");
-          }
-        }
+            // 재발급 실패
+            console.warn("[notifications:sse] token refresh failed"); // 경고 로그
+          } // try/catch 끝
+        } // 재발급 블록 끝
 
-        scheduleReconnect();
-      };
+        scheduleReconnect(); // 재연결 예약
+      }; // onerror 끝
     };
 
-    const scheduleReconnect = () => {
-      if (closedRef.current) return;
-      if (authFailedRef.current) return;
-      if (reconnectTimerRef.current) return;
+    const scheduleReconnect = (overrideDelayMs?: number) => {
+      // 재연결 스케줄러
+      if (closedRef.current) return; // 닫혔으면 중단
+      if (authFailedRef.current) return; // 인증 실패면 중단
+      if (reconnectTimerRef.current) return; // 이미 예약됨
 
       if (reconnectAttemptRef.current >= MAX_RETRY) {
-        console.warn("[notifications:sse] too many retries. stop.");
-        return;
+        // 최대 재시도 초과
+        console.warn("[notifications:sse] too many retries. stop."); // 로그
+        return; // 종료
       }
 
-      const base =
-        reconnectIntervalMs * Math.pow(2, reconnectAttemptRef.current - 1);
-      const capped = Math.min(base, reconnectMaxIntervalMs);
+      const base = // 지수 백오프
+        reconnectIntervalMs * Math.pow(2, reconnectAttemptRef.current - 1); // 기본 지연
+      const capped = Math.min(base, reconnectMaxIntervalMs); // 최대 지연 제한
+      const delay = overrideDelayMs ?? capped; // override 우선
 
       reconnectTimerRef.current = window.setTimeout(() => {
-        reconnectTimerRef.current = null;
-        connect();
-      }, capped);
-    };
+        // 재연결 예약
+        reconnectTimerRef.current = null; // 타이머 ref 정리
+        connect(); // 재연결 실행
+      }, delay); // 지연 시간
+    }; // scheduleReconnect 끝
 
-    connect();
+    connect(); // 최초 연결
 
     return () => {
-      closedRef.current = true;
+      // 언마운트/비활성 정리
+      closedRef.current = true; // 닫힘 표시
 
       if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = null;
+        // 예약된 타이머 정리
+        clearTimeout(reconnectTimerRef.current); // 타이머 해제
+        reconnectTimerRef.current = null; // ref 초기화
       }
 
-      esRef.current?.close();
-      esRef.current = null;
-      reconnectAttemptRef.current = 0;
-      tokenRefreshTriedRef.current = false;
-      authFailedRef.current = false;
-    };
+      esRef.current?.close(); // SSE 종료
+      esRef.current = null; // SSE ref 초기화
+      reconnectAttemptRef.current = 0; // 재시도 초기화
+      tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
+      authFailedRef.current = false; // 인증 실패 플래그 초기화
+    }; // cleanup 끝
   }, [
-    enabled,
-    toastEnabled,
-    prependItems,
-    heartbeatTimeoutMs,
-    reconnectIntervalMs,
-    reconnectMaxIntervalMs,
-    seenIdsLimit,
-  ]);
+    enabled, // 활성화 여부
+    toastEnabled, // 토스트 여부
+    prependItems, // 스토어 핸들러
+    heartbeatTimeoutMs, // 하트비트 타임아웃
+    reconnectIntervalMs, // 재연결 기본 간격
+    reconnectMaxIntervalMs, // 재연결 최대 간격
+    seenIdsLimit, // 중복 방지 크기
+  ]); // effect deps 끝
 }
