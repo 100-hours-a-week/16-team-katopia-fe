@@ -13,6 +13,7 @@ type VoteCard = {
 };
 
 const THRESHOLD = 120;
+const RESULT_REVEAL_DELAY_MS = 3000;
 
 export function useVoteFlow() {
   const [cards, setCards] = useState<VoteCard[]>([]);
@@ -34,6 +35,7 @@ export function useVoteFlow() {
   const submitAttemptedRef = useRef(false);
   const [noActiveVote, setNoActiveVote] = useState(false);
   const transitionCommittedRef = useRef(false);
+  const resultRevealTimerRef = useRef<number | null>(null);
 
   const total = cards.length;
   const active = cards[index];
@@ -101,10 +103,15 @@ export function useVoteFlow() {
 
   useEffect(() => {
     if (!isFinished || !voteId) {
+      if (resultRevealTimerRef.current) {
+        clearTimeout(resultRevealTimerRef.current);
+        resultRevealTimerRef.current = null;
+      }
       setShowResult(false);
       return;
     }
     if (submitting || submitAttemptedRef.current) return;
+    setShowResult(false);
     setSubmitting(true);
     submitAttemptedRef.current = true;
     console.log("[vote] participate payload", {
@@ -161,23 +168,32 @@ export function useVoteFlow() {
           })),
         );
         setResultStats(mappedStats);
-        const timer = window.setTimeout(() => {
+        resultRevealTimerRef.current = window.setTimeout(() => {
           setShowResult(true);
-        }, 2000);
-        return () => window.clearTimeout(timer);
+          resultRevealTimerRef.current = null;
+        }, RESULT_REVEAL_DELAY_MS);
       })
       .catch(() => {
         setResultItems([]);
         setResultStats([]);
-        const timer = window.setTimeout(() => {
+        resultRevealTimerRef.current = window.setTimeout(() => {
           setShowResult(true);
-        }, 600);
-        return () => window.clearTimeout(timer);
+          resultRevealTimerRef.current = null;
+        }, RESULT_REVEAL_DELAY_MS);
       })
       .finally(() => {
         setSubmitting(false);
       });
   }, [isFinished, submitting, voteId]);
+
+  useEffect(() => {
+    return () => {
+      if (resultRevealTimerRef.current) {
+        clearTimeout(resultRevealTimerRef.current);
+        resultRevealTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const refreshCandidates = useCallback(async () => {
     try {
@@ -205,6 +221,10 @@ export function useVoteFlow() {
       setIsAnimating(false);
       setExitDirection("right");
       transitionCommittedRef.current = false;
+      if (resultRevealTimerRef.current) {
+        clearTimeout(resultRevealTimerRef.current);
+        resultRevealTimerRef.current = null;
+      }
       x.set(0);
       submitAttemptedRef.current = false;
     } catch {
