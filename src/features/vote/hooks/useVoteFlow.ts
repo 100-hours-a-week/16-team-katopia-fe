@@ -33,6 +33,7 @@ export function useVoteFlow() {
   const [submitting, setSubmitting] = useState(false);
   const submitAttemptedRef = useRef(false);
   const [noActiveVote, setNoActiveVote] = useState(false);
+  const transitionCommittedRef = useRef(false);
 
   const total = cards.length;
   const active = cards[index];
@@ -70,6 +71,7 @@ export function useVoteFlow() {
       if (direction === "right" && active) {
         addSelection(index, Number(active.id));
       }
+      transitionCommittedRef.current = false;
       setExitDirection(direction);
       setIsAnimating(true);
     },
@@ -89,6 +91,8 @@ export function useVoteFlow() {
 
   const handleAnimationComplete = useCallback(() => {
     if (!isAnimating) return;
+    if (transitionCommittedRef.current) return;
+    transitionCommittedRef.current = true;
     setIndex((prevIndex) => Math.min(prevIndex + 1, total));
     setExitDirection("right");
     setIsAnimating(false);
@@ -200,6 +204,7 @@ export function useVoteFlow() {
       setShowResult(false);
       setIsAnimating(false);
       setExitDirection("right");
+      transitionCommittedRef.current = false;
       x.set(0);
       submitAttemptedRef.current = false;
     } catch {
