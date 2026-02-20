@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import { getNotifications } from "@/src/features/notifications/api/getNotifications";
+import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
 
 interface AppHeaderProps {
   logoSrc?: string;
@@ -20,46 +20,11 @@ export default function AppHeader({
   height = 24,
 }: AppHeaderProps) {
   const { ready, isAuthenticated } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    if (!ready || !isAuthenticated) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setUnreadCount(0);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fetchUnreadCount = async () => {
-      try {
-        const data = await getNotifications({ size: 100 });
-        if (cancelled) return;
-        const count = (data.notifications ?? []).filter(
-          (item) => !item.readAt,
-        ).length;
-        setUnreadCount(count);
-      } catch {
-        if (!cancelled) setUnreadCount(0);
-      }
-    };
-
-    fetchUnreadCount();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, ready]);
-
-  useEffect(() => {
-    const handleUnread = (event: Event) => {
-      const detail = (event as CustomEvent<number>).detail;
-      if (typeof detail === "number") setUnreadCount(detail);
-    };
-    if (typeof window === "undefined") return;
-    window.addEventListener("notifications:unread", handleUnread);
-    return () =>
-      window.removeEventListener("notifications:unread", handleUnread);
-  }, []);
+  const items = useNotificationsStore((state) => state.items);
+  const unreadCount = useMemo(() => {
+    if (!ready || !isAuthenticated) return 0;
+    return items.reduce((count, item) => (item.readAt ? count : count + 1), 0);
+  }, [items, ready, isAuthenticated]);
 
   return (
     <header className="absolute left-0 top-0 flex h-14 w-full items-center justify-between px-4">

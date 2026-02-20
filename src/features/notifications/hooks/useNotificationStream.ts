@@ -29,6 +29,7 @@ type Params = {
 
 const MAX_RETRY = 5; // 최대 재시도 횟수
 const POLLING_INTERVAL_MS = 30_000;
+const INITIAL_BOOTSTRAP_SIZE = 20;
 
 const isNotificationItem = (value: unknown): value is NotificationItem => {
   // 런타임 타입 가드
@@ -76,6 +77,7 @@ export function useNotificationStream({
   const onNotificationsRef = useRef(onNotifications); // 핸들러 ref
   const pollingTimerRef = useRef<number | null>(null); // 폴링 타이머
   const pollingInFlightRef = useRef(false); // 폴링 중복 방지
+  const bootstrapDoneRef = useRef(false); // 초기 동기화 1회 보장
 
   useEffect(() => {
     // 핸들러 ref 동기화
@@ -100,6 +102,7 @@ export function useNotificationStream({
       if (pollingTimerRef.current) return;
 
       const poll = async () => {
+        if (typeof document !== "undefined" && document.hidden) return;
         if (pollingInFlightRef.current) return;
         pollingInFlightRef.current = true;
         try {
@@ -131,6 +134,23 @@ export function useNotificationStream({
       poll();
       pollingTimerRef.current = window.setInterval(poll, POLLING_INTERVAL_MS);
       console.warn("[notifications:sse] fallback polling enabled");
+    };
+
+    const bootstrapNotifications = async () => {
+      if (bootstrapDoneRef.current) return;
+      bootstrapDoneRef.current = true;
+
+      try {
+        const currentItems = useNotificationsStore.getState().items;
+        if (currentItems.length > 0) return;
+
+        const data = await getNotifications({ size: INITIAL_BOOTSTRAP_SIZE });
+        const initialItems = data.notifications ?? [];
+        if (!initialItems.length) return;
+        useNotificationsStore.getState().mergeItems(initialItems);
+      } catch {
+        // 초기 동기화 실패는 SSE/polling 경로로 복구
+      }
     };
 
     const connect = async () => {
@@ -406,6 +426,7 @@ export function useNotificationStream({
       }, delay); // 지연 시간
     }; // scheduleReconnect 끝
 
+    bootstrapNotifications();
     connect(); // 최초 연결
 
     return () => {
@@ -425,6 +446,7 @@ export function useNotificationStream({
       reconnectAttemptRef.current = 0; // 재시도 초기화
       tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
       authFailedRef.current = false; // 인증 실패 플래그 초기화
+      pollingInFlightRef.current = false;
     }; // cleanup 끝
   }, [
     enabled, // 활성화 여부
