@@ -121,6 +121,7 @@ export default function LayoutShell({ children }: Props) {
 
   useNotificationStream({
     enabled: ready && isAuthenticated,
+    heartbeatTimeoutMs: 1000 * 60 * 65,
   });
 
   const shouldLock =

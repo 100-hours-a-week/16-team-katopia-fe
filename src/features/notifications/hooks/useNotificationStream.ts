@@ -58,7 +58,7 @@ export function useNotificationStream({
   enabled = true, // 기본 활성화
   onNotifications, // 외부 핸들러
   toastEnabled = true, // 기본 토스트 표시
-  heartbeatTimeoutMs = 1000 * 60 * 10, // 10분 (20s 하트비트 대비 여유)
+  heartbeatTimeoutMs = 1000 * 60 * 65, // 65분 (프록시 유휴 종료(약 1h)보다 길게)
   reconnectIntervalMs = 5_000, // 기본 재연결 간격
   reconnectMaxIntervalMs = 60_000, // 최대 재연결 간격
   seenIdsLimit = 200, // 토스트 중복 방지 크기
