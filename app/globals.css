@@ -92,14 +92,15 @@ body {
 }
 
 .route-fade-in {
-  animation: routeFadeIn 180ms ease-out;
-  will-change: opacity, transform;
+  animation: routeFadeIn 140ms ease-out both;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 @keyframes routeFadeIn {
   from {
-    opacity: 0;
-    transform: translateY(2px);
+    opacity: 0.98;
+    transform: translateY(1px);
   }
   to {
     opacity: 1;
