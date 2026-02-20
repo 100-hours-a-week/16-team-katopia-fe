@@ -187,7 +187,7 @@ export function useVoteImageUploader() {
       if (!files.length) return;
       setHelperText(null);
 
-      const remain = MAX_FILES - previews.length;
+      const remain = MAX_FILES - previewsRef.current.length;
       if (remain <= 0) {
         setHelperText("최대 5장까지 업로드할 수 있습니다.");
         resetInput();
@@ -238,6 +238,10 @@ export function useVoteImageUploader() {
           encoded.map((item) => item.extension),
         );
 
+        if (presigned.length !== encoded.length) {
+          throw new Error("업로드 URL 개수가 이미지 수와 일치하지 않습니다.");
+        }
+
         await Promise.all(
           presigned.map((p, i) =>
             uploadToPresignedUrl(
@@ -262,6 +266,13 @@ export function useVoteImageUploader() {
           })),
         );
 
+        const unresolved = tempItems.some(
+          (item) => !tempToReal.has(item.objectKey),
+        );
+        if (unresolved) {
+          throw new Error("일부 이미지 업로드를 완료하지 못했습니다.");
+        }
+
         setHelperText(null);
       } catch (err) {
         tempItems.forEach((i) => URL.revokeObjectURL(i.url));
@@ -277,7 +288,7 @@ export function useVoteImageUploader() {
         resetInput();
       }
     },
-    [previews.length, resetInput],
+    [resetInput],
   );
 
   return {
