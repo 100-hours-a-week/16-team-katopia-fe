@@ -5,6 +5,9 @@ import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 type VoteCandidateItem = {
   id: number | string;
   imageObjectKey?: string | null;
+  imageUrl?: string | null;
+  accessUrl?: string | null;
+  url?: string | null;
   sortOrder?: number | null;
 };
 
@@ -45,13 +48,14 @@ export async function getVoteCandidates(): Promise<
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     .map((item) => {
-      const imageUrl = resolveMediaUrl(item.imageObjectKey ?? undefined);
+      const rawImage =
+        item.imageObjectKey ?? item.accessUrl ?? item.imageUrl ?? item.url;
+      const imageUrl = resolveMediaUrl(rawImage ?? undefined);
       return {
         id: String(item.id),
-        imageUrl: imageUrl ?? "",
+        imageUrl: imageUrl ?? "/images/white.png",
       };
-    })
-    .filter((item) => Boolean(item.imageUrl));
+    });
 
   return {
     id: data.id,

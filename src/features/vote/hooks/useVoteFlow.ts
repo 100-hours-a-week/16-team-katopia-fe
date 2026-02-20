@@ -115,8 +115,31 @@ export function useVoteFlow() {
           return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
         });
         const mappedCards = items.map((item) => {
+          const rawImage = (
+            item as {
+              accessUrl?: string | null;
+              imageUrl?: string | null;
+              url?: string | null;
+            }
+          ).accessUrl ??
+            (
+              item as {
+                accessUrl?: string | null;
+                imageUrl?: string | null;
+                url?: string | null;
+              }
+            ).imageUrl ??
+            (
+              item as {
+                accessUrl?: string | null;
+                imageUrl?: string | null;
+                url?: string | null;
+              }
+            ).url ??
+            item.imageObjectKey ??
+            null;
           const resolved =
-            resolveMediaUrl(item.imageObjectKey ?? undefined) ?? "";
+            resolveMediaUrl(rawImage ?? undefined) ?? "";
           const isInvalid = resolved.endsWith("/string");
           return {
             id: String(item.id),
@@ -127,7 +150,12 @@ export function useVoteFlow() {
           likeCount: item.fitCount ?? 0,
           likePercent: item.fitRate ?? 0,
         }));
-        setResultItems(mappedCards.filter((c) => Boolean(c.imageUrl)));
+        setResultItems(
+          mappedCards.map((card) => ({
+            ...card,
+            imageUrl: card.imageUrl || "/images/white.png",
+          })),
+        );
         setResultStats(mappedStats);
         const timer = window.setTimeout(() => {
           setShowResult(true);
