@@ -78,7 +78,7 @@ export function useNotificationStream({
   const pollingTimerRef = useRef<number | null>(null); // 폴링 타이머
   const pollingInFlightRef = useRef(false); // 폴링 중복 방지
   const bootstrapDoneRef = useRef(false); // 초기 동기화 1회 보장
-  const nullStatusErrorCountRef = useRef(0); // status=null 연속 에러 카운트
+  const sseDisabledRef = useRef(false); // 불안정 환경에서 SSE 비활성화
 
   useEffect(() => {
     // 핸들러 ref 동기화
@@ -188,6 +188,10 @@ export function useNotificationStream({
     const connect = async () => {
       // 연결 루틴
       if (closedRef.current) return; // 이미 닫혔으면 중단
+      if (sseDisabledRef.current) {
+        startPolling();
+        return;
+      }
 
       // 재시도 횟수 제한
       if (reconnectAttemptRef.current >= MAX_RETRY) {
@@ -236,28 +240,6 @@ export function useNotificationStream({
         }
       })();
 
-      try {
-        // 토큰 유효성 확인
-        const meCheck = await fetch(`${API_BASE_URL}/api/members/me`, {
-          // me 엔드포인트
-          method: "GET", // 메서드
-          headers: {
-            // 인증 헤더
-            Authorization: `Bearer ${token}`, // Bearer 토큰
-          }, // 헤더 끝
-          credentials: "include", // 쿠키 포함
-          cache: "no-store", // 캐시 방지
-        }); // fetch 끝
-        console.log("[notifications:sse] token check", {
-          // 결과 로그
-          status: meCheck.status, // 상태 코드
-          ok: meCheck.ok, // ok 여부
-        }); // 로그 끝
-      } catch (error) {
-        // 체크 실패
-        console.warn("[notifications:sse] token check failed", error); // 경고 로그
-      }
-
       const recordActivity = () => {
         // 활동 기록 함수
         lastActivityRef.current = Date.now(); // 현재 시각 저장
@@ -284,7 +266,6 @@ export function useNotificationStream({
         // 연결 성공 핸들러
         console.log("[notifications:sse] connected"); // 연결 로그
         stopPolling(); // SSE 복구 시 폴링 중지
-        nullStatusErrorCountRef.current = 0; // null status 카운트 초기화
         reconnectAttemptRef.current = 0; // 재시도 횟수 초기화
         tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
         recordActivity(); // 활동 기록
@@ -345,20 +326,13 @@ export function useNotificationStream({
         }
 
         if (status == null) {
-          // 브라우저/네트워크 계층에서 status를 주지 않는 불안정 케이스
-          nullStatusErrorCountRef.current += 1;
+          // 브라우저/네트워크 계층에서 status 없는 끊김은 반복 루프를 만들기 쉬워
           es.close();
-
-          if (nullStatusErrorCountRef.current >= 3) {
-            console.warn(
-              "[notifications:sse] repeated null-status errors, switch to polling",
-            );
-            startPolling();
-            return;
-          }
-
-          reconnectAttemptRef.current += 1;
-          scheduleReconnect(Math.max(10_000, reconnectIntervalMs));
+          sseDisabledRef.current = true;
+          console.warn(
+            "[notifications:sse] null-status disconnect, disable SSE and switch to polling",
+          );
+          startPolling();
           return;
         }
 
@@ -464,7 +438,6 @@ export function useNotificationStream({
       tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
       authFailedRef.current = false; // 인증 실패 플래그 초기화
       pollingInFlightRef.current = false;
-      nullStatusErrorCountRef.current = 0;
     }; // cleanup 끝
   }, [
     enabled, // 활성화 여부
