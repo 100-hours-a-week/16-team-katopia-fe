@@ -7,6 +7,7 @@ import {
   issueAccessToken,
   notifyAuthInvalid,
 } from "@/src/lib/auth"; // 인증 유틸
+import { getNotifications } from "@/src/features/notifications/api/getNotifications";
 import type { NotificationItem } from "@/src/features/notifications/api/getNotifications"; // 알림 타입
 import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore"; // 알림 스토어
 
@@ -27,6 +28,7 @@ type Params = {
 };
 
 const MAX_RETRY = 5; // 최대 재시도 횟수
+const POLLING_INTERVAL_MS = 30_000;
 
 const isNotificationItem = (value: unknown): value is NotificationItem => {
   // 런타임 타입 가드
@@ -72,6 +74,8 @@ export function useNotificationStream({
   const lastActivityRef = useRef<number>(Date.now()); // 마지막 이벤트 시각
   const authFailedRef = useRef(false); // 인증 실패 플래그
   const onNotificationsRef = useRef(onNotifications); // 핸들러 ref
+  const pollingTimerRef = useRef<number | null>(null); // 폴링 타이머
+  const pollingInFlightRef = useRef(false); // 폴링 중복 방지
 
   useEffect(() => {
     // 핸들러 ref 동기화
@@ -83,6 +87,51 @@ export function useNotificationStream({
     if (!enabled || typeof window === "undefined") return; // 비활성/SSR이면 중단
 
     closedRef.current = false; // 활성 상태로 설정
+
+    const stopPolling = () => {
+      if (pollingTimerRef.current) {
+        clearInterval(pollingTimerRef.current);
+        pollingTimerRef.current = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (closedRef.current) return;
+      if (pollingTimerRef.current) return;
+
+      const poll = async () => {
+        if (pollingInFlightRef.current) return;
+        pollingInFlightRef.current = true;
+        try {
+          const data = await getNotifications({ size: 20 });
+          const incoming = data.notifications ?? [];
+          if (!incoming.length) return;
+
+          const currentItems = useNotificationsStore.getState().items;
+          const existing = new Set(
+            currentItems
+              .map((item) => item.id)
+              .filter((id): id is number => typeof id === "number"),
+          );
+
+          const newItems = incoming.filter((item) => !existing.has(item.id));
+          if (!newItems.length) return;
+
+          const handler =
+            onNotificationsRef.current ??
+            ((items: NotificationItem[]) => prependItems(items));
+          handler(newItems);
+        } catch {
+          // polling 실패는 다음 주기에 재시도
+        } finally {
+          pollingInFlightRef.current = false;
+        }
+      };
+
+      poll();
+      pollingTimerRef.current = window.setInterval(poll, POLLING_INTERVAL_MS);
+      console.warn("[notifications:sse] fallback polling enabled");
+    };
 
     const connect = async () => {
       // 연결 루틴
@@ -182,6 +231,7 @@ export function useNotificationStream({
       es.onopen = () => {
         // 연결 성공 핸들러
         console.log("[notifications:sse] connected"); // 연결 로그
+        stopPolling(); // SSE 복구 시 폴링 중지
         reconnectAttemptRef.current = 0; // 재시도 횟수 초기화
         tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
         recordActivity(); // 활동 기록
@@ -280,6 +330,11 @@ export function useNotificationStream({
 
         if (status && status >= 500) {
           // 서버 에러
+          if (status === 502) {
+            // 게이트웨이 경로에서 SSE 실패 시 폴링으로 강등
+            startPolling();
+            return;
+          }
           reconnectAttemptRef.current += 1; // 재시도 증가
           const retryDelay = Math.min(
             // 백오프 계산
@@ -362,6 +417,8 @@ export function useNotificationStream({
         clearTimeout(reconnectTimerRef.current); // 타이머 해제
         reconnectTimerRef.current = null; // ref 초기화
       }
+
+      stopPolling(); // 폴링 정리
 
       esRef.current?.close(); // SSE 종료
       esRef.current = null; // SSE ref 초기화
