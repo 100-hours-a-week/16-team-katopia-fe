@@ -97,6 +97,36 @@ export function useNotificationStream({
       }
     };
 
+    const notifyToastIfNeeded = (items: NotificationItem[]) => {
+      if (!toastEnabled) return;
+      items.forEach((item) => {
+        const id = item?.id;
+        if (typeof id === "number" && seenIdsRef.current.has(id)) return;
+
+        if (typeof id === "number") {
+          seenIdsRef.current.add(id);
+          if (seenIdsRef.current.size > seenIdsLimit) {
+            const first = seenIdsRef.current.values().next().value;
+            if (typeof first === "number") {
+              seenIdsRef.current.delete(first);
+            }
+          }
+        }
+
+        const message = item?.message?.trim();
+        if (!message) return;
+
+        toast(message, {
+          position: "top-center",
+          autoClose: 3000,
+          hideProgressBar: true,
+          closeButton: false,
+          pauseOnHover: true,
+          draggable: false,
+        });
+      });
+    };
+
     const startPolling = () => {
       if (closedRef.current) return;
       if (pollingTimerRef.current) return;
@@ -124,6 +154,7 @@ export function useNotificationStream({
             onNotificationsRef.current ??
             ((items: NotificationItem[]) => prependItems(items));
           handler(newItems);
+          notifyToastIfNeeded(newItems);
         } catch {
           // polling 실패는 다음 주기에 재시도
         } finally {
@@ -274,41 +305,7 @@ export function useNotificationStream({
             ((items: NotificationItem[]) => prependItems(items)); // 기본 prepend
 
           handler(list); // 알림 전달
-
-          if (toastEnabled) {
-            // 토스트 활성 시
-            list.forEach((item) => {
-              // 아이템 순회
-              const id = item?.id; // id 추출
-              if (typeof id === "number" && seenIdsRef.current.has(id)) return; // 중복 방지
-
-              if (typeof id === "number") {
-                // id 유효
-                seenIdsRef.current.add(id); // Set에 추가
-                if (seenIdsRef.current.size > seenIdsLimit) {
-                  // 크기 초과 시
-                  const first = seenIdsRef.current.values().next().value; // 가장 오래된 id
-                  if (typeof first === "number") {
-                    // 타입 확인
-                    seenIdsRef.current.delete(first); // 제거
-                  } // 타입 확인 끝
-                } // 크기 초과 처리 끝
-              } // id 처리 끝
-
-              const message = item?.message?.trim(); // 메시지 텍스트
-              if (!message) return; // 비어있으면 무시
-
-              toast(message, {
-                // 토스트 표시
-                position: "top-center", // 상단 중앙
-                autoClose: 3000, // 3초 후 닫힘
-                hideProgressBar: true, // 진행바 숨김
-                closeButton: false, // 닫기 버튼 없음
-                pauseOnHover: true, // 호버 시 정지
-                draggable: false, // 드래그 불가
-              }); // 토스트 끝
-            }); // forEach 끝
-          } // toastEnabled 끝
+          notifyToastIfNeeded(list);
         } catch {
           // JSON 파싱 실패
           console.warn("[notifications:sse] non-JSON message", raw); // 원본 로그

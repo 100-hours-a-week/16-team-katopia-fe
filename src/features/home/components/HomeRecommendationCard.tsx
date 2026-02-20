@@ -41,7 +41,6 @@ export default function HomeRecommendationCard({
         src={member.avatarUrl ?? null}
         alt={`${member.name} 프로필`}
         size={92}
-        priority
         className="border border-[#d7d7d7]"
       />
       <p className="mt-4 text-[14px] font-semibold text-neutral-900">

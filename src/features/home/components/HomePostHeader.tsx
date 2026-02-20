@@ -27,7 +27,6 @@ export default function HomePostHeader({ author }: HomePostHeaderProps) {
           src={author.avatarUrl ?? null}
           alt={`${author.displayName} 프로필`}
           size={42}
-          priority
         />
         <span className="text-[13px] font-semibold text-neutral-900">
           {author.displayName}
