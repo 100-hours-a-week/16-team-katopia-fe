@@ -71,11 +71,6 @@ export default function LayoutShell({ children }: Props) {
   }, [ready, isAuthenticated, clearNotifications]);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.body.style.backgroundColor = "#ffffff";
-  }, [pathname]);
-
-  useEffect(() => {
     if (hideBottomNav) return;
     if (typeof window === "undefined") return;
     const win = window as Window & {

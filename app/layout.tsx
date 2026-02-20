@@ -20,10 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body
-        className={`${notoSansKr.variable} min-h-screen bg-[#ffffff] text-[#121212]`}
-        style={{ color: "#121212", backgroundColor: "#f0f0f0" }}
-      >
+      <body className={`${notoSansKr.variable} min-h-screen bg-[#ffffff] text-[#121212]`}>
         <ReactQueryProvider>
           <Suspense fallback={null}>
             <AuthProvider>
