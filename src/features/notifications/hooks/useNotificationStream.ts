@@ -78,6 +78,7 @@ export function useNotificationStream({
   const pollingTimerRef = useRef<number | null>(null); // 폴링 타이머
   const pollingInFlightRef = useRef(false); // 폴링 중복 방지
   const bootstrapDoneRef = useRef(false); // 초기 동기화 1회 보장
+  const nullStatusErrorCountRef = useRef(0); // status=null 연속 에러 카운트
 
   useEffect(() => {
     // 핸들러 ref 동기화
@@ -283,6 +284,7 @@ export function useNotificationStream({
         // 연결 성공 핸들러
         console.log("[notifications:sse] connected"); // 연결 로그
         stopPolling(); // SSE 복구 시 폴링 중지
+        nullStatusErrorCountRef.current = 0; // null status 카운트 초기화
         reconnectAttemptRef.current = 0; // 재시도 횟수 초기화
         tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
         recordActivity(); // 활동 기록
@@ -340,6 +342,24 @@ export function useNotificationStream({
           es.close(); // 스트림 종료
           notifyAuthInvalid(); // 인증 무효 처리
           return; // 종료
+        }
+
+        if (status == null) {
+          // 브라우저/네트워크 계층에서 status를 주지 않는 불안정 케이스
+          nullStatusErrorCountRef.current += 1;
+          es.close();
+
+          if (nullStatusErrorCountRef.current >= 3) {
+            console.warn(
+              "[notifications:sse] repeated null-status errors, switch to polling",
+            );
+            startPolling();
+            return;
+          }
+
+          reconnectAttemptRef.current += 1;
+          scheduleReconnect(Math.max(10_000, reconnectIntervalMs));
+          return;
         }
 
         const inactiveMs = Date.now() - lastActivityRef.current; // 비활동 시간
@@ -444,6 +464,7 @@ export function useNotificationStream({
       tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
       authFailedRef.current = false; // 인증 실패 플래그 초기화
       pollingInFlightRef.current = false;
+      nullStatusErrorCountRef.current = 0;
     }; // cleanup 끝
   }, [
     enabled, // 활성화 여부
