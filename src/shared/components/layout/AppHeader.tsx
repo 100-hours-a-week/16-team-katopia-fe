@@ -27,7 +27,7 @@ export default function AppHeader({
   }, [items, ready, isAuthenticated]);
 
   return (
-    <header className="absolute left-0 top-0 flex h-14 w-full items-center justify-between px-4">
+    <header className="absolute left-0 top-0 flex h-14 w-full items-center justify-between px-1">
       <Image src={logoSrc} alt={alt} width={width} height={height} />
 
       <div className="flex items-center gap-1">
@@ -36,9 +36,9 @@ export default function AppHeader({
           aria-label="알림"
           className="relative flex h-9 w-9 items-center justify-center"
         >
-          <Image src="/icons/bell.svg" alt="" width={20} height={20} />
+          <Image src="/icons/bell.svg" alt="" width={23} height={23} />
           {unreadCount > 0 && (
-            <span className="absolute right-0 top-0 min-w-5 translate-x-1/4 -translate-y-1/4 rounded-full bg-[#ff58c3] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+            <span className="absolute right-0 top-0 min-w-5 translate-x-1/4 -translate-y-1/4 rounded-full bg-[#121212] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
               {unreadCount > 999 ? "999+" : unreadCount}
             </span>
           )}
@@ -48,7 +48,7 @@ export default function AppHeader({
           aria-label="메시지"
           className="flex h-9 w-9 items-center justify-center"
         >
-          <Image src="/icons/home_send.svg" alt="" width={20} height={20} />
+          <Image src="/icons/home_send.svg" alt="" width={23} height={23} />
         </button>
       </div>
     </header>

@@ -47,7 +47,7 @@ export default function PostDetailPage() {
 
   return (
     <CommentCountProvider value={commentCountStore}>
-      <div className="min-h-screen px-4 py-4">
+      <div className="min-h-screen px-2 py-4">
         <PostHeader
           author={post.author}
           createdAt={post.createdAt}
