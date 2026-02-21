@@ -4,7 +4,7 @@ import AppHeader from "@/src/shared/components/layout/AppHeader";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import HomeFeed from "./HomeFeed";
 import HomeRecommendationSection from "./HomeRecommendationSection";
-import HomeInfoCarousel from "./HomeInfoCarousel";
+// import HomeInfoCarousel from "./HomeInfoCarousel";
 import { useInfiniteHomeFeed } from "../hooks/useInfiniteHomeFeed";
 import { useHomeRecommendations } from "../hooks/useHomeRecommendations";
 import { useHomeQuerySync } from "../hooks/useHomeQuerySync";
@@ -35,7 +35,7 @@ export default function HomePage() {
       <div className="relative min-h-screen flex flex-col">
         <AppHeader />
         <main className="flex-1 px-6 pb-12 pt-16">
-          <HomeInfoCarousel />
+          {/* <HomeInfoCarousel /> */}
           <HomeFeed posts={posts} />
           {feedEnabled && postsHasMore && (
             <div ref={observePosts} className="h-24" />
