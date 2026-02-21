@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import ProfileHeader from "./ProfileHeader";
-import ProfileSummary from "./ProfileSummary";
-import ProfilePostGrid from "./ProfilePostGrid";
-import ProfileWithdrawModal from "./ProfileWithdrawModal";
-import ProfileLogoutModal from "./ProfileLogoutModal";
-import MyProfileVotesTab from "./MyProfileVotesTab";
-import VoteDeleteConfirmModal from "./VoteDeleteConfirmModal";
+import ProfileHeader from "../components/ProfileHeader";
+import ProfileSummary from "../components/ProfileSummary";
+import ProfilePostGrid from "../components/ProfilePostGrid";
+import ProfileWithdrawModal from "../components/ProfileWithdrawModal";
+import ProfileLogoutModal from "../components/ProfileLogoutModal";
+import MyProfileVotesTab from "../components/MyProfileVotesTab";
+import VoteDeleteConfirmModal from "../components/VoteDeleteConfirmModal";
 import { clearAccessToken, setLoggedOutFlag } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { withdrawMember } from "@/src/features/profile/api/withdrawMember";

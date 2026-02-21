@@ -1,4 +1,4 @@
-import UserProfilePage from "@/src/features/profile/components/UserProfilePage";
+import UserProfilePage from "@/src/features/profile/pages/UserProfilePage";
 
 interface Props {
   params: Promise<{
