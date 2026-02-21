@@ -3,7 +3,9 @@ import { EventSourcePolyfill } from "event-source-polyfill"; // 헤더 지원 SS
 import { toast } from "react-toastify"; // 토스트 알림
 import { API_BASE_URL } from "@/src/config/api"; // API 기본 주소
 import {
+  clearAccessToken,
   getAccessToken,
+  isAccessTokenExpired,
   issueAccessToken,
   notifyAuthInvalid,
 } from "@/src/lib/auth"; // 인증 유틸
@@ -151,7 +153,7 @@ export function useNotificationStream({
       }
 
       let token = getAccessToken(); // 캐시 토큰
-      if (!token) {
+      if (!token || isAccessTokenExpired(token)) {
         // 토큰 없으면
         try {
           // 재발급 시도
@@ -263,11 +265,34 @@ export function useNotificationStream({
         if (closedRef.current) return; // 수동 종료면 무시
 
         if (status === 401) {
-          // 인증 실패
-          authFailedRef.current = true; // 인증 실패 플래그
-          es.close(); // 스트림 종료
-          notifyAuthInvalid(); // 인증 무효 처리
-          return; // 종료
+          // 인증 실패 시 1회 재발급 후 재연결 시도
+          es.close();
+          if (!tokenRefreshTriedRef.current) {
+            tokenRefreshTriedRef.current = true;
+            try {
+              clearAccessToken();
+              await issueAccessToken();
+              reconnectAttemptRef.current += 1;
+              scheduleReconnect();
+              return;
+            } catch (error) {
+              const isAuthInvalid =
+                error instanceof Error &&
+                (error.message === "AUTH_INVALID" ||
+                  error.message === "LOGGED_OUT");
+              if (isAuthInvalid) {
+                authFailedRef.current = true;
+                notifyAuthInvalid();
+                return;
+              }
+              reconnectAttemptRef.current += 1;
+              scheduleReconnect();
+              return;
+            }
+          }
+          authFailedRef.current = true; // 재발급 후에도 401이면 인증 무효 처리
+          notifyAuthInvalid();
+          return;
         }
 
         if (status == null) {
