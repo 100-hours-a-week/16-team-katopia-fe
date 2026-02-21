@@ -81,7 +81,7 @@ export default function CreateBottomSheet({ open, onOpenChange }: Props) {
         className="
           rounded-t-[28px]
           px-5 pb-8 pt-4
-          w-full max-w-97.5 mx-auto
+          w-full max-w-[430px] mx-auto
           min-h-[40vh]
           bg-white
         "

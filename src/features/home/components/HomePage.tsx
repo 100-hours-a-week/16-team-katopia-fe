@@ -34,7 +34,7 @@ export default function HomePage() {
     <>
       <div className="relative min-h-screen flex flex-col">
         <AppHeader />
-        <main className="flex-1 px-6 pb-12 pt-16">
+        <main className="flex-1 px-1 pb-12 pt-16">
           {/* <HomeInfoCarousel /> */}
           <HomeFeed posts={posts} />
           {feedEnabled && postsHasMore && (

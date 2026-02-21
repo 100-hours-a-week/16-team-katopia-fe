@@ -138,7 +138,7 @@ export default function LayoutShell({ children }: Props) {
   return (
     <>
       <div
-        className={`mx-auto min-h-screen w-full max-w-97.5 bg-[#ffffff] ${
+        className={`mx-auto min-h-screen w-full max-w-[430px] bg-[#ffffff] ${
           hideBottomNav ? "" : "pb-16"
         }`}
       >
