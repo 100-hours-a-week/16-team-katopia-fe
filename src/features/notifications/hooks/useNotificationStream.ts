@@ -195,6 +195,11 @@ export function useNotificationStream({
 
       recordActivity(); // 연결 시점 활동 기록
 
+      if (esRef.current) {
+        // 이전 인스턴스가 남아 있으면 새 연결 전에 정리
+        esRef.current.close();
+      }
+
       const es = new EventSourcePolyfill( // SSE 연결 생성
         streamUrl, // 스트림 URL (동일 오리진 우선)
         {
@@ -295,8 +300,14 @@ export function useNotificationStream({
           return;
         }
 
+        if (status == null && state === EventSource.CONNECTING) {
+          // status=null + CONNECTING은 폴리필 내부 재연결 진행 중일 수 있음
+          // 여기서 강제 close/reconnect를 하면 연결 루프가 과도해질 수 있어 무시
+          return;
+        }
+
         if (status == null) {
-          // 프록시 idle timeout 등 status 없는 단절은 재연결로 복구
+          // status 없는 단절은 명시적으로 재연결
           reconnectAttemptRef.current += 1;
           es.close();
           scheduleReconnect();
