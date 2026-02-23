@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   },
   {
     href: "/post",
-    icon: "/icons/plus.svg", // 중앙 +
+    icon: "/icons/plus.svg",
     label: "작성",
   },
   {
@@ -41,7 +41,7 @@ export default function BottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-[430px] -translate-x-1/2 border-t bg-white/60 backdrop-blur-sm">
+      <nav className="fixed bottom-0 left-1/2 z-50 w-full max-w-107.5 -translate-x-1/2  bg-white/60 backdrop-blur-sm">
         <ul className="relative flex h-16 items-center justify-between px-6">
           {NAV_ITEMS.map((item, idx) => {
             const isActive = pathname === item.href;
