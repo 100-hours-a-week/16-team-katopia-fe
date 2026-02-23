@@ -194,3 +194,7 @@ select:-webkit-autofill {
     @apply bg-background text-foreground;
   }
 }
+
+.Toastify__toast .Toastify__close-button {
+  margin-left: -8px !important;
+}

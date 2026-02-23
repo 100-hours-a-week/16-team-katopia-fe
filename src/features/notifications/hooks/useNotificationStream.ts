@@ -1,25 +1,24 @@
-import { useEffect, useRef } from "react"; // React 훅
-import { EventSourcePolyfill } from "event-source-polyfill"; // 헤더 지원 SSE 폴리필
-import { toast } from "react-toastify"; // 토스트 알림
-import { API_BASE_URL } from "@/src/config/api"; // API 기본 주소
+import { useEffect, useRef } from "react";
+import { EventSourcePolyfill } from "event-source-polyfill";
+import { toast } from "react-toastify";
+import { API_BASE_URL } from "@/src/config/api";
 import {
   clearAccessToken,
   getAccessToken,
   isAccessTokenExpired,
   issueAccessToken,
   notifyAuthInvalid,
-} from "@/src/lib/auth"; // 인증 유틸
+} from "@/src/lib/auth";
 import { getNotifications } from "@/src/features/notifications/api/getNotifications";
-import type { NotificationItem } from "@/src/features/notifications/api/getNotifications"; // 알림 타입
-import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore"; // 알림 스토어
+import type { NotificationItem } from "@/src/features/notifications/api/getNotifications";
+import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
 
-type NotificationPayload = // SSE 페이로드 형태
-  | NotificationItem // 단일 아이템
-  | NotificationItem[] // 아이템 배열
-  | { data?: NotificationItem | NotificationItem[] }; // data로 감싼 형태
+type NotificationPayload =
+  | NotificationItem
+  | NotificationItem[]
+  | { data?: NotificationItem | NotificationItem[] };
 
 type Params = {
-  // 훅 옵션
   enabled?: boolean; // SSE 활성화 여부
   onNotifications?: (items: NotificationItem[]) => void; // 외부 핸들러
   toastEnabled?: boolean; // 토스트 표시 여부
@@ -29,7 +28,7 @@ type Params = {
   seenIdsLimit?: number; // 토스트 중복 방지 크기
 };
 
-const MAX_RETRY = Number.POSITIVE_INFINITY; // 장시간 연결을 위해 재시도 제한 없음
+const MAX_RETRY = Number.POSITIVE_INFINITY;
 const INITIAL_BOOTSTRAP_SIZE = 20;
 
 const isNotificationItem = (value: unknown): value is NotificationItem => {
@@ -112,9 +111,10 @@ export function useNotificationStream({
           position: "top-center",
           autoClose: 3000,
           hideProgressBar: true,
-          closeButton: false,
+          closeButton: true,
           pauseOnHover: true,
-          draggable: false,
+          draggable: true,
+          style: { borderRadius: 30 },
         });
       });
     };
@@ -168,10 +168,6 @@ export function useNotificationStream({
       }
 
       console.log("[notifications:sse] connecting..."); // 연결 로그
-      console.log("[notifications:sse] request headers", {
-        // 헤더 로그
-        Authorization: `Bearer ${token}`, // Bearer 토큰
-      }); // 로그 끝
 
       const streamPath = "/api/notifications/stream";
       const streamUrl = (() => {

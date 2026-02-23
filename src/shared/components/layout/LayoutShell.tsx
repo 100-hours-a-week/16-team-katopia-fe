@@ -7,7 +7,7 @@ import BottomNav from "./BottomNav";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { hasLoggedInFlag } from "@/src/lib/auth";
 import LoginBottomSheet from "@/src/features/home/components/LoginBottomsSheet";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import { useNotificationStream } from "@/src/features/notifications/hooks/useNotificationStream";
 import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
 
@@ -119,6 +119,26 @@ export default function LayoutShell({ children }: Props) {
     window.close();
   }, [isWithdrawnState, isWithdrawnPopup]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (typeof window === "undefined") return;
+    try {
+      if (window.sessionStorage.getItem("katopia.toastPreviewShown") === "1") {
+        return;
+      }
+      window.sessionStorage.setItem("katopia.toastPreviewShown", "1");
+    } catch {
+      // ignore storage errors
+    }
+
+    window.setTimeout(() => {
+      toast.info("토스트 스타일 미리보기 (info)");
+      toast.success("저장되었습니다 (success)");
+      toast.warn("확인이 필요합니다 (warn)");
+      toast.error("오류가 발생했습니다 (error)");
+    }, 300);
+  }, []);
+
   useNotificationStream({
     enabled: ready && isAuthenticated,
     heartbeatTimeoutMs: 1000 * 60 * 65,
@@ -138,7 +158,7 @@ export default function LayoutShell({ children }: Props) {
   return (
     <>
       <div
-        className={`mx-auto min-h-screen w-full max-w-[430px] bg-[#ffffff] ${
+        className={`mx-auto min-h-screen w-full max-w-107.5 bg-[#ffffff] ${
           hideBottomNav ? "" : "pb-16"
         }`}
       >
@@ -147,10 +167,22 @@ export default function LayoutShell({ children }: Props) {
       {!hideBottomNav && showBottomNav && <BottomNav />}
       {shouldLock && <LoginBottomSheet persist />}
       <ToastContainer
+        position="top-center"
         newestOnTop
         closeOnClick
-        limit={3}
+        closeButton
+        draggable
+        hideProgressBar
+        limit={10}
         theme="light"
+        toastStyle={{
+          borderRadius: 30,
+          background: "rgba(245, 245, 245, 0.88)",
+          color: "#121212",
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 5,
+        }}
       />
     </>
   );
