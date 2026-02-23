@@ -11,6 +11,8 @@ import VoteCancelConfirmModal from "./components/VoteCancelConfirmModal";
 import type { PreviewItem } from "./hooks/useVoteImageUploader";
 import { createVote } from "../api/createVote";
 
+const MIN_VOTE_IMAGES = 2;
+
 export default function VoteCreatePage() {
   const router = useRouter();
   const titleRef = useRef<HTMLInputElement>(null);
@@ -44,7 +46,8 @@ export default function VoteCreatePage() {
   const hasPendingUpload = previews.some((p) =>
     p.objectKey.startsWith("pending:"),
   );
-  const canSubmit = isTitleValid && imageCount > 0 && !hasPendingUpload;
+  const canSubmit =
+    isTitleValid && imageCount >= MIN_VOTE_IMAGES && !hasPendingUpload;
 
   const handleBack = useCallback(() => {
     const isDirty = isTitleDirty || imageCount > 0;
@@ -70,6 +73,11 @@ export default function VoteCreatePage() {
       const trimmedTitle = titleValue.trim();
       if (!trimmedTitle) {
         setToastMessage("제목을 입력해주세요.");
+        return;
+      }
+
+      if (previews.length < MIN_VOTE_IMAGES) {
+        setToastMessage("투표 이미지는 2장 이상 올려주세요.");
         return;
       }
 
