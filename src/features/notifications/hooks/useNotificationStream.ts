@@ -114,7 +114,6 @@ export function useNotificationStream({
           closeButton: true,
           pauseOnHover: true,
           draggable: true,
-          style: { borderRadius: 30 },
         });
       });
     };
