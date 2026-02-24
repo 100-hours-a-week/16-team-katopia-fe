@@ -1,6 +1,35 @@
 "use client";
 
-export default function VoteResultLoading() {
+import Image from "next/image";
+
+type Props = {
+  variant?: "initial" | "submitting";
+};
+
+export default function VoteResultLoading({ variant = "initial" }: Props) {
+  if (variant === "submitting") {
+    return (
+      <section className="flex min-h-[70svh] flex-col items-center text-center text-white">
+        <div className="mt-[16svh]">
+          <p className="text-[20px] leading-[1.35] font-bold tracking-[-0.02em] whitespace-pre-line">
+            {"투표 결과를\n보여드릴게요"}
+          </p>
+        </div>
+
+        <div className="mt-16">
+          <Image
+            src="/images/votebox.png"
+            alt=""
+            width={60}
+            height={60}
+            priority
+            className="animate-vote-float h-auto w-[100px] select-none"
+          />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="w-full max-w-90 text-left text-white">
       <div className="mt-7 space-y-2">

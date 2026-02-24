@@ -79,7 +79,7 @@ export default function VotePage() {
             onRefresh={refreshCandidates}
           />
         ) : (
-          <VoteResultLoading />
+          <VoteResultLoading variant="submitting" />
         )
       ) : loading || total === 0 ? (
         <VoteResultLoading />

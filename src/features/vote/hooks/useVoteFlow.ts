@@ -111,6 +111,11 @@ export function useVoteFlow() {
       return;
     }
     if (submitting || submitAttemptedRef.current) return;
+    if (selectedIdsRef.current.length === 0) {
+      submitAttemptedRef.current = true;
+      void refreshCandidates();
+      return;
+    }
     setShowResult(false);
     setSubmitting(true);
     submitAttemptedRef.current = true;
@@ -126,13 +131,14 @@ export function useVoteFlow() {
           return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
         });
         const mappedCards = items.map((item) => {
-          const rawImage = (
-            item as {
-              accessUrl?: string | null;
-              imageUrl?: string | null;
-              url?: string | null;
-            }
-          ).accessUrl ??
+          const rawImage =
+            (
+              item as {
+                accessUrl?: string | null;
+                imageUrl?: string | null;
+                url?: string | null;
+              }
+            ).accessUrl ??
             (
               item as {
                 accessUrl?: string | null;
@@ -149,8 +155,7 @@ export function useVoteFlow() {
             ).url ??
             item.imageObjectKey ??
             null;
-          const resolved =
-            resolveMediaUrl(rawImage ?? undefined) ?? "";
+          const resolved = resolveMediaUrl(rawImage ?? undefined) ?? "";
           const isInvalid = resolved.endsWith("/string");
           return {
             id: String(item.id),
