@@ -39,7 +39,7 @@ export default function AppHeader({
           <Image src="/icons/bell.svg" alt="" width={23} height={23} />
           {unreadCount > 0 && (
             <span className="absolute right-0 top-0 min-w-5 translate-x-1/4 -translate-y-1/4 rounded-full bg-[#121212] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-              {unreadCount > 999 ? "999+" : unreadCount}
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </Link>
