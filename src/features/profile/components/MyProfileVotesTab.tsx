@@ -39,7 +39,10 @@ export default function MyProfileVotesTab({
           <ul className="space-y-4">
             {votes
               .filter((vote) => vote.id != null)
-              .sort((a, b) => Number(Boolean(a.isClosed)) - Number(Boolean(b.isClosed)))
+              .sort(
+                (a, b) =>
+                  Number(Boolean(a.isClosed)) - Number(Boolean(b.isClosed)),
+              )
               .map((vote) => (
                 <li key={vote.id} className="relative">
                   <Link

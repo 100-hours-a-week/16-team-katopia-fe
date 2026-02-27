@@ -103,7 +103,9 @@ export default function NotificationsPage() {
               onItemClick={handleItemClick}
             />
 
-            {hasMore && <div ref={observe} className="h-16 w-full" aria-hidden />}
+            {hasMore && (
+              <div ref={observe} className="h-16 w-full" aria-hidden />
+            )}
 
             <p className="mt-20 text-center text-[12px] text-[#bdbdbd]">
               알림은 7일 이후 순차적으로 지워집니다.

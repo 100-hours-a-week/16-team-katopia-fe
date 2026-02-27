@@ -23,7 +23,13 @@ export function NotificationSection({
   return (
     <section className={className}>
       <h2 className="text-[14px] font-semibold text-[#2b2b2b]">{title}</h2>
-      <ul className={variant === "unread" ? "mt-4 flex flex-col gap-6" : "mt-6 flex flex-col gap-8"}>
+      <ul
+        className={
+          variant === "unread"
+            ? "mt-4 flex flex-col gap-6"
+            : "mt-6 flex flex-col gap-8"
+        }
+      >
         {items.map((item) => (
           <NotificationItem
             key={item.id}

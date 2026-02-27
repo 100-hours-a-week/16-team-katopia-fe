@@ -157,9 +157,7 @@ export default function VoteImagePicker({
     handleFileChange,
   } = useVoteImageUploader();
   const minImageHelperText =
-    previews.length === 1
-      ? "투표 이미지는 2장 이상 업로드 가능합니다"
-      : null;
+    previews.length === 1 ? "투표 이미지는 2장 이상 업로드 가능합니다" : null;
 
   useEffect(() => {
     onCountChange?.(previews.length);

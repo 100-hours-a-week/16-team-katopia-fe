@@ -21,14 +21,11 @@ type VoteCandidatesApiResponse = {
   data?: VoteCandidatesResponse;
 };
 
-export async function getVoteCandidates(): Promise<
-  | {
-      id?: number | string;
-      title: string;
-      items: { id: string; imageUrl: string }[];
-    }
-  | null
-> {
+export async function getVoteCandidates(): Promise<{
+  id?: number | string;
+  title: string;
+  items: { id: string; imageUrl: string }[];
+} | null> {
   const res = await authFetch(`${API_BASE_URL}/api/votes/candidates`, {
     method: "GET",
   });

@@ -119,8 +119,7 @@ function decodeJwtPayload(token: string): { exp?: number } | null {
   try {
     const payload = parts[1];
     const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    const padded =
-      normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
     const json = atob(padded);
     return JSON.parse(json) as { exp?: number };
   } catch {
@@ -182,7 +181,8 @@ export async function issueAccessToken() {
       if (res.status === 401 || res.status === 403) {
         if (typeof window !== "undefined") {
           try {
-            const message = (body as { message?: string } | null)?.message ?? "";
+            const message =
+              (body as { message?: string } | null)?.message ?? "";
             if (message) {
               window.sessionStorage.setItem(
                 "katopia.authInvalidMessage",

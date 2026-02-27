@@ -48,7 +48,9 @@ export async function getNotifications(params?: {
     cache: "no-store",
   });
 
-  const result = (await res.json().catch(() => ({}))) as NotificationApiResponse;
+  const result = (await res
+    .json()
+    .catch(() => ({}))) as NotificationApiResponse;
   if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
     console.log("[notifications] list response", {
       ok: res.ok,

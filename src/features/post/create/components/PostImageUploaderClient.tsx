@@ -40,7 +40,7 @@ function SortablePreview({
       }}
       {...attributes}
       {...listeners}
-    className="relative h-[60vh] w-88.75 shrink-0 overflow-hidden rounded-[5px] bg-gray-200"
+      className="relative h-[60vh] w-88.75 shrink-0 overflow-hidden rounded-[5px] bg-gray-200"
     >
       {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
       <img src={item.url} className="h-full w-full object-cover" />

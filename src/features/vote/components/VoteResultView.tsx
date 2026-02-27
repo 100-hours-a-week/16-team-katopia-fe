@@ -52,7 +52,10 @@ export default function VoteResultView({
   }, [currentIndex, items]);
 
   return (
-    <div className="w-full text-left text-white" style={{ maxWidth: cardWidth + 80 }}>
+    <div
+      className="w-full text-left text-white"
+      style={{ maxWidth: cardWidth + 80 }}
+    >
       <p className="mt-7 mb-2 text-[20px] font-semibold">
         투표 결과
         <br />
