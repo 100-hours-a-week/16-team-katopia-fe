@@ -13,10 +13,7 @@ export function useStyleStore(initialStyles: string[]) {
     listeners: new Set<() => void>(),
   });
 
-  const getStylesSnapshot = useCallback(
-    () => stylesStoreRef.current.value,
-    [],
-  );
+  const getStylesSnapshot = useCallback(() => stylesStoreRef.current.value, []);
 
   const subscribeStyles = useCallback((listener: () => void) => {
     const store = stylesStoreRef.current;

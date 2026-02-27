@@ -6,10 +6,9 @@ import Image from "next/image";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
-import ProfilePostGrid from "./ProfilePostGrid";
-import ProfileSummary from "./ProfileSummary";
+import ProfilePostGrid from "../components/ProfilePostGrid";
+import ProfileSummary from "../components/ProfileSummary";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import { useOptimisticPostCount } from "@/src/features/profile/hooks/useOptimisticPostCount";
 import { followMember } from "@/src/features/profile/api/followMember";
 import { unfollowMember } from "@/src/features/profile/api/unfollowMember";
 
@@ -60,6 +59,7 @@ export default function UserProfilePage({ userId }: Props) {
   const [postCount, setPostCount] = useState(0);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [isMe, setIsMe] = useState(false);
 
   const {
     items: posts,
@@ -72,7 +72,6 @@ export default function UserProfilePage({ userId }: Props) {
     mode: "member",
     enabled: ready && isAuthenticated,
   });
-  const optimisticPostCount = useOptimisticPostCount(posts.length);
 
   /* ================= 프로필 ================= */
 
@@ -128,12 +127,8 @@ export default function UserProfilePage({ userId }: Props) {
         });
 
         setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(
-          Number(apiAggregate?.followerCount ?? 0) || 0,
-        );
-        setFollowingCount(
-          Number(apiAggregate?.followingCount ?? 0) || 0,
-        );
+        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
+        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
 
         if (typeof apiIsFollowingRaw === "boolean") {
           setIsFollowing(apiIsFollowingRaw);
@@ -159,11 +154,42 @@ export default function UserProfilePage({ userId }: Props) {
   }, [memberId, ready, isAuthenticated]);
 
   useEffect(() => {
+    if (!ready || !isAuthenticated) return;
+    if (Number.isNaN(memberId)) return;
+
+    const fetchMe = async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (!res.ok) return;
+        const json = await res.json();
+        const myId = Number(json.data?.id ?? NaN);
+        if (!Number.isNaN(myId)) {
+          setIsMe(myId === memberId);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    fetchMe();
+  }, [memberId, ready, isAuthenticated]);
+
+  useEffect(() => {
     if (!ready) return;
     if (!isAuthenticated) {
       router.replace("/home");
     }
   }, [ready, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (posts.length === 0) return;
+    setPostCount((prev) => (prev > posts.length ? prev : posts.length));
+  }, [posts.length]);
 
   /* ================= 게시글 ================= */
 
@@ -202,75 +228,77 @@ export default function UserProfilePage({ userId }: Props) {
           <Image src="/icons/back.svg" alt="뒤로가기" width={24} height={24} />
         </button>
 
-        <button
-          type="button"
-          disabled={followLoading}
-          onClick={async () => {
-            if (followLoading) return;
-            setFollowLoading(true);
-            try {
-              const result = isFollowing
-                ? await unfollowMember(memberId)
-                : await followMember(memberId);
-              const nextIsFollowing = result.isFollowing ?? !isFollowing;
-              setIsFollowing(nextIsFollowing);
-              if (typeof result.aggregate?.followerCount === "number") {
-                setFollowerCount(result.aggregate.followerCount);
-              } else {
-                setFollowerCount((prev) =>
-                  Math.max(0, prev + (nextIsFollowing ? 1 : -1)),
-                );
-              }
-              if (typeof result.aggregate?.followingCount === "number") {
-                setFollowingCount(result.aggregate.followingCount);
-              }
-              if (typeof window !== "undefined") {
-                window.localStorage.setItem(
-                  `following:${memberId}`,
-                  nextIsFollowing ? "1" : "0",
-                );
-              }
-            } catch (err) {
-              const status =
-                typeof err === "object" && err !== null && "status" in err
-                  ? Number((err as { status?: number }).status)
-                  : null;
-              if (!isFollowing && status === 409) {
-                setIsFollowing(true);
-                setFollowerCount((prev) => prev + 1);
-                if (typeof window !== "undefined") {
-                  window.localStorage.setItem(`following:${memberId}`, "1");
+        {!isMe && (
+          <button
+            type="button"
+            disabled={followLoading}
+            onClick={async () => {
+              if (followLoading) return;
+              setFollowLoading(true);
+              try {
+                const result = isFollowing
+                  ? await unfollowMember(memberId)
+                  : await followMember(memberId);
+                const nextIsFollowing = result.isFollowing ?? !isFollowing;
+                setIsFollowing(nextIsFollowing);
+                if (typeof result.aggregate?.followerCount === "number") {
+                  setFollowerCount(result.aggregate.followerCount);
+                } else {
+                  setFollowerCount((prev) =>
+                    Math.max(0, prev + (nextIsFollowing ? 1 : -1)),
+                  );
                 }
-                return;
-              }
-              if (isFollowing && status === 409) {
-                setIsFollowing(false);
-                setFollowerCount((prev) => Math.max(0, prev - 1));
-                if (typeof window !== "undefined") {
-                  window.localStorage.setItem(`following:${memberId}`, "0");
+                if (typeof result.aggregate?.followingCount === "number") {
+                  setFollowingCount(result.aggregate.followingCount);
                 }
-                return;
+                if (typeof window !== "undefined") {
+                  window.localStorage.setItem(
+                    `following:${memberId}`,
+                    nextIsFollowing ? "1" : "0",
+                  );
+                }
+              } catch (err) {
+                const status =
+                  typeof err === "object" && err !== null && "status" in err
+                    ? Number((err as { status?: number }).status)
+                    : null;
+                if (!isFollowing && status === 409) {
+                  setIsFollowing(true);
+                  setFollowerCount((prev) => prev + 1);
+                  if (typeof window !== "undefined") {
+                    window.localStorage.setItem(`following:${memberId}`, "1");
+                  }
+                  return;
+                }
+                if (isFollowing && status === 409) {
+                  setIsFollowing(false);
+                  setFollowerCount((prev) => Math.max(0, prev - 1));
+                  if (typeof window !== "undefined") {
+                    window.localStorage.setItem(`following:${memberId}`, "0");
+                  }
+                  return;
+                }
+                const message =
+                  err instanceof Error
+                    ? err.message
+                    : "팔로우/언팔로우에 실패했습니다.";
+                alert(message);
+              } finally {
+                setFollowLoading(false);
               }
-              const message =
-                err instanceof Error
-                  ? err.message
-                  : "팔로우/언팔로우에 실패했습니다.";
-              alert(message);
-            } finally {
-              setFollowLoading(false);
+            }}
+            className={
+              isFollowing || followLoading
+                ? "rounded-full bg-gray-200 px-5 py-2 text-[12px] font-semibold text-gray-500"
+                : "rounded-full bg-black px-5 py-2 text-[12px] font-semibold text-white"
             }
-          }}
-          className={
-            isFollowing || followLoading
-              ? "rounded-full bg-gray-200 px-5 py-2 text-[12px] font-semibold text-gray-500"
-              : "rounded-full bg-black px-5 py-2 text-[12px] font-semibold text-white"
-          }
-        >
-          {followLoading ? "처리 중..." : isFollowing ? "팔로잉" : "팔로우"}
-        </button>
+          >
+            {followLoading ? "처리 중..." : isFollowing ? "팔로잉" : "팔로우"}
+          </button>
+        )}
       </div>
 
-      <div className="mx-auto w-full max-w-97.5">
+      <div className="mx-auto w-full max-w-[430px]">
         <ProfileSummary
           profile={profile}
           loading={false}

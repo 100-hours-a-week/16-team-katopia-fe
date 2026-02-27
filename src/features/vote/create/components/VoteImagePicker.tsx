@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { memo, useEffect, useId, useRef } from "react";
+import { memo, useEffect, useId, useRef, useCallback } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -21,15 +21,26 @@ import {
   useVoteImageUploader,
 } from "../hooks/useVoteImageUploader";
 
-function SortablePreview({
+const SortablePreview = memo(function SortablePreview({
   item,
-  onRemove,
+  index,
+  onRemoveAt,
 }: {
   item: PreviewItem;
-  onRemove: () => void;
+  index: number;
+  onRemoveAt: (index: number) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: item.id });
+
+  const handleRemove = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onRemoveAt(index);
+    },
+    [index, onRemoveAt],
+  );
 
   return (
     <div
@@ -40,25 +51,21 @@ function SortablePreview({
       }}
       {...attributes}
       {...listeners}
-      className="relative h-[400px] w-[78vw] max-w-[320px] shrink-0 overflow-hidden rounded-[14px] bg-gray-100"
+      className="relative h-100 w-[78vw] max-w-[320px] shrink-0 overflow-hidden rounded-[14px] bg-gray-100"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={item.url} alt="" className="h-full w-full object-cover" />
 
       <button
         type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onRemove();
-        }}
+        onClick={handleRemove}
         className="absolute right-2 top-2 rounded-full bg-white p-1"
       >
         <Image src="/icons/delete.svg" alt="삭제" width={24} height={24} />
       </button>
     </div>
   );
-}
+});
 
 const VoteImagePreviewList = memo(function VoteImagePreviewList({
   previews,
@@ -104,7 +111,8 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
               <SortablePreview
                 key={p.id}
                 item={p}
-                onRemove={() => onRemoveAt(i)}
+                index={i}
+                onRemoveAt={onRemoveAt}
               />
             ))}
 
@@ -112,7 +120,7 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
               <button
                 type="button"
                 onClick={onAddClick}
-                className="flex h-[380px] w-[78vw] max-w-[320px] flex-col items-center justify-center rounded-[14px] bg-gray-100 text-gray-400"
+                className="flex h-95 w-[78vw] max-w-[320px] flex-col items-center justify-center rounded-[14px] bg-gray-100 text-gray-400"
               >
                 <span className="text-[30px] leading-none">+</span>
                 <span className="mt-2 text-[12px]">투표 사진 올리기</span>
@@ -148,6 +156,10 @@ export default function VoteImagePicker({
     handleDragEnd,
     handleFileChange,
   } = useVoteImageUploader();
+  const minImageHelperText =
+    previews.length === 1
+      ? "투표 이미지는 2장 이상 업로드 가능합니다"
+      : null;
 
   useEffect(() => {
     onCountChange?.(previews.length);
@@ -196,8 +208,10 @@ export default function VoteImagePicker({
         isEmpty={previews.length === 0}
       />
 
-      {helperText && (
-        <p className="mt-4 text-[11px] text-[#ff5a5a]">{helperText}</p>
+      {(helperText || minImageHelperText) && (
+        <p className="mt-4 text-[11px] text-[#ff5a5a]">
+          {helperText ?? minImageHelperText}
+        </p>
       )}
     </div>
   );

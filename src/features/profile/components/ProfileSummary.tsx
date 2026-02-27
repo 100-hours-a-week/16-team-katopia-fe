@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { memo } from "react";
 import Avatar from "@/src/shared/components/Avatar";
 
 type Profile = {
@@ -17,7 +18,7 @@ type ProfileStats = {
   friendCount?: number | null;
 };
 
-export default function ProfileSummary({
+function ProfileSummary({
   profile,
   loading,
   stats,
@@ -144,3 +145,5 @@ export default function ProfileSummary({
     </section>
   );
 }
+
+export default memo(ProfileSummary);

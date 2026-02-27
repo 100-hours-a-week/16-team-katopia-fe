@@ -11,20 +11,30 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import heic2any from "heic2any";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
 
 const MAX_FILES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const MIN_WIDTH = 300;
-const MIN_HEIGHT = 400;
-const ACCEPT = "image/jpeg,image/png,image/heic,image/heif";
-const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".heic"]);
+const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const ACCEPT = "image/*";
+const ALLOWED_EXTENSIONS = new Set([
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+  ".heif",
+  ".gif",
+  ".svg",
+]);
 
 type PreviewItem = {
   id: string;
   url: string;
-  originalName: string;
-  internalName: string;
-  blob: Blob;
+  name: string;
+  objectKey: string;
 };
 
 const getExtension = (name: string) => {
@@ -40,87 +50,77 @@ const isSupportedImageFile = (file: File) => {
   return true;
 };
 
-const buildInternalName = () => `${crypto.randomUUID()}.jpg`;
+type EncodedImage = {
+  blob: Blob;
+  contentType: string;
+  extension: string;
+};
 
-async function loadImageBitmap(file: File) {
-  return createImageBitmap(file, { imageOrientation: "from-image" });
-}
-
-async function normalizeHeic(file: File): Promise<File> {
+async function resizeAndCompress(
+  file: File,
+  maxLongSide = 1440,
+): Promise<EncodedImage> {
+  let sourceFile = file;
   const isHeicLike =
     file.type === "image/heic" ||
     file.type === "image/heif" ||
     file.name.toLowerCase().endsWith(".heic") ||
     file.name.toLowerCase().endsWith(".heif");
+  if (isHeicLike) {
+    try {
+      const buffer = await file.arrayBuffer();
+      const heicBlob = new Blob([buffer], {
+        type: file.type || "image/heic",
+      });
+      const converted = await heic2any({
+        blob: heicBlob,
+        toType: "image/jpeg",
+        quality: 0.92,
+      });
 
-  if (!isHeicLike) return file;
-
-  const buffer = await file.arrayBuffer();
-  const heicBlob = new Blob([buffer], {
-    type: file.type || "image/heic",
-  });
-  const converted = await heic2any({
-    blob: heicBlob,
-    toType: "image/jpeg",
-    quality: 0.92,
-  });
-  const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-  const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
-  return new File([jpegBlob], safeName, { type: "image/jpeg" });
-}
-
-function cropToThreeFour(bitmap: ImageBitmap) {
-  const targetRatio = 3 / 4;
-  const currentRatio = bitmap.width / bitmap.height;
-  let sx = 0;
-  let sy = 0;
-  let sw = bitmap.width;
-  let sh = bitmap.height;
-
-  if (currentRatio > targetRatio) {
-    sw = Math.round(bitmap.height * targetRatio);
-    sx = Math.round((bitmap.width - sw) / 2);
-  } else if (currentRatio < targetRatio) {
-    sh = Math.round(bitmap.width / targetRatio);
-    sy = Math.round((bitmap.height - sh) / 2);
+      const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+      const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
+      sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
+    } catch {
+      throw new Error(
+        "HEIC 파일은 업로드할 수 없습니다. JPG/PNG로 변환해주세요.",
+      );
+    }
   }
 
-  return { sx, sy, sw, sh };
-}
+  const bitmap = await createImageBitmap(sourceFile, {
+    imageOrientation: "from-image",
+  });
 
-async function processImage(file: File): Promise<Blob> {
-  const normalized = await normalizeHeic(file);
-  const bitmap = await loadImageBitmap(normalized);
-
-  if (bitmap.width < MIN_WIDTH || bitmap.height < MIN_HEIGHT) {
-    throw new Error("사진이 너무 작습니다. (최소 300x400 px)");
-  }
-
-  const { sx, sy, sw, sh } = cropToThreeFour(bitmap);
-  const targetWidth = 1080;
-  const targetHeight = 1440;
+  const scale = Math.min(
+    1,
+    maxLongSide / Math.max(bitmap.width, bitmap.height),
+  );
   const canvas = document.createElement("canvas");
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
+  canvas.width = bitmap.width * scale;
+  canvas.height = bitmap.height * scale;
 
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("이미지 처리에 실패했습니다.");
+  const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
 
   const blob = await new Promise<Blob>((resolve) =>
     canvas.toBlob(
       (result) => {
-        if (!result) throw new Error("이미지 처리에 실패했습니다.");
+        if (!result) throw new Error("이미지 압축 실패");
         resolve(result);
       },
-      "image/jpeg",
+      "image/webp",
       0.92,
     ),
   );
 
-  return blob;
+  return {
+    blob,
+    contentType: "image/webp",
+    extension: "webp",
+  };
 }
 
 export function useVoteImageUploader() {
@@ -129,6 +129,7 @@ export function useVoteImageUploader() {
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [helperText, setHelperText] = useState<string | null>(null);
   const previewsRef = useRef<PreviewItem[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const previewIds = useMemo(() => previews.map((p) => p.id), [previews]);
 
@@ -167,18 +168,18 @@ export function useVoteImageUploader() {
     });
   }, []);
 
-  const handleDragEnd = useCallback(
-    ({ active, over }: DragEndEvent) => {
-      if (!over || active.id === over.id) return;
-      const activeId = String(active.id);
-      const overId = String(over.id);
-      const oldIndex = previews.findIndex((p) => p.id === activeId);
-      const newIndex = previews.findIndex((p) => p.id === overId);
-      if (oldIndex < 0 || newIndex < 0) return;
-      setPreviews((p) => arrayMove(p, oldIndex, newIndex));
-    },
-    [previews],
-  );
+  const handleDragEnd = useCallback(({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    setPreviews((prev) => {
+      const oldIndex = prev.findIndex((p) => p.id === activeId);
+      const newIndex = prev.findIndex((p) => p.id === overId);
+      if (oldIndex < 0 || newIndex < 0) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }, []);
 
   const handleFileChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -186,7 +187,7 @@ export function useVoteImageUploader() {
       if (!files.length) return;
       setHelperText(null);
 
-      const remain = MAX_FILES - previews.length;
+      const remain = MAX_FILES - previewsRef.current.length;
       if (remain <= 0) {
         setHelperText("최대 5장까지 업로드할 수 있습니다.");
         resetInput();
@@ -198,15 +199,12 @@ export function useVoteImageUploader() {
       const hasUnsupported = selected.some(
         (file) => !isSupportedImageFile(file),
       );
-      if (hasUnsupported) {
-        setHelperText(
-          "지원하지 않는 확장자 입니다.(JPG, JPEG, PNG, HEIC만 가능합니다.)",
-        );
-      }
-
       const hasOversize = selected.some((file) => file.size > MAX_FILE_SIZE);
-      if (hasOversize) {
-        setHelperText("사진 크기가 너무 큽니다. (최대 10MB)");
+      if (hasOversize || hasUnsupported) {
+        const message = hasOversize
+          ? "이미지 용량은 최대 30MB까지 가능합니다."
+          : "지원하지 않는 이미지 형식입니다.";
+        setHelperText(message);
       }
 
       const validSelected = selected.filter(
@@ -217,32 +215,80 @@ export function useVoteImageUploader() {
         return;
       }
 
+      const tempItems: PreviewItem[] = validSelected.map((file) => {
+        const id = crypto.randomUUID();
+        return {
+          id,
+          url: URL.createObjectURL(file),
+          name: file.name,
+          objectKey: `pending:${id}`,
+        };
+      });
+
       try {
-        const processed = await Promise.all(
-          validSelected.map(async (file) => {
-            const blob = await processImage(file);
-            const id = crypto.randomUUID();
-            return {
-              id,
-              blob,
-              originalName: file.name,
-              internalName: buildInternalName(),
-              url: URL.createObjectURL(blob),
-            };
-          }),
+        setPreviews((prev) => [...prev, ...tempItems]);
+        setIsUploading(true);
+
+        const encoded = await Promise.all(
+          validSelected.map((file) => resizeAndCompress(file)),
         );
 
-        setPreviews((prev) => [...prev, ...processed]);
+        const presigned = await requestUploadPresign(
+          "VOTE",
+          encoded.map((item) => item.extension),
+        );
+
+        if (presigned.length !== encoded.length) {
+          throw new Error("업로드 URL 개수가 이미지 수와 일치하지 않습니다.");
+        }
+
+        await Promise.all(
+          presigned.map((p, i) =>
+            uploadToPresignedUrl(
+              p.uploadUrl,
+              encoded[i].blob,
+              encoded[i].contentType,
+            ),
+          ),
+        );
+
+        const tempToReal = new Map(
+          presigned.map((p, i) => [
+            tempItems[i].objectKey,
+            p.imageObjectKey.replace(/^\/+/, ""),
+          ]),
+        );
+
+        setPreviews((prev) =>
+          prev.map((item) => ({
+            ...item,
+            objectKey: tempToReal.get(item.objectKey) ?? item.objectKey,
+          })),
+        );
+
+        const unresolved = tempItems.some(
+          (item) => !tempToReal.has(item.objectKey),
+        );
+        if (unresolved) {
+          throw new Error("일부 이미지 업로드를 완료하지 못했습니다.");
+        }
+
         setHelperText(null);
       } catch (err) {
+        tempItems.forEach((i) => URL.revokeObjectURL(i.url));
+        setPreviews((prev) =>
+          prev.filter((p) => !tempItems.some((t) => t.id === p.id)),
+        );
+
         setHelperText(
-          err instanceof Error ? err.message : "사진 업로드를 실패했습니다",
+          err instanceof Error ? err.message : "이미지 업로드에 실패했습니다.",
         );
       } finally {
+        setIsUploading(false);
         resetInput();
       }
     },
-    [previews.length, resetInput],
+    [resetInput],
   );
 
   return {
@@ -252,6 +298,7 @@ export function useVoteImageUploader() {
     previewIds,
     sensors,
     helperText,
+    isUploading,
     canAdd: previews.length < MAX_FILES,
     handleAddClick,
     handleRemoveAt,

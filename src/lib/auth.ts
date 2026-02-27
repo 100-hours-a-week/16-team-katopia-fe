@@ -7,6 +7,7 @@ let accessToken: string | null = null;
 let authInvalidated = false;
 let refreshPromise: Promise<string> | null = null;
 
+const ACCESS_TOKEN_KEY = "katopia.accessToken";
 const LOGOUT_FLAG_KEY = "katopia.loggedOut";
 const HAS_LOGGED_IN_KEY = "katopia.hasLoggedIn";
 
@@ -16,14 +17,31 @@ const HAS_LOGGED_IN_KEY = "katopia.hasLoggedIn";
 
 export function setAccessToken(token: string) {
   accessToken = token;
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
+  } catch {}
 }
 
 export function getAccessToken() {
+  if (accessToken) return accessToken;
+  if (typeof window === "undefined") return accessToken;
+  try {
+    const stored = window.sessionStorage.getItem(ACCESS_TOKEN_KEY);
+    if (stored) {
+      accessToken = stored;
+      return stored;
+    }
+  } catch {}
   return accessToken;
 }
 
 export function clearAccessToken() {
   accessToken = null;
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
+  } catch {}
 }
 
 /* =======================
@@ -95,6 +113,28 @@ export function notifyAuthInvalid() {
   }
 }
 
+function decodeJwtPayload(token: string): { exp?: number } | null {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = parts[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded =
+      normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const json = atob(padded);
+    return JSON.parse(json) as { exp?: number };
+  } catch {
+    return null;
+  }
+}
+
+export function isAccessTokenExpired(token: string, skewSeconds = 30) {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return false;
+  const now = Date.now();
+  return payload.exp * 1000 <= now + skewSeconds * 1000;
+}
+
 /* =======================
  * Issue Access Token (RT → AT)
  * ======================= */
@@ -104,40 +144,62 @@ export async function issueAccessToken() {
     // console.log("[issueAccessToken] blocked: loggedOutFlag");
     throw new Error("LOGGED_OUT");
   }
+  const existing = getAccessToken();
+  if (existing && !isAccessTokenExpired(existing)) {
+    return existing;
+  }
   // 🔐 재발급은 반드시 단일 Promise
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
-    // console.log("[issueAccessToken] request /api/auth/tokens start");
-    const res = await fetch(`${API_BASE_URL}/api/auth/tokens`, {
-      method: "POST",
-      credentials: "include",
-    });
-    // console.log("[issueAccessToken] response", { status: res.status });
+    let res: Response;
+    try {
+      // console.log("[issueAccessToken] request /api/auth/tokens start");
+      res = await fetch(`${API_BASE_URL}/api/auth/tokens`, {
+        method: "POST",
+        credentials: "include",
+      });
+      // console.log("[issueAccessToken] response", { status: res.status });
+    } catch (error) {
+      if (typeof window !== "undefined") {
+        console.warn("[issueAccessToken] network error", error);
+      }
+      throw new Error("REFRESH_FAILED");
+    }
 
     if (!res.ok) {
       const body = await res
         .clone()
         .json()
         .catch(() => null);
-      // console.log("[issueAccessToken] error body", body);
       if (typeof window !== "undefined") {
-        try {
-          const message = (body as { message?: string } | null)?.message ?? "";
-          if (message) {
-            window.sessionStorage.setItem(
-              "katopia.authInvalidMessage",
-              message,
-            );
-          } else {
-            window.sessionStorage.removeItem("katopia.authInvalidMessage");
-          }
-        } catch {
-          // ignore storage errors
-        }
+        console.warn("[issueAccessToken] failed", {
+          status: res.status,
+          body,
+        });
       }
-      notifyAuthInvalid();
-      throw new Error("RT expired");
+
+      if (res.status === 401 || res.status === 403) {
+        if (typeof window !== "undefined") {
+          try {
+            const message = (body as { message?: string } | null)?.message ?? "";
+            if (message) {
+              window.sessionStorage.setItem(
+                "katopia.authInvalidMessage",
+                message,
+              );
+            } else {
+              window.sessionStorage.removeItem("katopia.authInvalidMessage");
+            }
+          } catch {
+            // ignore storage errors
+          }
+        }
+        notifyAuthInvalid();
+        throw new Error("AUTH_INVALID");
+      }
+
+      throw new Error("REFRESH_FAILED");
     }
 
     const json = await res.json();
@@ -147,7 +209,7 @@ export async function issueAccessToken() {
     if (!token) {
       // console.log("[issueAccessToken] missing accessToken");
       notifyAuthInvalid();
-      throw new Error("No access token");
+      throw new Error("AUTH_INVALID");
     }
 
     setAccessToken(token);
@@ -197,7 +259,7 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
   // });
 
   // AT 없으면 1회 재발급
-  if (!token && !init.skipAuthRefresh) {
+  if ((!token || isAccessTokenExpired(token)) && !init.skipAuthRefresh) {
     // console.log("[authFetch] no token, issuing access token");
     token = await issueAccessToken(); // 실패 시 throw
     // console.log("[authFetch] issued access token", {
@@ -258,9 +320,12 @@ export async function authFetch(input: RequestInfo, init: AuthFetchInit = {}) {
     }
 
     return res;
-  } catch {
-    // console.log("[authFetch] refresh failed -> auth invalid");
-    notifyAuthInvalid();
-    throw new Error("AUTH_INVALID");
+  } catch (error) {
+    if (error instanceof Error && error.message === "AUTH_INVALID") {
+      // console.log("[authFetch] refresh failed -> auth invalid");
+      notifyAuthInvalid();
+      throw error;
+    }
+    throw error;
   }
 }

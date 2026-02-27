@@ -5,6 +5,8 @@ import Image from "next/image";
 
 import { likePost } from "../api/likePost";
 import { unlikePost } from "../api/unlikePost";
+import { bookmarkPost } from "../api/bookmarkPost";
+import { unbookmarkPost } from "../api/unbookmarkPost";
 import { useCommentCount } from "../hooks/useCommentCountStore";
 
 type PostContentProps = {
@@ -12,16 +14,18 @@ type PostContentProps = {
   content: string;
   likeCount: number;
   isLiked?: boolean; // (추후 API 대비)
+  isBookmarked?: boolean;
   onLikedChange?: (nextLiked: boolean) => void;
+  onBookmarkedChange?: (nextBookmarked: boolean) => void;
 };
 
-function BookmarkIcon() {
+function BookmarkIcon({ active }: { active: boolean }) {
   return (
     <svg
       viewBox="0 0 24 24"
       aria-hidden="true"
       className="h-7 w-7"
-      fill="none"
+      fill={active ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth="1.8"
     >
@@ -39,21 +43,26 @@ export default function PostContent({
   content,
   likeCount,
   isLiked = false,
+  isBookmarked = false,
   onLikedChange,
+  onBookmarkedChange,
 }: PostContentProps) {
   const { count: commentCount } = useCommentCount();
   const [liked, setLiked] = useState(isLiked);
   const [likes, setLikes] = useState(likeCount);
   const [liking, setLiking] = useState(false);
+  const [bookmarked, setBookmarked] = useState(isBookmarked);
+  const [bookmarking, setBookmarking] = useState(false);
   const lastLikeCountRef = useRef(likeCount);
 
   useEffect(() => {
     setLiked(isLiked);
+    setBookmarked(isBookmarked);
     if (lastLikeCountRef.current !== likeCount) {
       setLikes(likeCount);
       lastLikeCountRef.current = likeCount;
     }
-  }, [isLiked, likeCount]);
+  }, [isLiked, isBookmarked, likeCount]);
 
   const formatCount = (value: number) => {
     if (value < 1000) return String(value);
@@ -128,6 +137,48 @@ export default function PostContent({
     }
   };
 
+  const handleToggleBookmark = async () => {
+    if (bookmarking) return;
+    setBookmarking(true);
+
+    const prevBookmarked = bookmarked;
+    const nextBookmarked = !prevBookmarked;
+
+    setBookmarked(nextBookmarked);
+    onBookmarkedChange?.(nextBookmarked);
+
+    try {
+      const result = nextBookmarked
+        ? await bookmarkPost(postId)
+        : await unbookmarkPost(postId);
+      if (typeof result.isBookmarked === "boolean") {
+        setBookmarked(result.isBookmarked);
+        onBookmarkedChange?.(result.isBookmarked);
+      }
+    } catch (e: unknown) {
+      const error = e as { code?: string; status?: number };
+      setBookmarked(prevBookmarked);
+      onBookmarkedChange?.(prevBookmarked);
+
+      switch (error.code) {
+        case "AUTH-E-002":
+          alert("로그인이 필요합니다.");
+          break;
+        case "POST-E-005":
+          alert("게시글을 찾을 수 없습니다.");
+          break;
+        default:
+          alert(
+            nextBookmarked
+              ? "북마크에 실패했습니다."
+              : "북마크 해제에 실패했습니다.",
+          );
+      }
+    } finally {
+      setBookmarking(false);
+    }
+  };
+
   return (
     <div className="mt-4 space-y-5">
       {/* 좋아요 / 댓글 */}
@@ -156,8 +207,15 @@ export default function PostContent({
           </div>
         </div>
 
-        <button type="button" aria-label="저장" className="text-neutral-900">
-          <BookmarkIcon />
+        <button
+          type="button"
+          aria-label="저장"
+          className="text-neutral-900"
+          onClick={handleToggleBookmark}
+          aria-pressed={bookmarked}
+          disabled={bookmarking}
+        >
+          <BookmarkIcon active={bookmarked} />
         </button>
       </div>
 

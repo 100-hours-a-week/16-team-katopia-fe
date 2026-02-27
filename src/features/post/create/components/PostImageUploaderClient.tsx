@@ -40,7 +40,7 @@ function SortablePreview({
       }}
       {...attributes}
       {...listeners}
-      className="relative h-[55vh] w-88.75 shrink-0 rounded-[5px] overflow-hidden bg-gray-200"
+    className="relative h-[60vh] w-88.75 shrink-0 overflow-hidden rounded-[5px] bg-gray-200"
     >
       {/* eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text */}
       <img src={item.url} className="h-full w-full object-cover" />
@@ -52,9 +52,9 @@ function SortablePreview({
           e.stopPropagation();
           onRemove();
         }}
-        className="absolute right-2 top-2 bg-white rounded-full p-1"
+        className="absolute right-2 top-2 rounded-full bg-white p-1"
       >
-        <Image src="/icons/delete.svg" alt="" width={28} height={28} />
+        <Image src="/icons/delete.svg" alt="삭제" width={24} height={24} />
       </button>
     </div>
   );
@@ -93,7 +93,13 @@ const PostImagePreviewList = memo(function PostImagePreviewList({
           ref={scrollRef}
           className="mt-4 w-full overflow-x-scroll overflow-y-hidden touch-pan-x image-preview-scroll"
         >
-          <div className="flex gap-3 min-w-max">
+          <div
+            className={
+              previews.length === 0
+                ? "flex w-full justify-center"
+                : "flex min-w-max gap-3"
+            }
+          >
             {previews.map((p, i) => (
               <SortablePreview
                 key={p.id}
@@ -106,9 +112,16 @@ const PostImagePreviewList = memo(function PostImagePreviewList({
               <button
                 type="button"
                 onClick={onAddClick}
-                className="h-[52vh] w-88.75 rounded-xl bg-gray-200 flex items-center justify-center"
+                className="flex h-[60vh] w-88.75 flex-col items-center justify-center rounded-xl bg-gray-200 text-gray-400"
               >
-                <Image src="/icons/upload.svg" alt="" width={24} height={24} />
+                <span className="text-[30px] leading-none">+</span>
+                <span className="mt-2 text-[12px]">게시글 사진 올리기</span>
+                <span className="mt-3 text-[10px] text-gray-400">
+                  JPG, JPEG, PNG, WEBP
+                </span>
+                <span className="text-[10px] text-gray-400">
+                  최대 3장 업로드 가능
+                </span>
               </button>
             )}
           </div>
@@ -119,7 +132,7 @@ const PostImagePreviewList = memo(function PostImagePreviewList({
 });
 
 /* ---------------- PostImageUploader ---------------- */
-export default function PostImageUploader() {
+export default function PostImageUploaderClient() {
   const inputId = useId();
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevCountRef = useRef(0);
@@ -186,7 +199,7 @@ export default function PostImageUploader() {
       {(helperText ||
         (typeof errors.imageObjectKeys?.message === "string" &&
           errors.imageObjectKeys?.message)) && (
-        <p className="mt-2 text-[11px] text-red-500">
+        <p className="mt-4 text-[11px] text-[#ff5a5a]">
           {helperText ??
             (errors.imageObjectKeys?.message as string | undefined)}
         </p>

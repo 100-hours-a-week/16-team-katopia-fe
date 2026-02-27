@@ -25,7 +25,7 @@ export default function SignupStep1() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="w-full max-w-97.5 min-h-211 mx-auto px-6 py-8"
+      className="w-full max-w-[430px] min-h-211 mx-auto px-6 py-8"
     >
       <Header />
 

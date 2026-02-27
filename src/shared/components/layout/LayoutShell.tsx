@@ -1,14 +1,17 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import BottomNav from "./BottomNav";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { hasLoggedInFlag } from "@/src/lib/auth";
 import LoginBottomSheet from "@/src/features/home/components/LoginBottomsSheet";
+import { toast, ToastContainer } from "react-toastify";
+import { useNotificationStream } from "@/src/features/notifications/hooks/useNotificationStream";
+import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
 
-const HIDE_BOTTOM_NAV_PATHS = ["/", "/withdraw/success"];
+const HIDE_BOTTOM_NAV_PATHS = ["/", "/withdraw/success", "/notifications"];
 const LOGIN_GUARD_PATHS = ["/post", "/vote", "/search", "/home"];
 const LOGIN_GUARD_EXCLUDED_PATHS = ["/"];
 
@@ -22,6 +25,8 @@ export default function LayoutShell({ children }: Props) {
   const hideBottomNav = HIDE_BOTTOM_NAV_PATHS.includes(pathname ?? "");
   const { ready, isAuthenticated, authInvalidated } = useAuth();
   const hasAlertedRef = useRef(false);
+  const [showBottomNav, setShowBottomNav] = useState(false);
+  const clearNotifications = useNotificationsStore((state) => state.clear);
   const isPendingSignup = searchParams.get("status") === "PENDING";
   const isActiveLogin = searchParams.get("status") === "ACTIVE";
   const isWithdrawnState = searchParams.get("STATE") === "WITHDRAWN";
@@ -60,9 +65,28 @@ export default function LayoutShell({ children }: Props) {
   }, [authInvalidated, isActiveLogin, isPendingSignup, isWithdrawnState]);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.body.style.backgroundColor = "#ffffff";
-  }, [pathname]);
+    if (!ready) return;
+    if (isAuthenticated) return;
+    clearNotifications();
+  }, [ready, isAuthenticated, clearNotifications]);
+
+  useEffect(() => {
+    if (hideBottomNav) return;
+    if (typeof window === "undefined") return;
+    const win = window as Window & {
+      requestIdleCallback?: (cb: IdleRequestCallback) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId: number | null = null;
+    if (win.requestIdleCallback) {
+      idleId = win.requestIdleCallback(() => setShowBottomNav(true));
+      return () => {
+        if (idleId !== null) win.cancelIdleCallback?.(idleId);
+      };
+    }
+    const timeoutId = win.setTimeout(() => setShowBottomNav(true), 300);
+    return () => win.clearTimeout(timeoutId);
+  }, [hideBottomNav]);
 
   useEffect(() => {
     if (!isWithdrawnState) return;
@@ -95,6 +119,31 @@ export default function LayoutShell({ children }: Props) {
     window.close();
   }, [isWithdrawnState, isWithdrawnPopup]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    if (typeof window === "undefined") return;
+    try {
+      if (window.sessionStorage.getItem("katopia.toastPreviewShown") === "1") {
+        return;
+      }
+      window.sessionStorage.setItem("katopia.toastPreviewShown", "1");
+    } catch {
+      // ignore storage errors
+    }
+
+    window.setTimeout(() => {
+      toast.info("토스트 스타일 미리보기 (info)");
+      toast.success("저장되었습니다 (success)");
+      toast.warn("확인이 필요합니다 (warn)");
+      toast.error("오류가 발생했습니다 (error)");
+    }, 300);
+  }, []);
+
+  useNotificationStream({
+    enabled: ready && isAuthenticated,
+    heartbeatTimeoutMs: 1000 * 60 * 65,
+  });
+
   const shouldLock =
     ready &&
     !isAuthenticated &&
@@ -109,14 +158,32 @@ export default function LayoutShell({ children }: Props) {
   return (
     <>
       <div
-        className={`mx-auto min-h-screen w-full max-w-97.5 bg-[#ffffff] ${
+        className={`mx-auto min-h-screen w-full max-w-107.5 bg-[#ffffff] ${
           hideBottomNav ? "" : "pb-16"
         }`}
       >
         {children}
       </div>
-      {!hideBottomNav && <BottomNav />}
+      {!hideBottomNav && showBottomNav && <BottomNav />}
       {shouldLock && <LoginBottomSheet persist />}
+      <ToastContainer
+        position="top-center"
+        newestOnTop
+        closeOnClick
+        closeButton
+        draggable
+        hideProgressBar
+        limit={10}
+        theme="light"
+        toastStyle={{
+          borderRadius: 30,
+          background: "rgba(245, 245, 245, 0.88)",
+          color: "#121212",
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 5,
+        }}
+      />
     </>
   );
 }

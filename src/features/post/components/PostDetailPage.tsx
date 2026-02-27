@@ -19,7 +19,9 @@ export default function PostDetailPage() {
     loading,
     sortedImageUrls,
     effectiveLiked,
+    effectiveBookmarked,
     setLikedOverride,
+    setBookmarkedOverride,
     deleteOpen,
     setDeleteOpen,
     isMine,
@@ -45,7 +47,7 @@ export default function PostDetailPage() {
 
   return (
     <CommentCountProvider value={commentCountStore}>
-      <div className="min-h-screen px-4 py-4">
+      <div className="min-h-screen px-2 py-4">
         <PostHeader
           author={post.author}
           createdAt={post.createdAt}
@@ -61,8 +63,12 @@ export default function PostDetailPage() {
           content={post.content}
           likeCount={post.aggregate.likeCount}
           isLiked={effectiveLiked}
+          isBookmarked={effectiveBookmarked}
           onLikedChange={(next) => {
             setLikedOverride(next);
+          }}
+          onBookmarkedChange={(next) => {
+            setBookmarkedOverride(next);
           }}
         />
 

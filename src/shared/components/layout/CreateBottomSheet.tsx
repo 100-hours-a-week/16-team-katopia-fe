@@ -26,7 +26,7 @@ function UploadCard({
   href: string;
 }) {
   return (
-    <div className="flex h-[300px] flex-col rounded-[22px] border border-gray-200 bg-white px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+    <div className="flex h-75 flex-col rounded-[22px] border border-gray-200 bg-white px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.04)]">
       <p className="text-[14px] font-semibold text-[#121212]">{title}</p>
       <p className="mt-1 text-[10px] text-gray-500">{description}</p>
 
@@ -81,7 +81,7 @@ export default function CreateBottomSheet({ open, onOpenChange }: Props) {
         className="
           rounded-t-[28px]
           px-5 pb-8 pt-4
-          w-full max-w-97.5 mx-auto
+          w-full max-w-107.5 mx-auto
           min-h-[40vh]
           bg-white
         "

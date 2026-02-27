@@ -130,8 +130,45 @@ export default function HomeInfoCarousel() {
 
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = "katopia.home.weather";
+    const ttlMs = 10 * 60 * 1000;
+
+    const loadCache = () => {
+      if (typeof window === "undefined") return null;
+      try {
+        const raw = window.sessionStorage.getItem(cacheKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw) as {
+          ts: number;
+          data: WeatherState[];
+        };
+        if (!parsed?.ts || !Array.isArray(parsed.data)) return null;
+        if (Date.now() - parsed.ts > ttlMs) return null;
+        return parsed.data;
+      } catch {
+        return null;
+      }
+    };
+
+    const saveCache = (data: WeatherState[]) => {
+      if (typeof window === "undefined") return;
+      try {
+        window.sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({ ts: Date.now(), data }),
+        );
+      } catch {
+        // ignore storage errors
+      }
+    };
 
     const fetchWeather = async () => {
+      const cached = loadCache();
+      if (cached) {
+        setWeatherList(cached);
+        return;
+      }
+
       try {
         const results = await Promise.all(
           DEFAULT_LOCATIONS.map(async (location) => {
@@ -171,6 +208,7 @@ export default function HomeInfoCarousel() {
 
         if (cancelled) return;
         setWeatherList(results);
+        saveCache(results);
       } catch {
         if (cancelled) return;
         setWeatherList((prev) =>
@@ -244,7 +282,7 @@ export default function HomeInfoCarousel() {
 
   return (
     <section className="mt-4 mb-6">
-      <div className="relative h-[86px] overflow-hidden rounded-[999px] bg-white/80 backdrop-blur">
+      <div className="relative h-21.5 overflow-hidden rounded-[999px] bg-white/80 backdrop-blur">
         <div
           className="flex h-full flex-col transition-transform duration-500 ease-out"
           style={{
@@ -252,12 +290,9 @@ export default function HomeInfoCarousel() {
           }}
         >
           {slides.map((slide) => (
-            <div
-              key={slide.id}
-              className="h-[86px] w-full flex-shrink-0 bg-white/80"
-            >
+            <div key={slide.id} className="h-21.5 w-full shrink-0 bg-white/80">
               <div className="flex h-full items-center text-black">
-                <div className="flex h-full w-[78px] items-center justify-center border-r border-white/30">
+                <div className="flex h-full w-19.5 items-center justify-center border-r border-white/30">
                   <span className="text-[30px]" aria-hidden="true">
                     {slide.icon}
                   </span>

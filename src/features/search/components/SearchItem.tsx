@@ -5,10 +5,9 @@ import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 type Props = {
   src: string;
   postId: number;
-  priority?: boolean;
 };
 
-export default function SearchItem({ src, postId, priority }: Props) {
+export default function SearchItem({ src, postId }: Props) {
   const resolvedSrc = resolveMediaUrl(src);
 
   return (
@@ -24,9 +23,7 @@ export default function SearchItem({ src, postId, priority }: Props) {
           fill
           sizes="(max-width: 768px) 33vw, 200px"
           className="object-cover"
-          priority={Boolean(priority)}
-          fetchPriority={priority ? "high" : "auto"}
-          loading={priority ? "eager" : "lazy"}
+          loading="lazy"
           quality={70}
         />
       )}

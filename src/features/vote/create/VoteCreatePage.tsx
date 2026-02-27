@@ -9,25 +9,21 @@ import VoteImagePicker from "./components/VoteImagePicker";
 import VoteSubmitButton from "./components/VoteSubmitButton";
 import VoteCancelConfirmModal from "./components/VoteCancelConfirmModal";
 import type { PreviewItem } from "./hooks/useVoteImageUploader";
-import {
-  requestUploadPresign,
-  uploadToPresignedUrl,
-} from "@/src/features/upload/api/presignUpload";
 import { createVote } from "../api/createVote";
+
+const MIN_VOTE_IMAGES = 2;
 
 export default function VoteCreatePage() {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [isOverLimit, setIsOverLimit] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const [isTitleValid, setIsTitleValid] = useState(false);
+  const [isTitleDirty, setIsTitleDirty] = useState(false);
   const [imageCount, setImageCount] = useState(0);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
-  const titleHelperText = isOverLimit
-    ? "최대 20자까지 입력할 수 있어요."
-    : null;
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -47,36 +43,20 @@ export default function VoteCreatePage() {
     };
   }, []);
 
-  const trimEdgeSpaces = useCallback(
-    (value: string) => value.replace(/^\s+|\s+$/g, ""),
-    [],
+  const hasPendingUpload = previews.some((p) =>
+    p.objectKey.startsWith("pending:"),
   );
-
-  const handleTitleChange = useCallback(
-    (next: string) => {
-      const normalized = trimEdgeSpaces(next);
-      if (normalized.length > 20) {
-        setTitle(normalized.slice(0, 20));
-        setIsOverLimit(true);
-        return;
-      }
-      setIsOverLimit(false);
-      setTitle(normalized);
-    },
-    [trimEdgeSpaces],
-  );
-
-  const isTitleValid = title.length > 0 && !isOverLimit;
-  const canSubmit = isTitleValid && imageCount > 0;
+  const canSubmit =
+    isTitleValid && imageCount >= MIN_VOTE_IMAGES && !hasPendingUpload;
 
   const handleBack = useCallback(() => {
-    const isDirty = title.length > 0 || imageCount > 0;
+    const isDirty = isTitleDirty || imageCount > 0;
     if (isDirty) {
       setShowCancelModal(true);
       return;
     }
     router.back();
-  }, [imageCount, router, title.length]);
+  }, [imageCount, isTitleDirty, router]);
 
   const handleSubmit = useCallback(async () => {
     if (!canSubmit || isSubmitting) return;
@@ -84,42 +64,39 @@ export default function VoteCreatePage() {
     let success = false;
 
     try {
-      const extensions = previews.map((item) => {
-        const ext = item.internalName.split(".").pop();
-        return ext ? ext.toLowerCase() : "jpg";
-      });
-
-      const presigned = await requestUploadPresign("VOTE", extensions);
-      if (presigned.length !== previews.length) {
-        throw new Error("업로드 정보를 불러오지 못했습니다.");
+      if (hasPendingUpload) {
+        setToastMessage("이미지 업로드를 완료해주세요.");
+        return;
       }
 
-      await Promise.all(
-        presigned.map((item, index) =>
-          uploadToPresignedUrl(
-            item.uploadUrl,
-            previews[index].blob,
-            previews[index].blob.type || "image/jpeg",
-          ),
-        ),
-      );
+      const titleValue = titleRef.current?.value ?? "";
+      const trimmedTitle = titleValue.trim();
+      if (!trimmedTitle) {
+        setToastMessage("제목을 입력해주세요.");
+        return;
+      }
 
-      const imageObjectKeys = presigned.map((p) =>
-        p.imageObjectKey.replace(/^\/+/, ""),
+      if (previews.length < MIN_VOTE_IMAGES) {
+        setToastMessage("투표 이미지는 2장 이상 올려주세요.");
+        return;
+      }
+
+      const imageObjectKeys = previews.map((p) =>
+        p.objectKey.replace(/^\/+/, ""),
       );
 
       const result = await createVote({
-        title: title.trim(),
+        title: trimmedTitle,
         imageObjectKeys,
       });
 
-      const voteId = result?.data?.id ?? result?.id;
+      const voteId = result?.id;
       if (!voteId) {
         throw new Error("투표 ID를 찾을 수 없습니다.");
       }
 
       success = true;
-      router.replace(`/vote/${voteId}`);
+      router.replace("/vote");
     } catch (error) {
       console.error(error);
       setToastMessage("잠시 후 다시 이용해주세요");
@@ -128,7 +105,7 @@ export default function VoteCreatePage() {
         setIsSubmitting(false);
       }
     }
-  }, [canSubmit, isSubmitting, previews, router, title]);
+  }, [canSubmit, hasPendingUpload, isSubmitting, previews, router]);
 
   return (
     <div className="min-h-screen bg-white px-5 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6">
@@ -137,10 +114,9 @@ export default function VoteCreatePage() {
       <section className="mt-8">
         <VoteCreateTitle />
         <VoteTitleInput
-          value={title}
-          onChange={handleTitleChange}
-          isOverLimit={isOverLimit}
-          helperText={titleHelperText}
+          inputRef={titleRef}
+          onValidityChange={setIsTitleValid}
+          onDirtyChange={setIsTitleDirty}
         />
         <VoteImagePicker
           onCountChange={setImageCount}

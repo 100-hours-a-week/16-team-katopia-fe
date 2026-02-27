@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useRef, useState, type KeyboardEvent } from "react";
 
 interface Props {
   onSubmit: (content: string) => void;
@@ -9,29 +9,11 @@ interface Props {
 
 export default function CommentInput({ onSubmit }: Props) {
   const MAX_COMMENT_LENGTH = 200;
-  const [value, setValue] = useState("");
   const [isComposing, setIsComposing] = useState(false);
   const [overLimit, setOverLimit] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const handleSubmit = () => {
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    onSubmit(trimmed);
-    setValue("");
-    setOverLimit(false);
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey && !isComposing) {
-      event.preventDefault();
-      handleSubmit();
-    }
-  };
-
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
+  const resizeTextarea = useCallback((el: HTMLTextAreaElement) => {
     const computed = window.getComputedStyle(el);
     const lineHeight = Number.parseFloat(computed.lineHeight || "0");
     const paddingTop = Number.parseFloat(computed.paddingTop || "0");
@@ -48,7 +30,39 @@ export default function CommentInput({ onSubmit }: Props) {
       el.style.height = `${nextHeight}px`;
       el.style.overflowY = "hidden";
     }
-  }, [value]);
+  }, []);
+
+  const handleSubmit = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const trimmed = el.value.trim();
+    if (!trimmed) return;
+    onSubmit(trimmed);
+    setOverLimit(false);
+    el.value = "";
+    resizeTextarea(el);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !isComposing) {
+      event.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  const handleInput = useCallback(
+    (event: React.FormEvent<HTMLTextAreaElement>) => {
+      const el = event.currentTarget;
+      if (el.value.length > MAX_COMMENT_LENGTH) {
+        el.value = el.value.slice(0, MAX_COMMENT_LENGTH);
+        setOverLimit(true);
+      } else if (overLimit) {
+        setOverLimit(false);
+      }
+      resizeTextarea(el);
+    },
+    [MAX_COMMENT_LENGTH, overLimit, resizeTextarea],
+  );
 
   return (
     <div
@@ -59,18 +73,7 @@ export default function CommentInput({ onSubmit }: Props) {
       <textarea
         placeholder="댓글을 입력하세요..."
         className="flex-1 resize-none text-[13px] outline-none"
-        value={value}
-        onChange={(event) => {
-          const next = event.target.value;
-          if (next.length <= MAX_COMMENT_LENGTH) {
-            setValue(next);
-            setOverLimit(false);
-            return;
-          } else {
-            setValue(next.slice(0, MAX_COMMENT_LENGTH));
-            setOverLimit(true);
-          }
-        }}
+        onInput={handleInput}
         onKeyDown={handleKeyDown}
         onCompositionStart={() => setIsComposing(true)}
         onCompositionEnd={() => setIsComposing(false)}

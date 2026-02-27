@@ -35,7 +35,7 @@ export default function LoginBottomSheet({ persist = false }: Props) {
         className="
           rounded-t-2xl
           px-6 pb-10
-          w-full max-w-97.5 mx-auto
+          w-full max-w-[430px] mx-auto
           min-h-[40vh]
           flex flex-col justify-center
           bg-[#fefefe]

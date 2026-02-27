@@ -1,15 +1,7 @@
 "use client";
 
 import HomeRecommendationCard from "./HomeRecommendationCard";
-
-export type HomeRecommendationMember = {
-  id: string;
-  name: string;
-  heightCm: number;
-  weightKg: number;
-  styles: string[];
-  avatarUrl?: string | null;
-};
+import type { HomeRecommendationMember } from "@/src/features/home/hooks/useHomeRecommendations";
 
 type HomeRecommendationSectionProps = {
   members: HomeRecommendationMember[];

@@ -91,6 +91,29 @@ body {
   color-scheme: light;
 }
 
+.route-fade-in {
+  animation: routeFadeIn 140ms ease-out both;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+@keyframes routeFadeIn {
+  from {
+    opacity: 0.98;
+    transform: translateY(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-fade-in {
+    animation: none;
+  }
+}
+
 input,
 textarea,
 select {
@@ -170,4 +193,8 @@ select:-webkit-autofill {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+.Toastify__toast .Toastify__close-button {
+  margin-left: -8px !important;
 }

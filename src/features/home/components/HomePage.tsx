@@ -1,110 +1,45 @@
 "use client";
 
 import AppHeader from "@/src/shared/components/layout/AppHeader";
-import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import HomeFeed, { type HomePost } from "./HomeFeed";
-import HomeRecommendationSection, {
-  type HomeRecommendationMember,
-} from "./HomeRecommendationSection";
-import HomeInfoCarousel from "./HomeInfoCarousel";
-
-const MOCK_POSTS: HomePost[] = [
-  {
-    id: "home-1",
-    author: {
-      displayName: "닉네임",
-      username: "joody",
-      avatarUrl: null,
-    },
-    imageUrl: null,
-    imageCount: 4,
-    likeCount: 50,
-    commentCount: 15,
-    caption: "안녕하세요!",
-  },
-];
-const MOCK_RECOMMENDATIONS: HomeRecommendationMember[] = [
-  {
-    id: "rec-1",
-    name: "닉네임 1",
-    heightCm: 160,
-    weightKg: 60,
-    styles: ["캐주얼", "미니멀"],
-    avatarUrl: null,
-  },
-  {
-    id: "rec-2",
-    name: "닉네임 2",
-    heightCm: 165,
-    weightKg: 55,
-    styles: ["스트릿", "빈티지"],
-    avatarUrl: null,
-  },
-  {
-    id: "rec-3",
-    name: "닉네임 3",
-    heightCm: 158,
-    weightKg: 52,
-    styles: ["페미닌", "클래식"],
-    avatarUrl: null,
-  },
-];
+import HomeFeed from "./HomeFeed";
+import HomeRecommendationSection from "./HomeRecommendationSection";
+import { useInfiniteHomeFeed } from "../hooks/useInfiniteHomeFeed";
+import { useHomeRecommendations } from "../hooks/useHomeRecommendations";
+import { useHomeQuerySync } from "../hooks/useHomeQuerySync";
+import { useSignupWelcomeToast } from "../hooks/useSignupWelcomeToast";
+import { useHomeScrollRestoration } from "../hooks/useHomeScrollRestoration";
 
 export default function HomePage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  useAuth();
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isActiveState = searchParams.get("STATE") === "ACTIVE";
-  const isPendingSignup = searchParams.get("status") === "PENDING";
+  const { ready, isAuthenticated } = useAuth();
+  const feedEnabled = ready && isAuthenticated;
+  const toastMessage = useSignupWelcomeToast();
+  const recommendations = useHomeRecommendations(feedEnabled);
 
-  useEffect(() => {
-    if (!isActiveState) return;
+  useHomeQuerySync();
 
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete("STATE");
-    const nextQuery = nextParams.toString();
-    router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname);
-  }, [isActiveState, pathname, router, searchParams]);
+  const {
+    items: posts,
+    hasMore: postsHasMore,
+    observe: observePosts,
+  } = useInfiniteHomeFeed({
+    size: 10,
+    enabled: feedEnabled,
+  });
 
-  useEffect(() => {
-    if (!isPendingSignup) return;
-    router.replace("/signup/step1");
-  }, [isPendingSignup, router]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const message = window.localStorage.getItem("katopia.signupWelcome");
-      if (!message) return;
-      window.localStorage.removeItem("katopia.signupWelcome");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setToastMessage(message);
-      toastTimerRef.current = setTimeout(() => {
-        setToastMessage(null);
-      }, 1200);
-    } catch {
-      // ignore storage errors
-    }
-    return () => {
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current);
-      }
-    };
-  }, []);
+  useHomeScrollRestoration(posts.length);
 
   return (
     <>
       <div className="relative min-h-screen flex flex-col">
         <AppHeader />
-        <main className="flex-1 px-6 pb-12 pt-16">
-          <HomeInfoCarousel />
-          <HomeFeed posts={MOCK_POSTS} />
-          <HomeRecommendationSection members={MOCK_RECOMMENDATIONS} />
+        <main className="flex-1 px-1 pb-12 pt-16">
+          {/* <HomeInfoCarousel /> */}
+          <HomeFeed posts={posts} />
+          {feedEnabled && postsHasMore && (
+            <div ref={observePosts} className="h-24" />
+          )}
+          <HomeRecommendationSection members={recommendations} />
         </main>
 
         {toastMessage && (
