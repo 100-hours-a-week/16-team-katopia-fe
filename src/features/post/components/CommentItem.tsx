@@ -83,6 +83,10 @@ export default function CommentItem({
 
   // console.log(comment.authorId);
 
+  const handleDeleteClick = () => {
+    onDelete(comment.id);
+  };
+
   return (
     <div className="rounded-4xl bg-[#f9fafb] p-3">
       <div className="flex items-center gap-2">
@@ -143,7 +147,7 @@ export default function CommentItem({
               <button type="button" onClick={handleStartEdit}>
                 수정
               </button>
-              <button type="button" onClick={() => onDelete(comment.id)}>
+              <button type="button" onClick={handleDeleteClick}>
                 삭제
               </button>
             </>
