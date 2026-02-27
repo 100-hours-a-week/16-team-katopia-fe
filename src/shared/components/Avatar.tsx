@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import type { CSSProperties } from "react";
 
@@ -29,6 +28,7 @@ export default function Avatar({
   style,
   priority = false,
 }: AvatarProps) {
+  void priority;
   const resolvedSrc = resolveMediaUrl(src);
   const resolvedFallbackSize =
     fallbackSize ?? Math.max(16, Math.round(size * 0.5));
@@ -39,22 +39,27 @@ export default function Avatar({
       style={{ width: size, height: size, ...style }}
     >
       {resolvedSrc ? (
-        <Image
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
           src={resolvedSrc}
           alt={alt}
-          fill
-          sizes={`${size}px`}
-          className={`object-cover ${imageClassName}`}
-          priority={priority}
-        />
+            className={`absolute inset-0 h-full w-full object-cover ${imageClassName}`}
+            loading="lazy"
+          />
+        </>
       ) : (
-        <Image
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
           src={fallbackSrc}
           alt={alt}
           width={resolvedFallbackSize}
           height={resolvedFallbackSize}
           className={`${fallbackClassName} ${imageClassName}`}
-        />
+            loading="lazy"
+          />
+        </>
       )}
     </span>
   );
