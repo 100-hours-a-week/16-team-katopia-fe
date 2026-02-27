@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { EventSourcePolyfill } from "event-source-polyfill";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 import { API_BASE_URL } from "@/src/config/api";
 import {
   clearAccessToken,
@@ -65,6 +66,7 @@ export function useNotificationStream({
   seenIdsLimit = 200, // 토스트 중복 방지 크기
 }: Params) {
   // 파라미터 타입
+  const router = useRouter();
   const prependItems = useNotificationsStore((state) => state.prependItems); // 스토어 prepend
   const seenIdsRef = useRef<Set<number>>(new Set()); // 토스트 중복 방지 Set
   const esRef = useRef<EventSource | EventSourcePolyfill | null>(null); // SSE 인스턴스
@@ -114,6 +116,9 @@ export function useNotificationStream({
           closeButton: true,
           pauseOnHover: true,
           draggable: true,
+          onClick: () => {
+            router.push("/notifications");
+          },
         });
       });
     };
@@ -412,5 +417,6 @@ export function useNotificationStream({
     reconnectIntervalMs, // 재연결 기본 간격
     reconnectMaxIntervalMs, // 재연결 최대 간격
     seenIdsLimit, // 중복 방지 크기
+    router,
   ]); // effect deps 끝
 }
