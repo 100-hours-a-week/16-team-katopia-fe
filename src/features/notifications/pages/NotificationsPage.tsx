@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { NotificationItem } from "@/src/features/notifications/api/getNotifications";
@@ -74,7 +73,8 @@ export default function NotificationsPage() {
           aria-label="뒤로 가기"
           className="-ml-1 flex h-9 w-9 items-center justify-center"
         >
-          <Image src="/icons/back.svg" alt="" width={22} height={22} />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/back.svg" alt="" width={22} height={22} />
         </button>
       </header>
 
