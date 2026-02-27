@@ -1,16 +1,16 @@
 "use client";
 
-import Image from "next/image";
-
 export function EmptyNotification() {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 py-10 text-center">
-      <Image
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src="/icons/circle-alert.svg"
         alt=""
         width={80}
         height={80}
         className="opacity-40"
+        loading="lazy"
       />
       <p className="text-[14px] font-medium text-[#6f6f6f]">
         알림 메시지가 없습니다.
