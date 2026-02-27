@@ -95,7 +95,7 @@ export default function VoteResultPage({ voteId }: Props) {
     return () => {
       mounted = false;
     };
-  }, [cacheKey, voteId]);
+  }, [cacheKey, router, voteId]);
 
   const totalVotes = useMemo(
     () => items.reduce((sum, item) => sum + item.likeCount, 0),

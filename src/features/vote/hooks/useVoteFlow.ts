@@ -101,6 +101,48 @@ export function useVoteFlow() {
     x.set(0);
   }, [isAnimating, total, x]);
 
+  const refreshCandidates = useCallback(async () => {
+    try {
+      setLoading(true);
+      const result = await getVoteCandidates();
+      console.log("[vote] candidates response", result);
+      if (!result) {
+        setCards([]);
+        setTitle("");
+        setVoteId(null);
+        setNoActiveVote(true);
+      } else {
+        setCards(result.items);
+        setTitle(result.title);
+        setVoteId(result.id ?? null);
+        setNoActiveVote(false);
+      }
+      setIndex(0);
+      selectedIdsRef.current = [];
+      selectedByIndexRef.current = {};
+      setSelectedIds([]);
+      setResultItems([]);
+      setResultStats([]);
+      setShowResult(false);
+      setIsAnimating(false);
+      setExitDirection("right");
+      transitionCommittedRef.current = false;
+      if (resultRevealTimerRef.current) {
+        clearTimeout(resultRevealTimerRef.current);
+        resultRevealTimerRef.current = null;
+      }
+      x.set(0);
+      submitAttemptedRef.current = false;
+    } catch {
+      setCards([]);
+      setTitle("");
+      setVoteId(null);
+      setNoActiveVote(false);
+    } finally {
+      setLoading(false);
+    }
+  }, [x]);
+
   useEffect(() => {
     if (!isFinished || !voteId) {
       if (resultRevealTimerRef.current) {
@@ -189,7 +231,7 @@ export function useVoteFlow() {
       .finally(() => {
         setSubmitting(false);
       });
-  }, [isFinished, submitting, voteId]);
+  }, [isFinished, refreshCandidates, submitting, voteId]);
 
   useEffect(() => {
     return () => {
@@ -199,48 +241,6 @@ export function useVoteFlow() {
       }
     };
   }, []);
-
-  const refreshCandidates = useCallback(async () => {
-    try {
-      setLoading(true);
-      const result = await getVoteCandidates();
-      console.log("[vote] candidates response", result);
-      if (!result) {
-        setCards([]);
-        setTitle("");
-        setVoteId(null);
-        setNoActiveVote(true);
-      } else {
-        setCards(result.items);
-        setTitle(result.title);
-        setVoteId(result.id ?? null);
-        setNoActiveVote(false);
-      }
-      setIndex(0);
-      selectedIdsRef.current = [];
-      selectedByIndexRef.current = {};
-      setSelectedIds([]);
-      setResultItems([]);
-      setResultStats([]);
-      setShowResult(false);
-      setIsAnimating(false);
-      setExitDirection("right");
-      transitionCommittedRef.current = false;
-      if (resultRevealTimerRef.current) {
-        clearTimeout(resultRevealTimerRef.current);
-        resultRevealTimerRef.current = null;
-      }
-      x.set(0);
-      submitAttemptedRef.current = false;
-    } catch {
-      setCards([]);
-      setTitle("");
-      setVoteId(null);
-      setNoActiveVote(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [x]);
 
   useEffect(() => {
     refreshCandidates();

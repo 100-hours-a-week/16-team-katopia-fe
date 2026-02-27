@@ -65,7 +65,7 @@ export function useInfiniteNotifications(params?: Params) {
       inFlightRef.current = false;
       setLoading(false);
     }
-  }, [enabled, size]);
+  }, [enabled, mergeItems, size]);
 
   const observe = useCallback(
     (node: HTMLDivElement | null) => {

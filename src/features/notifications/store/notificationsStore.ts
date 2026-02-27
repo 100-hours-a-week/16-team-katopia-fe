@@ -25,7 +25,7 @@ const dedupe = (items: NotificationItem[]) => {
   return next;
 };
 
-export const useNotificationsStore = create<NotificationsState>((set, get) => ({
+export const useNotificationsStore = create<NotificationsState>((set) => ({
   items: [],
   setItems: (next) =>
     set((state) => ({
