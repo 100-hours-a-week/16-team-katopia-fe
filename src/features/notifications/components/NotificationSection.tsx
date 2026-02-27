@@ -31,12 +31,7 @@ export function NotificationSection({
         }
       >
         {items.map((item) => (
-          <NotificationItem
-            key={item.id}
-            item={item}
-            variant={variant}
-            onClick={onItemClick}
-          />
+          <NotificationItem key={item.id} item={item} onClick={onItemClick} />
         ))}
       </ul>
     </section>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { deletePost } from "../api/deletePost";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
@@ -12,6 +13,7 @@ import {
   normalizeImageUrls,
   pickImageUrl,
 } from "@/src/features/upload/utils/normalizeImageUrls";
+import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
 
 type PostAuthor = {
   nickname: string;
@@ -47,6 +49,26 @@ type PostDetail = {
   author: PostAuthor;
 };
 
+type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
+
+function removeHomeFeedPost(
+  data: HomeFeedInfiniteData | undefined,
+  postId: number,
+) {
+  if (!data) return data;
+  let changed = false;
+
+  const pages = data.pages.map((page) => {
+    const prevPosts = page.posts ?? [];
+    const nextPosts = prevPosts.filter((post) => post.id !== postId);
+    if (nextPosts.length !== prevPosts.length) changed = true;
+    return changed ? { ...page, posts: nextPosts } : page;
+  });
+
+  if (!changed) return data;
+  return { ...data, pages };
+}
+
 function normalizePostImageUrls(
   value: PostImageItem[] | string[] | undefined,
 ): string[] {
@@ -65,6 +87,7 @@ function normalizePostImageUrls(
 export function usePostDetail() {
   const { postId } = useParams<{ postId: string }>();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
 
   const [post, setPost] = useState<PostDetail | null>(null);
@@ -147,6 +170,14 @@ export function usePostDetail() {
   const handleDeleteConfirm = useCallback(async () => {
     if (!postId) return;
     await deletePost(postId);
+    const numericPostId = Number(postId);
+    if (Number.isFinite(numericPostId)) {
+      queryClient.setQueriesData<HomeFeedInfiniteData>(
+        { queryKey: ["home-feed"] },
+        (old) => removeHomeFeedPost(old, numericPostId),
+      );
+    }
+    queryClient.invalidateQueries({ queryKey: ["home-feed"] });
     dispatchPostCountChange(-1);
     const from = searchParams.get("from");
     if (from === "profile") {
@@ -158,7 +189,7 @@ export function usePostDetail() {
       return;
     }
     router.replace("/search");
-  }, [postId, router, searchParams]);
+  }, [postId, queryClient, router, searchParams]);
 
   return {
     postId,
