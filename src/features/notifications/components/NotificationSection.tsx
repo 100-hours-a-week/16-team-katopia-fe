@@ -25,12 +25,7 @@ export function NotificationSection({
       <h2 className="text-[14px] font-semibold text-[#2b2b2b]">{title}</h2>
       <ul className={variant === "unread" ? "mt-4 flex flex-col gap-6" : "mt-6 flex flex-col gap-8"}>
         {items.map((item) => (
-          <NotificationItem
-            key={item.id}
-            item={item}
-            variant={variant}
-            onClick={onItemClick}
-          />
+          <NotificationItem key={item.id} item={item} onClick={onItemClick} />
         ))}
       </ul>
     </section>

@@ -12,18 +12,17 @@ type Params = {
 };
 
 export function useMarkNotificationsRead({ notifications, setItems }: Params) {
-  const markedAllRef = useRef(false);
+  const markedIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    if (markedAllRef.current) return;
     if (notifications.length === 0) return;
 
     const unreadIds = notifications
-      .filter((item) => !item.readAt)
+      .filter((item) => !item.readAt && !markedIdsRef.current.has(item.id))
       .map((item) => item.id);
     if (unreadIds.length === 0) return;
 
-    markedAllRef.current = true;
+    unreadIds.forEach((id) => markedIdsRef.current.add(id));
     const unreadIdSet = new Set(unreadIds);
     const nextReadAt = new Date().toISOString();
 
@@ -44,6 +43,7 @@ export function useMarkNotificationsRead({ notifications, setItems }: Params) {
     (id: number) => {
       const target = notifications.find((item) => item.id === id);
       if (!target || target.readAt) return;
+      markedIdsRef.current.add(id);
 
       const nextReadAt = new Date().toISOString();
       setItems((prev) =>
