@@ -36,6 +36,7 @@ export default function LayoutShell({ children }: Props) {
   const isWithdrawnState = searchParams.get("STATE") === "WITHDRAWN";
   const isWithdrawnPopup = searchParams.get("withdrawPopup") === "1";
   const isProfilePath = pathname?.startsWith("/profile") ?? false;
+  const isSplashPath = pathname === "/";
 
   useEffect(() => {
     if (!authInvalidated) return;
@@ -172,7 +173,11 @@ export default function LayoutShell({ children }: Props) {
       {!hideBottomNav && showBottomNav && <BottomNav />}
       {shouldLock && <LoginBottomSheet persist />}
       {enableNotificationRuntime && (
-        <NotificationClientRuntime ready={ready} enabled={ready && isAuthenticated} />
+        <NotificationClientRuntime
+          ready={ready}
+          enabled={ready && isAuthenticated}
+          toastEnabled={!isSplashPath}
+        />
       )}
     </>
   );

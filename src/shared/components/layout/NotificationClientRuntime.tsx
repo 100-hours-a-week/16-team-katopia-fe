@@ -8,11 +8,13 @@ import { useNotificationsStore } from "@/src/features/notifications/store/notifi
 type NotificationClientRuntimeProps = {
   ready: boolean;
   enabled: boolean;
+  toastEnabled?: boolean;
 };
 
 export default function NotificationClientRuntime({
   ready,
   enabled,
+  toastEnabled = true,
 }: NotificationClientRuntimeProps) {
   const clearNotifications = useNotificationsStore((state) => state.clear);
 
@@ -24,6 +26,7 @@ export default function NotificationClientRuntime({
 
   useNotificationStream({
     enabled,
+    toastEnabled,
     heartbeatTimeoutMs: 1000 * 60 * 65,
   });
 
@@ -48,4 +51,3 @@ export default function NotificationClientRuntime({
     />
   );
 }
-
