@@ -140,15 +140,6 @@ export function useSignupStep2() {
         const accessToken = await issueAccessToken();
         setAuthenticated(true);
 
-        try {
-          window.localStorage.setItem(
-            "katopia.signupWelcome",
-            `환영합니다. ${nickname} 님!`,
-          );
-        } catch {
-          // ignore storage errors
-        }
-
         if (signupProfileImageBlob) {
           let signupProfileImageObjectKey: string | null = null;
           try {
