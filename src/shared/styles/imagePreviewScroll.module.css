@@ -1,0 +1,18 @@
+.imagePreviewScroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 transparent;
+}
+
+.imagePreviewScroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.imagePreviewScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.imagePreviewScroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 999px;
+}

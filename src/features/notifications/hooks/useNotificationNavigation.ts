@@ -6,6 +6,7 @@ type Params = {
   notifications: NotificationItem[];
   markAsRead: (id: number) => void;
 };
+const POST_DETAIL_TYPES = new Set(["POST_CREATED", "POST_LIKE", "POST_COMMENT"]);
 
 const toNumberOrNull = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -74,7 +75,8 @@ export function useNotificationNavigation({
       }
 
       if (
-        (resolvedType === "POST_LIKE" || resolvedType === "POST_COMMENT") &&
+        resolvedType != null &&
+        POST_DETAIL_TYPES.has(resolvedType) &&
         resolvedReferenceId != null
       ) {
         router.push(`/post/${resolvedReferenceId}`);

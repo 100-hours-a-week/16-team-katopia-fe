@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { memo, useEffect, useId, useRef, useCallback } from "react";
+import { memo, useLayoutEffect, useId, useRef, useCallback } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -20,6 +20,7 @@ import {
   type PreviewItem,
   useVoteImageUploader,
 } from "../hooks/useVoteImageUploader";
+import imagePreviewStyles from "@/src/shared/styles/imagePreviewScroll.module.css";
 
 const SortablePreview = memo(function SortablePreview({
   item,
@@ -100,7 +101,7 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
       >
         <div
           ref={scrollRef}
-          className="mt-10 w-full overflow-x-scroll overflow-y-hidden touch-pan-x image-preview-scroll"
+          className={`mt-10 w-full overflow-x-scroll overflow-y-hidden touch-pan-x ${imagePreviewStyles.imagePreviewScroll}`}
         >
           <div
             className={
@@ -134,10 +135,8 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
 });
 
 export default function VoteImagePicker({
-  onCountChange,
   onPreviewsChange,
 }: {
-  onCountChange?: (count: number) => void;
   onPreviewsChange?: (items: PreviewItem[]) => void;
 }) {
   const inputId = useId();
@@ -159,8 +158,7 @@ export default function VoteImagePicker({
   const minImageHelperText =
     previews.length === 1 ? "투표 이미지는 2장 이상 업로드 가능합니다" : null;
 
-  useEffect(() => {
-    onCountChange?.(previews.length);
+  useLayoutEffect(() => {
     onPreviewsChange?.(previews);
     const currentCount = previews.length;
     if (currentCount <= prevCountRef.current) {
@@ -179,7 +177,7 @@ export default function VoteImagePicker({
     });
 
     prevCountRef.current = currentCount;
-  }, [onCountChange, onPreviewsChange, previews]);
+  }, [onPreviewsChange, previews]);
 
   return (
     <div>

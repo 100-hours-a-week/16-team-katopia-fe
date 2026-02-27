@@ -13,20 +13,29 @@ type HomePostCardProps = {
 export default function HomePostCard({ post }: HomePostCardProps) {
   return (
     <article className="flex flex-col gap-4">
-      <HomePostHeader author={post.author} />
+      <div className="px-1">
+        <HomePostHeader author={post.author} />
+      </div>
       <HomePostMedia
         postId={post.id}
         imageUrl={post.imageUrl}
         imageUrls={post.imageUrls}
       />
-      <HomePostActions
-        postId={post.id}
-        likeCount={post.likeCount}
-        commentCount={post.commentCount}
-        isLiked={post.isLiked}
-        isBookmarked={post.isBookmarked}
-      />
-      <HomePostCaption username={post.author.username} caption={post.caption} />
+      <div className="px-1">
+        <HomePostActions
+          postId={post.id}
+          likeCount={post.likeCount}
+          commentCount={post.commentCount}
+          isLiked={post.isLiked}
+          isBookmarked={post.isBookmarked}
+        />
+      </div>
+      <div className="px-1">
+        <HomePostCaption
+          username={post.author.username}
+          caption={post.caption}
+        />
+      </div>
     </article>
   );
 }

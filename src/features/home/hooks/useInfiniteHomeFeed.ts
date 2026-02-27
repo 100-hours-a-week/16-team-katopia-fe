@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query"; // 무한 스크롤용 React Query 훅입니다.
 import { getHomePosts, type GetHomePostsResponse } from "../api/getHomePosts";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
@@ -35,8 +36,7 @@ function mapHomePosts(data: GetHomePostsResponse) {
     };
     const imageUrls = post.imageUrls ?? [];
     const imageUrl = imageUrls[0] ?? null;
-    const avatarKey =
-      author.profileImageObjectKey ?? author.profileImageUrl ?? null;
+    const avatarKey = author.profileImageObjectKey ?? null;
 
     return {
       id: post.id,
@@ -67,73 +67,47 @@ export function useInfiniteHomeFeed(params?: {
   size?: number;
   enabled?: boolean;
 }) {
-  const [items, setItems] = useState<HomePost[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-
   const size = params?.size ?? 10;
   const enabled = params?.enabled ?? true;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
-  const inFlightRef = useRef(false);
-  const cursorRef = useRef<string | null>(null);
-  const hasMoreRef = useRef(true);
 
-  useEffect(() => {
-    cursorRef.current = nextCursor;
-  }, [nextCursor]);
+  const { data, hasNextPage, isLoading, isFetchingNextPage, fetchNextPage } =
+    useInfiniteQuery({
+      queryKey: ["home-feed", size],
+      enabled,
+      initialPageParam: null as string | null,
+      staleTime: 30_000,
+      gcTime: 10 * 60_000,
+      queryFn: async ({ pageParam }) =>
+        getHomePosts({
+          size,
+          after: pageParam ?? undefined,
+        }),
+      getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+        const rawNextCursor =
+          lastPage.nextCursor === "" ? null : (lastPage.nextCursor ?? null);
+        if (rawNextCursor == null) return undefined;
+        if (rawNextCursor === lastPageParam) return undefined;
+        return rawNextCursor;
+      },
+    });
 
-  useEffect(() => {
-    hasMoreRef.current = hasMore;
-  }, [hasMore]);
+  const items = useMemo(() => {
+    // 페이지별 데이터를 하나의 리스트로 합치고 ID 기준 중복을 제거
+    const map = new Map<number, HomePost>();
+    (data?.pages ?? []).forEach((page) => {
+      mapHomePosts(page).forEach((item) => map.set(item.id, item));
+    });
+    return Array.from(map.values());
+  }, [data?.pages]);
 
-  const loadMore = useCallback(async () => {
-    if (!enabled) return;
-    if (inFlightRef.current) return;
-    if (!hasMoreRef.current) return;
-
-    inFlightRef.current = true;
-    setLoading(true);
-
-    const prevCursor = cursorRef.current;
-
-    try {
-      const data = await getHomePosts({
-        size,
-        after: cursorRef.current ?? undefined,
-      });
-
-      const mapped = mapHomePosts(data);
-
-      setItems((prev) => {
-        const map = new Map<number, HomePost>();
-        prev.forEach((item) => map.set(item.id, item));
-        mapped.forEach((item) => map.set(item.id, item));
-        return Array.from(map.values());
-      });
-
-      const rawNextCursor =
-        data.nextCursor === "" ? null : (data.nextCursor ?? null);
-
-      if (rawNextCursor === prevCursor) {
-        setHasMore(false);
-        return;
-      }
-
-      cursorRef.current = rawNextCursor;
-      setNextCursor(rawNextCursor);
-      setHasMore(rawNextCursor != null);
-    } catch {
-      setHasMore(false);
-    } finally {
-      inFlightRef.current = false;
-      setLoading(false);
-    }
-  }, [enabled, size]);
+  const hasMore = enabled ? Boolean(hasNextPage) : false;
+  const loading = isLoading || isFetchingNextPage;
 
   const observe = useCallback(
     (node: HTMLDivElement | null) => {
+      // 감시 대상 노드가 바뀔 때마다 기존 옵저버를 정리.
       if (observerRef.current) {
         observerRef.current.disconnect();
         observerRef.current = null;
@@ -145,66 +119,36 @@ export function useInfiniteHomeFeed(params?: {
         (entries) => {
           const entry = entries[0];
           if (!entry?.isIntersecting) return;
-          loadMore();
+          if (!enabled) return;
+          if (!hasNextPage) return;
+          if (isFetchingNextPage) return;
+          fetchNextPage();
         },
         {
           root: null,
-          rootMargin: "600px 0px",
-          threshold: 0.01,
+          rootMargin: "600px 0px", // 하단 600px 이전부터 미리 로딩을 시작
+          threshold: 0.01, // 1%만 보여도 콜백이 실행되도록 설정합니다.
         },
       );
 
-      observerRef.current.observe(node);
+      observerRef.current.observe(node); // 전달받은 노드를 관찰 시작.
     },
-    [loadMore],
+    [enabled, fetchNextPage, hasNextPage, isFetchingNextPage],
   );
 
   useEffect(() => {
-    setItems([]);
-    setNextCursor(null);
-    setHasMore(true);
-    cursorRef.current = null;
-    hasMoreRef.current = true;
-    inFlightRef.current = false;
-
-    if (!enabled) return;
-    loadMore();
-  }, [enabled, size, loadMore]);
-
-  useEffect(() => {
+    // 훅이 언마운트될 때 옵저버를 정리.
     return () => {
       observerRef.current?.disconnect();
       observerRef.current = null;
     };
   }, []);
 
-  useEffect(() => {
-    if (!enabled) return;
-    if (typeof window === "undefined") return;
-
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        ticking = false;
-        if (inFlightRef.current) return;
-        if (!hasMoreRef.current) return;
-
-        const doc = document.documentElement;
-        const scrolled = window.scrollY + window.innerHeight;
-        const threshold = doc.scrollHeight - 600;
-        if (scrolled >= threshold) {
-          loadMore();
-        }
-      });
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-    };
-  }, [enabled, loadMore]);
-
-  return { items, hasMore, observe, loading, loadMore };
+  return {
+    items: enabled ? items : [],
+    hasMore,
+    observe,
+    loading,
+    loadMore: fetchNextPage,
+  };
 }

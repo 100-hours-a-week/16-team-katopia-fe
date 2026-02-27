@@ -20,6 +20,7 @@ import {
   type PreviewItem,
   usePostImageUploader,
 } from "../hooks/usePostImageUploader";
+import imagePreviewStyles from "@/src/shared/styles/imagePreviewScroll.module.css";
 
 function SortablePreview({
   item,
@@ -91,7 +92,7 @@ const PostImagePreviewList = memo(function PostImagePreviewList({
       >
         <div
           ref={scrollRef}
-          className="mt-4 w-full overflow-x-scroll overflow-y-hidden touch-pan-x image-preview-scroll"
+          className={`mt-4 w-full overflow-x-scroll overflow-y-hidden touch-pan-x ${imagePreviewStyles.imagePreviewScroll}`}
         >
           <div
             className={

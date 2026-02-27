@@ -3,13 +3,16 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import BottomNav from "./BottomNav";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { hasLoggedInFlag } from "@/src/lib/auth";
 import LoginBottomSheet from "@/src/features/home/components/LoginBottomsSheet";
-import { toast, ToastContainer } from "react-toastify";
-import { useNotificationStream } from "@/src/features/notifications/hooks/useNotificationStream";
-import { useNotificationsStore } from "@/src/features/notifications/store/notificationsStore";
+
+const NotificationClientRuntime = dynamic(
+  () => import("./NotificationClientRuntime"),
+  { ssr: false },
+);
 
 const HIDE_BOTTOM_NAV_PATHS = ["/", "/withdraw/success", "/notifications"];
 const LOGIN_GUARD_PATHS = ["/post", "/vote", "/search", "/home"];
@@ -26,12 +29,14 @@ export default function LayoutShell({ children }: Props) {
   const { ready, isAuthenticated, authInvalidated } = useAuth();
   const hasAlertedRef = useRef(false);
   const [showBottomNav, setShowBottomNav] = useState(false);
-  const clearNotifications = useNotificationsStore((state) => state.clear);
+  const [enableNotificationRuntime, setEnableNotificationRuntime] =
+    useState(false);
   const isPendingSignup = searchParams.get("status") === "PENDING";
   const isActiveLogin = searchParams.get("status") === "ACTIVE";
   const isWithdrawnState = searchParams.get("STATE") === "WITHDRAWN";
   const isWithdrawnPopup = searchParams.get("withdrawPopup") === "1";
   const isProfilePath = pathname?.startsWith("/profile") ?? false;
+  const isSplashPath = pathname === "/";
 
   useEffect(() => {
     if (!authInvalidated) return;
@@ -63,12 +68,6 @@ export default function LayoutShell({ children }: Props) {
     }
     alert(message);
   }, [authInvalidated, isActiveLogin, isPendingSignup, isWithdrawnState]);
-
-  useEffect(() => {
-    if (!ready) return;
-    if (isAuthenticated) return;
-    clearNotifications();
-  }, [ready, isAuthenticated, clearNotifications]);
 
   useEffect(() => {
     if (hideBottomNav) return;
@@ -120,6 +119,25 @@ export default function LayoutShell({ children }: Props) {
   }, [isWithdrawnState, isWithdrawnPopup]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const win = window as Window & {
+      requestIdleCallback?: (cb: IdleRequestCallback) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    let idleId: number | null = null;
+    if (win.requestIdleCallback) {
+      idleId = win.requestIdleCallback(() => setEnableNotificationRuntime(true));
+      return () => {
+        if (idleId !== null) win.cancelIdleCallback?.(idleId);
+      };
+    }
+
+    const timeoutId = win.setTimeout(() => setEnableNotificationRuntime(true), 1200);
+    return () => win.clearTimeout(timeoutId);
+  }, []);
+
+  useEffect(() => {
     if (process.env.NODE_ENV === "production") return;
     if (typeof window === "undefined") return;
     try {
@@ -130,19 +148,7 @@ export default function LayoutShell({ children }: Props) {
     } catch {
       // ignore storage errors
     }
-
-    window.setTimeout(() => {
-      toast.info("토스트 스타일 미리보기 (info)");
-      toast.success("저장되었습니다 (success)");
-      toast.warn("확인이 필요합니다 (warn)");
-      toast.error("오류가 발생했습니다 (error)");
-    }, 300);
   }, []);
-
-  useNotificationStream({
-    enabled: ready && isAuthenticated,
-    heartbeatTimeoutMs: 1000 * 60 * 65,
-  });
 
   const shouldLock =
     ready &&
@@ -166,24 +172,13 @@ export default function LayoutShell({ children }: Props) {
       </div>
       {!hideBottomNav && showBottomNav && <BottomNav />}
       {shouldLock && <LoginBottomSheet persist />}
-      <ToastContainer
-        position="top-center"
-        newestOnTop
-        closeOnClick
-        closeButton
-        draggable
-        hideProgressBar
-        limit={10}
-        theme="light"
-        toastStyle={{
-          borderRadius: 30,
-          background: "rgba(245, 245, 245, 0.88)",
-          color: "#121212",
-          fontSize: 13,
-          fontWeight: 600,
-          marginBottom: 5,
-        }}
-      />
+      {enableNotificationRuntime && (
+        <NotificationClientRuntime
+          ready={ready}
+          enabled={ready && isAuthenticated}
+          toastEnabled={!isSplashPath}
+        />
+      )}
     </>
   );
 }

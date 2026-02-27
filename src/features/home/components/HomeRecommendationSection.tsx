@@ -1,7 +1,7 @@
 "use client";
 
 import HomeRecommendationCard from "./HomeRecommendationCard";
-import type { HomeRecommendationMember } from "@/src/features/home/hooks/useHomeRecommendations";
+import type { HomeRecommendationMember } from "@/src/features/home/types/recommendation";
 
 type HomeRecommendationSectionProps = {
   members: HomeRecommendationMember[];
@@ -21,8 +21,12 @@ export default function HomeRecommendationSection({
         </p>
       </div>
       <div className="mt-6 flex gap-4 overflow-x-auto pb-2">
-        {members.map((member) => (
-          <HomeRecommendationCard key={member.id} member={member} />
+        {members.map((member, index) => (
+          <HomeRecommendationCard
+            key={member.id}
+            member={member}
+            priority={index < 2}
+          />
         ))}
       </div>
     </section>

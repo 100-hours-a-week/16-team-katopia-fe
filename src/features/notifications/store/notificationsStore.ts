@@ -15,14 +15,23 @@ type NotificationsState = {
 
 const dedupe = (items: NotificationItem[]) => {
   const map = new Map<number, NotificationItem>();
-  const next: NotificationItem[] = [];
+
   items.forEach((item) => {
     if (!item || typeof item.id !== "number") return;
-    if (map.has(item.id)) return;
-    map.set(item.id, item);
-    next.push(item);
+    const prev = map.get(item.id);
+    if (!prev) {
+      map.set(item.id, item);
+      return;
+    }
+    map.set(item.id, {
+      ...prev,
+      ...item,
+      // 한 번 읽음 처리된 알림은 병합 중 다시 미읽음으로 돌아가지 않게 고정
+      readAt: item.readAt ?? prev.readAt ?? null,
+    });
   });
-  return next;
+
+  return Array.from(map.values());
 };
 
 export const useNotificationsStore = create<NotificationsState>((set) => ({
