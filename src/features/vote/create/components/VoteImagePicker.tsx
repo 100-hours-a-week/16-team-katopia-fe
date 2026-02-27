@@ -20,6 +20,7 @@ import {
   type PreviewItem,
   useVoteImageUploader,
 } from "../hooks/useVoteImageUploader";
+import imagePreviewStyles from "@/src/shared/styles/imagePreviewScroll.module.css";
 
 const SortablePreview = memo(function SortablePreview({
   item,
@@ -100,7 +101,7 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
       >
         <div
           ref={scrollRef}
-          className="mt-10 w-full overflow-x-scroll overflow-y-hidden touch-pan-x image-preview-scroll"
+          className={`mt-10 w-full overflow-x-scroll overflow-y-hidden touch-pan-x ${imagePreviewStyles.imagePreviewScroll}`}
         >
           <div
             className={
