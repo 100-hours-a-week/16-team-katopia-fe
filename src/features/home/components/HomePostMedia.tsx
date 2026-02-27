@@ -1,15 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  useCarousel,
-} from "@/components/ui/carousel";
+import { useMemo, useState } from "react";
 
 type HomePostMediaProps = {
   postId: number;
@@ -23,6 +15,7 @@ export default function HomePostMedia({
   imageUrls,
 }: HomePostMediaProps) {
   const router = useRouter();
+  const [index, setIndex] = useState(0);
 
   const images = useMemo(() => {
     const list = imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : [];
@@ -32,74 +25,86 @@ export default function HomePostMedia({
   const hasImages = images.length > 0;
   const hasMultiple = images.length > 1;
   const total = images.length;
-
-  const Indicators = () => {
-    const { index } = useCarousel();
-    return (
-      <div className="absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
-        {images.map((_, idx) => (
-          <span
-            key={idx}
-            className={`h-1.5 w-1.5 rounded-full ${
-              idx === index ? "bg-white" : "bg-white/50"
-            }`}
-          />
-        ))}
-      </div>
-    );
-  };
+  const safeIndex = hasImages ? Math.min(index, total - 1) : 0;
+  const currentSrc = hasImages ? images[safeIndex] : null;
 
   if (!hasImages) {
     return (
       <div
-        className="relative aspect-3/4 w-full overflow-hidden rounded-[6px] bg-[#d9d9d9]"
+        className="relative aspect-3/4 overflow-hidden rounded-[6px] bg-[#d9d9d9]"
         aria-label="게시물 이미지"
       />
     );
   }
 
   return (
-    <Carousel className="relative aspect-3/4 w-full overflow-hidden rounded-[6px] bg-[#efefef]">
-      <CarouselContent className="h-full">
-        {images.map((src, i) => (
-          <CarouselItem key={i} className="h-full">
-            <button
-              type="button"
-              onClick={() => router.push(`/post/${postId}?from=home`)}
-              className="relative block h-full w-full"
-              aria-label="게시물 이미지"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={src}
-                alt={`게시물 이미지 ${i + 1}`}
-                className="h-full w-full object-cover"
-                loading="lazy"
-              />
-            </button>
-          </CarouselItem>
-        ))}
-      </CarouselContent>
+    <div className="relative aspect-3/4 overflow-hidden rounded-[6px] bg-[#efefef]">
+      <button
+        type="button"
+        onClick={() => router.push(`/post/${postId}?from=home`)}
+        className="relative block h-full w-full"
+        aria-label="게시물 이미지"
+      >
+        {currentSrc && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={currentSrc}
+              alt={`게시물 이미지 ${safeIndex + 1}`}
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </>
+        )}
+      </button>
 
       {hasMultiple && (
         <>
           <div className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/50 px-2 py-1 text-[11px] text-white">
-            <CarouselCount total={total} />
+            {safeIndex + 1}/{total}
           </div>
-          <CarouselPrevious />
-          <CarouselNext />
-          <Indicators />
+          <button
+            type="button"
+            aria-label="Previous slide"
+            onClick={() => setIndex((prev) => (prev - 1 + total) % total)}
+            className="absolute left-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow backdrop-blur-sm ring-1 ring-white/10 transition hover:bg-black/55 active:scale-95"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/chevron-left.svg"
+              alt=""
+              width={20}
+              height={20}
+              className="h-5 w-5 invert"
+            />
+          </button>
+          <button
+            type="button"
+            aria-label="Next slide"
+            onClick={() => setIndex((prev) => (prev + 1) % total)}
+            className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white shadow backdrop-blur-sm ring-1 ring-white/10 transition hover:bg-black/55 active:scale-95"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/icons/chevron-right.svg"
+              alt=""
+              width={20}
+              height={20}
+              className="h-5 w-5 invert"
+            />
+          </button>
+          <div className="absolute inset-x-0 bottom-3 flex items-center justify-center gap-1.5">
+            {images.map((_, dotIndex) => (
+              <span
+                key={dotIndex}
+                className={`h-1.5 w-1.5 rounded-full ${
+                  dotIndex === safeIndex ? "bg-white" : "bg-white/50"
+                }`}
+              />
+            ))}
+          </div>
         </>
       )}
-    </Carousel>
-  );
-}
-
-function CarouselCount({ total }: { total: number }) {
-  const { index } = useCarousel();
-  return (
-    <>
-      {index + 1}/{total}
-    </>
+    </div>
   );
 }
