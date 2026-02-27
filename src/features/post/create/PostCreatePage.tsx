@@ -21,7 +21,10 @@ import PostSubmitButton from "./components/PostSubmitButton";
 import { dispatchPostCountChange } from "@/src/features/post/utils/postCountEvents";
 import { getPostDetail } from "@/src/features/post/api/getPostDetail";
 import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
-import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
+import {
+  normalizeImageUrls,
+  type ImageUrlValue,
+} from "@/src/features/upload/utils/normalizeImageUrls";
 
 const PostImageUploaderClient = dynamic(
   () => import("./components/PostImageUploaderClient"),
@@ -56,8 +59,8 @@ function toHomeFeedPost(detail: {
   isLiked?: boolean;
   isBookmarked?: boolean;
   createdAt?: string;
-  imageObjectKeys?: unknown;
-  imageUrls?: unknown;
+  imageObjectKeys?: ImageUrlValue[] | ImageUrlValue | null;
+  imageUrls?: ImageUrlValue[] | ImageUrlValue | null;
   author?: {
     memberId?: number | string;
     id?: number | string;
