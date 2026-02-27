@@ -35,6 +35,7 @@ export function useVoteFlow() {
   const submitAttemptedRef = useRef(false);
   const [noActiveVote, setNoActiveVote] = useState(false);
   const transitionCommittedRef = useRef(false);
+  const pendingAnimatedIndexRef = useRef<number | null>(null);
   const resultRevealTimerRef = useRef<number | null>(null);
 
   const total = cards.length;
@@ -74,6 +75,7 @@ export function useVoteFlow() {
         addSelection(index, Number(active.id));
       }
       transitionCommittedRef.current = false;
+      pendingAnimatedIndexRef.current = index;
       setExitDirection(direction);
       setIsAnimating(true);
     },
@@ -94,12 +96,14 @@ export function useVoteFlow() {
   const handleAnimationComplete = useCallback(() => {
     if (!isAnimating) return;
     if (transitionCommittedRef.current) return;
+    if (pendingAnimatedIndexRef.current !== index) return;
     transitionCommittedRef.current = true;
+    pendingAnimatedIndexRef.current = null;
     setIndex((prevIndex) => Math.min(prevIndex + 1, total));
     setExitDirection("right");
     setIsAnimating(false);
     x.set(0);
-  }, [isAnimating, total, x]);
+  }, [index, isAnimating, total, x]);
 
   const refreshCandidates = useCallback(async () => {
     try {
@@ -127,6 +131,7 @@ export function useVoteFlow() {
       setIsAnimating(false);
       setExitDirection("right");
       transitionCommittedRef.current = false;
+      pendingAnimatedIndexRef.current = null;
       if (resultRevealTimerRef.current) {
         clearTimeout(resultRevealTimerRef.current);
         resultRevealTimerRef.current = null;

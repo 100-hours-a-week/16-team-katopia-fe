@@ -127,7 +127,7 @@ export default function VoteCardStack({
                     }
                   : { opacity: 1, scale: 1 }
               }
-              onAnimationComplete={onAnimationComplete}
+              onAnimationComplete={isAnimating ? onAnimationComplete : undefined}
             >
               <div className="absolute inset-4 overflow-hidden rounded-[22px] bg-transparent select-none">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
