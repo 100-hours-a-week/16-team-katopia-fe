@@ -78,7 +78,7 @@ export default function HomePostActions({
         </button>
         <button
           type="button"
-          onClick={() => router.push(`/post/${postId}`)}
+          onClick={() => router.push(`/post/${postId}?from=home`)}
           className="flex items-center gap-2 text-neutral-900"
           aria-label="댓글"
         >

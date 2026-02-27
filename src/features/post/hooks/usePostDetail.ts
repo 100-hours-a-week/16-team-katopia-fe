@@ -149,7 +149,15 @@ export function usePostDetail() {
     await deletePost(postId);
     dispatchPostCountChange(-1);
     const from = searchParams.get("from");
-    router.replace(from === "profile" ? "/profile" : "/search");
+    if (from === "profile") {
+      router.replace("/profile");
+      return;
+    }
+    if (from === "home") {
+      router.replace("/home");
+      return;
+    }
+    router.replace("/search");
   }, [postId, router, searchParams]);
 
   return {

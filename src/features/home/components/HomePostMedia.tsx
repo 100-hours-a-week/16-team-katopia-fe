@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import {
@@ -66,16 +65,16 @@ export default function HomePostMedia({
           <CarouselItem key={i} className="h-full">
             <button
               type="button"
-              onClick={() => router.push(`/post/${postId}`)}
+              onClick={() => router.push(`/post/${postId}?from=home`)}
               className="relative block h-full w-full"
               aria-label="게시물 이미지"
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={src}
                 alt={`게시물 이미지 ${i + 1}`}
-                fill
-                sizes="(max-width: 768px) 100vw, 480px"
-                className="object-cover"
+                className="h-full w-full object-cover"
+                loading="lazy"
               />
             </button>
           </CarouselItem>

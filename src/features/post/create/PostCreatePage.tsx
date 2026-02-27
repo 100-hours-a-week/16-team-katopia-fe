@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { FormProvider, useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { postCreateSchema, PostCreateValues } from "./schemas";
 import { usePostUnsavedGuard } from "./hooks/usePostUnsavedGuard";
@@ -18,14 +19,93 @@ import PostContentInput from "./components/PostContentInput";
 import PostCancelConfirmModal from "./components/PostCancelConfirmModal";
 import PostSubmitButton from "./components/PostSubmitButton";
 import { dispatchPostCountChange } from "@/src/features/post/utils/postCountEvents";
+import { getPostDetail } from "@/src/features/post/api/getPostDetail";
+import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
+import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 const PostImageUploaderClient = dynamic(
   () => import("./components/PostImageUploaderClient"),
   { ssr: false, loading: () => <PostImageUploaderShell /> },
 );
 
+type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
+
+function prependHomeFeedPost(
+  data: HomeFeedInfiniteData | undefined,
+  newPost: GetHomePostsResponse["posts"][number],
+) {
+  if (!data) return data;
+  if (!data.pages.length) return data;
+
+  const exists = data.pages.some((page) =>
+    (page.posts ?? []).some((post) => post.id === newPost.id),
+  );
+  if (exists) return data;
+
+  const pages = data.pages.map((page, index) =>
+    index === 0 ? { ...page, posts: [newPost, ...(page.posts ?? [])] } : page,
+  );
+
+  return { ...data, pages };
+}
+
+function toHomeFeedPost(detail: {
+  id?: number | string;
+  content?: string;
+  tags?: string[];
+  isLiked?: boolean;
+  isBookmarked?: boolean;
+  createdAt?: string;
+  imageObjectKeys?: unknown;
+  imageUrls?: unknown;
+  author?: {
+    memberId?: number | string;
+    id?: number | string;
+    nickname?: string;
+    profileImageObjectKey?: string | null;
+    profileImageUrl?: string | null;
+    gender?: string | null;
+    height?: number | null;
+    weight?: number | null;
+  };
+  aggregate?: {
+    likeCount?: number | null;
+    commentCount?: number | null;
+  };
+}): GetHomePostsResponse["posts"][number] | null {
+  const id = Number(detail.id);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const author = detail.author ?? {};
+  const authorId = Number(author.memberId ?? author.id ?? 0);
+
+  return {
+    id,
+    content: detail.content ?? "",
+    tags: detail.tags ?? [],
+    isLiked: Boolean(detail.isLiked),
+    isBookmarked: Boolean(detail.isBookmarked),
+    createdAt: detail.createdAt ?? new Date().toISOString(),
+    imageUrls: normalizeImageUrls(detail.imageObjectKeys ?? detail.imageUrls),
+    author: {
+      id: Number.isFinite(authorId) ? authorId : 0,
+      nickname: author.nickname ?? "",
+      profileImageObjectKey:
+        author.profileImageObjectKey ?? author.profileImageUrl ?? null,
+      gender: author.gender ?? null,
+      height: author.height ?? null,
+      weight: author.weight ?? null,
+    },
+    aggregate: {
+      likeCount: Number(detail.aggregate?.likeCount ?? 0) || 0,
+      commentCount: Number(detail.aggregate?.commentCount ?? 0) || 0,
+    },
+  };
+}
+
 export default function PostCreatePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -88,6 +168,20 @@ export default function PostCreatePage() {
         const postId = res.data.id;
         console.log("게시글이 성공적으로 등록되었어요.", postId);
 
+        try {
+          const detailRes = await getPostDetail(String(postId));
+          const newFeedPost = toHomeFeedPost(detailRes?.data ?? {});
+          if (newFeedPost) {
+            queryClient.setQueriesData<HomeFeedInfiniteData>(
+              { queryKey: ["home-feed"] },
+              (old) => prependHomeFeedPost(old, newFeedPost),
+            );
+          }
+        } catch {
+          // 상세 조회 실패 시에도 홈피드 refetch로 복구
+        }
+        queryClient.invalidateQueries({ queryKey: ["home-feed"] });
+
         dispatchPostCountChange(1);
         setToastMessage("게시글 작성이 완료되었습니다.");
         toastTimerRef.current = setTimeout(() => {
@@ -98,7 +192,7 @@ export default function PostCreatePage() {
         // TODO: 에러 코드별 토스트 분기
       }
     },
-    [router],
+    [queryClient, router],
   );
 
   const onInvalid = useCallback((errors: FieldErrors<PostCreateValues>) => {
