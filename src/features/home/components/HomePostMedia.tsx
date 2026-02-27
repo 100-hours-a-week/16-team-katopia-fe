@@ -26,7 +26,6 @@ export default function HomePostMedia({
   const hasMultiple = images.length > 1;
   const total = images.length;
   const safeIndex = hasImages ? Math.min(index, total - 1) : 0;
-  const currentSrc = hasImages ? images[safeIndex] : null;
 
   if (!hasImages) {
     return (
@@ -39,24 +38,29 @@ export default function HomePostMedia({
 
   return (
     <div className="relative aspect-3/4 overflow-hidden rounded-[6px] bg-[#efefef]">
-      <button
-        type="button"
-        onClick={() => router.push(`/post/${postId}?from=home`)}
-        className="relative block h-full w-full"
-        aria-label="게시물 이미지"
+      <div
+        className="flex h-full w-full transition-transform duration-300 ease-out will-change-transform"
+        style={{ transform: `translate3d(-${safeIndex * 100}%, 0, 0)` }}
       >
-        {currentSrc && (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={currentSrc}
-              alt={`게시물 이미지 ${safeIndex + 1}`}
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          </>
-        )}
-      </button>
+        {images.map((src, imageIndex) => (
+          <div key={imageIndex} className="h-full w-full shrink-0">
+            <button
+              type="button"
+              onClick={() => router.push(`/post/${postId}?from=home`)}
+              className="relative block h-full w-full"
+              aria-label="게시물 이미지"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={src}
+                alt={`게시물 이미지 ${imageIndex + 1}`}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </button>
+          </div>
+        ))}
+      </div>
 
       {hasMultiple && (
         <>
