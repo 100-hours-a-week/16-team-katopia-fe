@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { memo, useEffect, useId, useRef, useCallback } from "react";
+import { memo, useLayoutEffect, useId, useRef, useCallback } from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -134,10 +134,8 @@ const VoteImagePreviewList = memo(function VoteImagePreviewList({
 });
 
 export default function VoteImagePicker({
-  onCountChange,
   onPreviewsChange,
 }: {
-  onCountChange?: (count: number) => void;
   onPreviewsChange?: (items: PreviewItem[]) => void;
 }) {
   const inputId = useId();
@@ -161,8 +159,7 @@ export default function VoteImagePicker({
       ? "투표 이미지는 2장 이상 업로드 가능합니다"
       : null;
 
-  useEffect(() => {
-    onCountChange?.(previews.length);
+  useLayoutEffect(() => {
     onPreviewsChange?.(previews);
     const currentCount = previews.length;
     if (currentCount <= prevCountRef.current) {
@@ -181,7 +178,7 @@ export default function VoteImagePicker({
     });
 
     prevCountRef.current = currentCount;
-  }, [onCountChange, onPreviewsChange, previews]);
+  }, [onPreviewsChange, previews]);
 
   return (
     <div>

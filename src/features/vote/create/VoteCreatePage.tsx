@@ -18,7 +18,6 @@ export default function VoteCreatePage() {
   const titleRef = useRef<HTMLInputElement>(null);
   const [isTitleValid, setIsTitleValid] = useState(false);
   const [isTitleDirty, setIsTitleDirty] = useState(false);
-  const [imageCount, setImageCount] = useState(0);
   const [previews, setPreviews] = useState<PreviewItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -46,6 +45,7 @@ export default function VoteCreatePage() {
   const hasPendingUpload = previews.some((p) =>
     p.objectKey.startsWith("pending:"),
   );
+  const imageCount = previews.length;
   const canSubmit =
     isTitleValid && imageCount >= MIN_VOTE_IMAGES && !hasPendingUpload;
 
@@ -119,7 +119,6 @@ export default function VoteCreatePage() {
           onDirtyChange={setIsTitleDirty}
         />
         <VoteImagePicker
-          onCountChange={setImageCount}
           onPreviewsChange={setPreviews}
         />
       </section>
