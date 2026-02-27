@@ -1,12 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { likePost } from "@/src/features/post/api/likePost";
-import { unlikePost } from "@/src/features/post/api/unlikePost";
-import { bookmarkPost } from "@/src/features/post/api/bookmarkPost";
-import { unbookmarkPost } from "@/src/features/post/api/unbookmarkPost";
+import { useHomeFeedPostActions } from "@/src/features/home/hooks/useHomeFeedPostActions";
 
 type HomePostActionsProps = {
   postId: number;
@@ -43,119 +39,21 @@ export default function HomePostActions({
   isBookmarked = false,
 }: HomePostActionsProps) {
   const router = useRouter();
-  const [liked, setLiked] = useState(isLiked);
-  const [likes, setLikes] = useState(likeCount);
-  const [liking, setLiking] = useState(false);
-  const [bookmarked, setBookmarked] = useState(isBookmarked);
-  const [bookmarking, setBookmarking] = useState(false);
-  const lastLikeCountRef = useRef(likeCount);
+  const { toggleLike, liking, toggleBookmark, bookmarking } =
+    useHomeFeedPostActions();
 
-  useEffect(() => {
-    setLiked(isLiked);
-    setBookmarked(isBookmarked);
-    if (lastLikeCountRef.current !== likeCount) {
-      setLikes(likeCount);
-      lastLikeCountRef.current = likeCount;
-    }
-  }, [isLiked, isBookmarked, likeCount]);
+  const liked = isLiked;
+  const likes = likeCount;
+  const bookmarked = isBookmarked;
 
-  const handleToggleLike = async () => {
+  const handleToggleLike = () => {
     if (liking) return;
-    setLiking(true);
-
-    const prevLiked = liked;
-    const prevLikes = likes;
-    const nextLiked = !prevLiked;
-
-    setLiked(nextLiked);
-    setLikes((count) => Math.max(0, count + (nextLiked ? 1 : -1)));
-
-    try {
-      const result = nextLiked
-        ? await likePost(String(postId))
-        : await unlikePost(String(postId));
-      if (typeof result.likeCount === "number") {
-        setLikes(result.likeCount);
-      }
-      setLiked(nextLiked);
-    } catch (e: unknown) {
-      const error = e as { code?: string; status?: number };
-
-      if (nextLiked && error.status === 409) {
-        try {
-          const result = await unlikePost(String(postId));
-          const resolvedLiked = false;
-          if (typeof result.likeCount === "number") {
-            setLikes(result.likeCount);
-          } else {
-            setLikes(Math.max(0, prevLikes - 1));
-          }
-          setLiked(resolvedLiked);
-          return;
-        } catch {
-          // fall through
-        }
-      }
-
-      setLiked(prevLiked);
-      setLikes(prevLikes);
-
-      switch (error.code) {
-        case "AUTH-E-002":
-          alert("로그인이 필요합니다.");
-          break;
-        case "POST-E-005":
-          alert("게시글을 찾을 수 없습니다.");
-          break;
-        default:
-          alert(
-            nextLiked
-              ? "좋아요에 실패했습니다."
-              : "좋아요 해제에 실패했습니다.",
-          );
-      }
-    } finally {
-      setLiking(false);
-    }
+    toggleLike({ postId, nextLiked: !liked });
   };
 
-  const handleToggleBookmark = async () => {
+  const handleToggleBookmark = () => {
     if (bookmarking) return;
-    setBookmarking(true);
-
-    const prevBookmarked = bookmarked;
-    const nextBookmarked = !prevBookmarked;
-
-    setBookmarked(nextBookmarked);
-
-    try {
-      const result = nextBookmarked
-        ? await bookmarkPost(String(postId))
-        : await unbookmarkPost(String(postId));
-      if (typeof result.isBookmarked === "boolean") {
-        setBookmarked(result.isBookmarked);
-      }
-    } catch (e: unknown) {
-      const error = e as { code?: string; status?: number };
-      setBookmarked(prevBookmarked);
-
-      switch (error.code) {
-        case "AUTH-E-002":
-          alert("로그인이 필요합니다.");
-          break;
-        case "POST-E-005":
-          alert("게시글을 찾을 수 없습니다.");
-          break;
-        default:
-          alert(
-            nextBookmarked
-              ? "북마크에 실패했습니다."
-              : "북마크 해제에 실패했습니다.",
-          );
-      }
-    } finally {
-      setBookmarking(false);
-    }
+    toggleBookmark({ postId, nextBookmarked: !bookmarked });
   };
 
   return (

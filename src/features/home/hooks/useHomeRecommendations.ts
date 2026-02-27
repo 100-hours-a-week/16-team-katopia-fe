@@ -1,14 +1,7 @@
 import { useEffect, useState } from "react";
 import { getHomeMembers } from "@/src/features/home/api/getHomeMembers";
-
-export type HomeRecommendationMember = {
-  id: number;
-  name: string;
-  heightCm: number;
-  weightKg: number;
-  styles: string[];
-  avatarUrl?: string | null;
-};
+import type { HomeRecommendationMember } from "@/src/features/home/types/recommendation";
+import { toRecommendationMembers } from "@/src/features/home/api/getHomeMembers";
 
 export function useHomeRecommendations(enabled: boolean) {
   const [recommendations, setRecommendations] = useState<
@@ -28,14 +21,7 @@ export function useHomeRecommendations(enabled: boolean) {
       try {
         const data = await getHomeMembers();
         if (cancelled) return;
-        const mapped = (data.members ?? []).map((member) => ({
-          id: member.id,
-          name: member.nickname ?? "",
-          heightCm: member.height ?? 0,
-          weightKg: member.weight ?? 0,
-          styles: member.styles ?? [],
-          avatarUrl: member.profileImageUrl ?? null,
-        }));
+        const mapped = toRecommendationMembers(data.members ?? []);
         setRecommendations(mapped);
       } catch {
         if (cancelled) return;

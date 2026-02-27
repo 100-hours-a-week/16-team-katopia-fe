@@ -15,10 +15,12 @@ type HomeRecommendationCardProps = {
     styles: string[];
     avatarUrl?: string | null;
   };
+  priority?: boolean;
 };
 
 export default function HomeRecommendationCard({
   member,
+  priority = false,
 }: HomeRecommendationCardProps) {
   const router = useRouter();
   const [followLoading, setFollowLoading] = useState(false);
@@ -42,6 +44,7 @@ export default function HomeRecommendationCard({
         alt={`${member.name} 프로필`}
         size={92}
         className="border border-[#d7d7d7]"
+        priority={priority}
       />
       <p className="mt-4 text-[14px] font-semibold text-neutral-900">
         {member.name}
