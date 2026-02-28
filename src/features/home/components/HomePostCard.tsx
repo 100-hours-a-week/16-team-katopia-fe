@@ -8,9 +8,13 @@ import HomePostMedia from "./HomePostMedia";
 
 type HomePostCardProps = {
   post: HomePost;
+  prioritizeMedia?: boolean;
 };
 
-export default function HomePostCard({ post }: HomePostCardProps) {
+export default function HomePostCard({
+  post,
+  prioritizeMedia = false,
+}: HomePostCardProps) {
   return (
     <article className="flex flex-col gap-4">
       <div className="px-1">
@@ -20,6 +24,7 @@ export default function HomePostCard({ post }: HomePostCardProps) {
         postId={post.id}
         imageUrl={post.imageUrl}
         imageUrls={post.imageUrls}
+        prioritizeFirstImage={prioritizeMedia}
       />
       <div className="px-1">
         <HomePostActions

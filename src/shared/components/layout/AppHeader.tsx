@@ -28,7 +28,14 @@ export default function AppHeader({
 
   return (
     <header className="absolute left-0 top-0 flex h-14 w-full items-center justify-between px-1">
-      <Image src={logoSrc} alt={alt} width={width} height={height} />
+      <Image
+        src={logoSrc}
+        alt={alt}
+        width={width}
+        height={height}
+        priority
+        style={{ width: "auto", height: "auto" }}
+      />
 
       <div className="flex items-center gap-1">
         <Link

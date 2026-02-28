@@ -10,8 +10,8 @@ type HomeFeedProps = {
 export default function HomeFeed({ posts }: HomeFeedProps) {
   return (
     <section className="flex flex-col gap-10 pb-12">
-      {posts.map((post) => (
-        <HomePostCard key={post.id} post={post} />
+      {posts.map((post, index) => (
+        <HomePostCard key={post.id} post={post} prioritizeMedia={index === 0} />
       ))}
     </section>
   );

@@ -71,13 +71,23 @@ export async function getHomePosts(params?: {
   if (params?.size) searchParams.set("size", String(params.size));
   if (params?.after) searchParams.set("after", params.after);
 
-  const res = await authFetch(
-    `${API_BASE_URL}/api/home/posts?${searchParams.toString()}`,
-    {
+  let res: Response;
+  try {
+    res = await authFetch(`${API_BASE_URL}/api/home/posts?${searchParams.toString()}`, {
       method: "GET",
       cache: "no-store",
-    },
-  );
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (
+      message === "AUTH_INVALID" ||
+      message === "LOGGED_OUT" ||
+      message === "REFRESH_FAILED"
+    ) {
+      return { posts: [], nextCursor: null };
+    }
+    throw error;
+  }
 
   const result = await res.json();
 
