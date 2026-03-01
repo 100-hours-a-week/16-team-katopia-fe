@@ -42,10 +42,12 @@ export default function VotePage() {
     total > 0 ? (Math.min(index + 1, total) / total) * 100 : 0;
 
   let content: React.ReactNode;
-  if (loading || total === 0) {
+  if (loading) {
     content = <VoteResultLoading />;
   } else if (noActiveVote) {
     content = <VoteEmptyState />;
+  } else if (total === 0) {
+    content = <VoteResultLoading />;
   } else if (isFinished) {
     content = (
       <VoteFinalStep
