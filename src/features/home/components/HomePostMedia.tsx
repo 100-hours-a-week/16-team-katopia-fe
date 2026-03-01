@@ -2,17 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import Image from "next/image";
 
 type HomePostMediaProps = {
   postId: number;
   imageUrl?: string | null;
   imageUrls?: string[];
+  prioritizeFirstImage?: boolean;
 };
 
 export default function HomePostMedia({
   postId,
   imageUrl,
   imageUrls,
+  prioritizeFirstImage = false,
 }: HomePostMediaProps) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
@@ -50,12 +53,20 @@ export default function HomePostMedia({
               className="relative block h-full w-full"
               aria-label="게시물 이미지"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={src}
                 alt={`게시물 이미지 ${imageIndex + 1}`}
-                className="h-full w-full object-cover"
-                loading="lazy"
+                fill
+                sizes="(max-width: 430px) 100vw, 430px"
+                className="object-cover"
+                priority={prioritizeFirstImage && imageIndex === 0}
+                fetchPriority={
+                  prioritizeFirstImage && imageIndex === 0 ? "high" : "auto"
+                }
+                loading={
+                  prioritizeFirstImage && imageIndex === 0 ? "eager" : "lazy"
+                }
+                quality={70}
               />
             </button>
           </div>

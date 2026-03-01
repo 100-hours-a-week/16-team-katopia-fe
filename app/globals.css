@@ -91,26 +91,6 @@ body {
   color-scheme: light;
 }
 
-.route-fade-in {
-  animation: routeFadeIn 140ms ease-out both;
-  will-change: opacity;
-}
-
-@keyframes routeFadeIn {
-  from {
-    opacity: 0.98;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .route-fade-in {
-    animation: none;
-  }
-}
-
 input,
 textarea,
 select {

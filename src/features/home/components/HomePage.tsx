@@ -1,31 +1,21 @@
 "use client";
 
 import AppHeader from "@/src/shared/components/layout/AppHeader";
-import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import HomeFeed from "./HomeFeed";
-import { useInfiniteHomeFeed } from "../hooks/useInfiniteHomeFeed";
 import { useHomeQuerySync } from "../hooks/useHomeQuerySync";
 import { useSignupWelcomeToast } from "../hooks/useSignupWelcomeToast";
-import { useHomeScrollRestoration } from "../hooks/useHomeScrollRestoration";
 
-export default function HomePage({ children }: { children?: React.ReactNode }) {
-  const { ready, isAuthenticated } = useAuth();
-  // 피드는 로그인 사용자의 개인화 콘텐츠라 CSR + auth ready 이후 로드
-  const feedEnabled = ready && isAuthenticated;
+export default function HomePage({
+  children,
+  feed,
+  recommendation,
+}: {
+  children?: React.ReactNode;
+  feed?: React.ReactNode;
+  recommendation?: React.ReactNode;
+}) {
   const toastMessage = useSignupWelcomeToast();
 
   useHomeQuerySync();
-
-  const {
-    items: posts,
-    hasMore: postsHasMore,
-    observe: observePosts,
-  } = useInfiniteHomeFeed({
-    size: 10,
-    enabled: feedEnabled,
-  });
-
-  useHomeScrollRestoration(posts.length);
 
   return (
     <>
@@ -33,11 +23,8 @@ export default function HomePage({ children }: { children?: React.ReactNode }) {
         <AppHeader />
         <main className="flex-1 px-1 pb-12 pt-16">
           {/* <HomeInfoCarousel /> */}
-          <HomeFeed posts={posts} />
-          {feedEnabled && postsHasMore && (
-            <div ref={observePosts} className="h-24" />
-          )}
-          {/* 서버 컴포넌트(추천 섹션) 슬롯 */}
+          {feed}
+          {recommendation}
           {children}
         </main>
 
