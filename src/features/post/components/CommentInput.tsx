@@ -66,8 +66,10 @@ export default function CommentInput({ onSubmit }: Props) {
 
   return (
     <div
-      className={`mt-2 flex items-center gap-3 rounded border px-3 py-3 ${
-        overLimit ? "border-red-500" : "border-black"
+      className={`mt-2 flex items-center gap-3 rounded border px-3 py-3 transition-colors ${
+        overLimit
+          ? "border-red-500 focus-within:border-red-500"
+          : "border-gray-300 focus-within:border-black"
       }`}
     >
       <textarea

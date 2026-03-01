@@ -196,8 +196,7 @@ export default function PostContent({
               alt="좋아요"
               width={25}
               height={25}
-              className={liked ? "opacity-100" : "opacity-60"}
-              style={{ width: "auto", height: "auto" }}
+              className={`h-[25px] w-[25px] ${liked ? "opacity-100" : "opacity-60"}`}
             />
             <span className="text-[12px]">{likes}</span>
           </button>
