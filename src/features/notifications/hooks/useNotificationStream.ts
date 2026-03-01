@@ -88,6 +88,7 @@ export function useNotificationStream({
     // SSE 라이프사이클
     if (!enabled || typeof window === "undefined") return; // 비활성/SSR이면 중단
 
+    const isProd = process.env.NODE_ENV === "production";
     closedRef.current = false; // 활성 상태로 설정
 
     const notifyToastIfNeeded = (items: NotificationItem[]) => {
@@ -146,7 +147,9 @@ export function useNotificationStream({
       // 재시도 횟수 제한
       if (reconnectAttemptRef.current >= MAX_RETRY) {
         // 최대 재시도 초과
-        console.warn("[notifications:sse] max retry reached. stop reconnect."); // 로그
+        if (!isProd) {
+          console.warn("[notifications:sse] max retry reached. stop reconnect."); // 로그
+        }
         return; // 종료
       }
 
@@ -171,7 +174,9 @@ export function useNotificationStream({
         }
       }
 
-      console.log("[notifications:sse] connecting..."); // 연결 로그
+      if (!isProd) {
+        console.log("[notifications:sse] connecting..."); // 연결 로그
+      }
 
       const streamPath = "/api/notifications/stream";
       const streamUrl = (() => {
@@ -217,7 +222,9 @@ export function useNotificationStream({
 
       es.onopen = () => {
         // 연결 성공 핸들러
-        console.log("[notifications:sse] connected"); // 연결 로그
+        if (!isProd) {
+          console.log("[notifications:sse] connected"); // 연결 로그
+        }
         reconnectAttemptRef.current = 0; // 재시도 횟수 초기화
         tokenRefreshTriedRef.current = false; // 재발급 플래그 초기화
         recordActivity(); // 활동 기록
@@ -262,10 +269,12 @@ export function useNotificationStream({
           (event as { target?: { status?: number } } | null)?.target?.status ?? // target status
           (es as { xhr?: { status?: number } } | null)?.xhr?.status ?? // polyfill xhr
           null; // 기본값
-        console.warn(`[notifications:sse] error, readyState=${state}`, {
-          // 로그
-          status, // 상태 코드
-        }); // 로그 끝
+        if (!isProd || status !== null) {
+          console.warn(`[notifications:sse] error, readyState=${state}`, {
+            // 로그
+            status, // 상태 코드
+          }); // 로그 끝
+        }
 
         if (closedRef.current) return; // 수동 종료면 무시
 
@@ -301,8 +310,11 @@ export function useNotificationStream({
         }
 
         if (status == null && state === EventSource.CONNECTING) {
-          // status=null + CONNECTING은 폴리필 내부 재연결 진행 중일 수 있음
-          // 여기서 강제 close/reconnect를 하면 연결 루프가 과도해질 수 있어 무시
+          // 일부 프록시/H2 환경에서는 CONNECTING 상태에서 빠른 실패-재시도 루프가 발생한다.
+          // 폴리필 내부 자동 재연결에 맡기지 않고 명시적으로 close + 백오프 재연결을 수행한다.
+          reconnectAttemptRef.current += 1;
+          es.close();
+          scheduleReconnect();
           return;
         }
 
@@ -325,24 +337,28 @@ export function useNotificationStream({
             reconnectMaxIntervalMs * 2, // 하드 캡
             Math.max(30_000, reconnectIntervalMs * 4), // 최소 30초 또는 4배
           ); // 계산 끝
-          console.warn("[notifications:sse] server error, backoff reconnect", {
-            // 로그
-            status, // 상태 코드
-            retryDelay, // 지연 시간
-          }); // 로그 끝
+          if (!isProd) {
+            console.warn("[notifications:sse] server error, backoff reconnect", {
+              // 로그
+              status, // 상태 코드
+              retryDelay, // 지연 시간
+            }); // 로그 끝
+          }
           scheduleReconnect(retryDelay); // 재연결 예약
           return; // 종료
         }
 
         if (inactiveMs < heartbeatTimeoutMs) {
           // 최근 활동 있음
-          console.warn(
-            "[notifications:sse] recent activity detected, delay reconnect",
-            {
-              // 로그
-              inactiveMs, // 비활동 시간
-            },
-          ); // 로그 끝
+          if (!isProd) {
+            console.warn(
+              "[notifications:sse] recent activity detected, delay reconnect",
+              {
+                // 로그
+                inactiveMs, // 비활동 시간
+              },
+            ); // 로그 끝
+          }
           scheduleReconnect(); // 재연결 예약
           return; // 종료
         }
@@ -374,7 +390,9 @@ export function useNotificationStream({
 
       if (reconnectAttemptRef.current >= MAX_RETRY) {
         // 최대 재시도 초과
-        console.warn("[notifications:sse] too many retries. stop."); // 로그
+        if (!isProd) {
+          console.warn("[notifications:sse] too many retries. stop."); // 로그
+        }
         return; // 종료
       }
 
