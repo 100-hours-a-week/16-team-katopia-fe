@@ -36,6 +36,7 @@ export function useVoteFlow() {
   const [noActiveVote, setNoActiveVote] = useState(false);
   const transitionCommittedRef = useRef(false);
   const pendingAnimatedIndexRef = useRef<number | null>(null);
+  const pendingAnimatedCardIdRef = useRef<string | null>(null);
   const resultRevealTimerRef = useRef<number | null>(null);
 
   const total = cards.length;
@@ -68,14 +69,42 @@ export function useVoteFlow() {
     setSelectedIds(next);
   }, []);
 
+  const commitTransition = useCallback(
+    (expectedIndex: number, completedCardId?: string | null) => {
+      if (!isAnimating) return;
+      if (transitionCommittedRef.current) return;
+      if (pendingAnimatedIndexRef.current !== expectedIndex) return;
+      if (
+        pendingAnimatedCardIdRef.current &&
+        completedCardId &&
+        pendingAnimatedCardIdRef.current !== completedCardId
+      ) {
+        return;
+      }
+
+      transitionCommittedRef.current = true;
+      pendingAnimatedIndexRef.current = null;
+      pendingAnimatedCardIdRef.current = null;
+      setIndex((prevIndex) => {
+        if (prevIndex !== expectedIndex) return prevIndex;
+        return Math.min(prevIndex + 1, total);
+      });
+      setExitDirection("right");
+      setIsAnimating(false);
+      x.set(0);
+    },
+    [isAnimating, total, x],
+  );
+
   const paginate = useCallback(
     (direction: "left" | "right") => {
       if (isAnimating || index >= total) return;
       if (direction === "right" && active) {
-        addSelection(index, Number(active.id));
+        addSelection(index, active.id);
       }
       transitionCommittedRef.current = false;
       pendingAnimatedIndexRef.current = index;
+      pendingAnimatedCardIdRef.current = active ? String(active.id) : null;
       setExitDirection(direction);
       setIsAnimating(true);
     },
@@ -93,17 +122,11 @@ export function useVoteFlow() {
     [paginate, x],
   );
 
-  const handleAnimationComplete = useCallback(() => {
-    if (!isAnimating) return;
-    if (transitionCommittedRef.current) return;
-    if (pendingAnimatedIndexRef.current !== index) return;
-    transitionCommittedRef.current = true;
-    pendingAnimatedIndexRef.current = null;
-    setIndex((prevIndex) => Math.min(prevIndex + 1, total));
-    setExitDirection("right");
-    setIsAnimating(false);
-    x.set(0);
-  }, [index, isAnimating, total, x]);
+  const handleAnimationComplete = useCallback((completedCardId?: string) => {
+    const pendingIndex = pendingAnimatedIndexRef.current;
+    if (pendingIndex == null) return;
+    commitTransition(pendingIndex, completedCardId ?? null);
+  }, [commitTransition]);
 
   const refreshCandidates = useCallback(async () => {
     try {
@@ -132,6 +155,7 @@ export function useVoteFlow() {
       setExitDirection("right");
       transitionCommittedRef.current = false;
       pendingAnimatedIndexRef.current = null;
+      pendingAnimatedCardIdRef.current = null;
       if (resultRevealTimerRef.current) {
         clearTimeout(resultRevealTimerRef.current);
         resultRevealTimerRef.current = null;
