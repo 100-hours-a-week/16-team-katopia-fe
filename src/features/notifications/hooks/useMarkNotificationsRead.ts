@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import type { NotificationItem } from "@/src/features/notifications/api/getNotifications";
 import { patchNotificationRead } from "@/src/features/notifications/api/patchNotificationRead";
 
@@ -13,51 +13,53 @@ type Params = {
 
 export function useMarkNotificationsRead({ notifications, setItems }: Params) {
   const markedIdsRef = useRef<Set<number>>(new Set());
+  const pendingReadIdsRef = useRef<Set<number>>(new Set());
 
-  useEffect(() => {
-    if (notifications.length === 0) return;
-
+  const markAllAsRead = useCallback(() => {
     const unreadIds = notifications
       .filter((item) => !item.readAt && !markedIdsRef.current.has(item.id))
       .map((item) => item.id);
     if (unreadIds.length === 0) return;
 
-    unreadIds.forEach((id) => markedIdsRef.current.add(id));
-    const unreadIdSet = new Set(unreadIds);
-    const nextReadAt = new Date().toISOString();
-
-    setItems((prev) =>
-      prev.map((item) =>
-        unreadIdSet.has(item.id) ? { ...item, readAt: nextReadAt } : item,
-      ),
-    );
-
     unreadIds.forEach((id) => {
-      patchNotificationRead(id).catch(() => {
-        // ignore patch failures for now
-      });
+      markedIdsRef.current.add(id);
+      pendingReadIdsRef.current.add(id);
     });
-  }, [notifications, setItems]);
+  }, [notifications]);
 
   const markAsRead = useCallback(
     (id: number) => {
       const target = notifications.find((item) => item.id === id);
       if (!target || target.readAt) return;
       markedIdsRef.current.add(id);
+      pendingReadIdsRef.current.add(id);
+    },
+    [notifications],
+  );
 
-      const nextReadAt = new Date().toISOString();
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, readAt: nextReadAt } : item,
-        ),
-      );
+  const commitMarkedAsRead = useCallback(() => {
+    if (pendingReadIdsRef.current.size === 0) return;
+    const pendingReadIdSet = new Set(pendingReadIdsRef.current);
+    const nextReadAt = new Date().toISOString();
 
+    setItems((prev) =>
+      prev.map((item) =>
+        pendingReadIdSet.has(item.id) ? { ...item, readAt: nextReadAt } : item,
+      ),
+    );
+
+    pendingReadIdSet.forEach((id) => {
       patchNotificationRead(id).catch(() => {
         // ignore patch failures for now
       });
-    },
-    [notifications, setItems],
-  );
+    });
 
-  return { markAsRead };
+    pendingReadIdsRef.current.clear();
+  }, [setItems]);
+
+  const isPendingRead = useCallback((id: number) => {
+    return pendingReadIdsRef.current.has(id);
+  }, []);
+
+  return { markAsRead, markAllAsRead, commitMarkedAsRead, isPendingRead };
 }

@@ -11,7 +11,6 @@ export function useInfiniteNotifications(params?: Params) {
   const items = useNotificationsStore((state) => state.items);
   const setItems = useNotificationsStore((state) => state.setItems);
   const mergeItems = useNotificationsStore((state) => state.mergeItems);
-  const clearItems = useNotificationsStore((state) => state.clear);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -23,6 +22,7 @@ export function useInfiniteNotifications(params?: Params) {
   const inFlightRef = useRef(false);
   const cursorRef = useRef<string | null>(null);
   const hasMoreRef = useRef(true);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     cursorRef.current = nextCursor;
@@ -46,6 +46,7 @@ export function useInfiniteNotifications(params?: Params) {
         size,
         after: cursorRef.current,
       });
+      if (!mountedRef.current) return;
 
       const newItems = data.notifications ?? [];
       mergeItems(newItems);
@@ -60,8 +61,10 @@ export function useInfiniteNotifications(params?: Params) {
       setNextCursor(rawNextCursor);
       setHasMore(rawNextCursor != null);
     } catch {
+      if (!mountedRef.current) return;
       setHasMore(false);
     } finally {
+      if (!mountedRef.current) return;
       inFlightRef.current = false;
       setLoading(false);
     }
@@ -95,7 +98,7 @@ export function useInfiniteNotifications(params?: Params) {
   );
 
   useEffect(() => {
-    clearItems();
+    mountedRef.current = true;
     setNextCursor(null);
     setHasMore(true);
     cursorRef.current = null;
@@ -104,10 +107,12 @@ export function useInfiniteNotifications(params?: Params) {
 
     if (!enabled) return;
     loadMore();
-  }, [enabled, size, loadMore, clearItems]);
+  }, [enabled, size, loadMore]);
 
   useEffect(() => {
     return () => {
+      mountedRef.current = false;
+      inFlightRef.current = false;
       observerRef.current?.disconnect();
       observerRef.current = null;
     };

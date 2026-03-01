@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { NotificationItem } from "@/src/features/notifications/api/getNotifications";
 import { useInfiniteNotifications } from "@/src/features/notifications/hooks/useInfiniteNotifications";
 import { useNotificationNavigation } from "@/src/features/notifications/hooks/useNotificationNavigation";
 import { useMarkNotificationsRead } from "@/src/features/notifications/hooks/useMarkNotificationsRead";
 import { EmptyNotification } from "@/src/features/notifications/components/EmptyNotification";
-import { NotificationSection } from "@/src/features/notifications/components/NotificationSection";
+import { NotificationItem as NotificationListItem } from "@/src/features/notifications/components/NotificationItem";
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -18,17 +18,15 @@ export default function NotificationsPage() {
     observe,
     loading,
   } = useInfiniteNotifications({ size: 20, enabled: true });
+  const [initialUnreadIdSet] = useState<Set<number>>(
+    () =>
+      new Set(
+        notifications.filter((item) => !item.readAt).map((item) => item.id),
+      ),
+  );
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => !item.readAt).length,
-    [notifications],
-  );
-  const unreadItems = useMemo(
-    () => notifications.filter((item) => !item.readAt),
-    [notifications],
-  );
-  const readItems = useMemo(
-    () => notifications.filter((item) => item.readAt),
     [notifications],
   );
 
@@ -43,10 +41,11 @@ export default function NotificationsPage() {
     notifyUnreadCount(unreadCount);
   }, [notifyUnreadCount, unreadCount]);
 
-  const { markAsRead } = useMarkNotificationsRead({
-    notifications,
-    setItems,
-  });
+  const { markAsRead, markAllAsRead, commitMarkedAsRead, isPendingRead } =
+    useMarkNotificationsRead({
+      notifications,
+      setItems,
+    });
   const { handleNavigate } = useNotificationNavigation({
     notifications,
     markAsRead,
@@ -63,6 +62,16 @@ export default function NotificationsPage() {
     },
     [handleNavigate],
   );
+
+  useEffect(() => {
+    markAllAsRead();
+  }, [markAllAsRead]);
+
+  useEffect(() => {
+    return () => {
+      commitMarkedAsRead();
+    };
+  }, [commitMarkedAsRead]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -86,22 +95,20 @@ export default function NotificationsPage() {
             <h1 className="mt-7 text-[26px] font-semibold text-[#1c1c1c]">
               알림
             </h1>
-
-            <NotificationSection
-              title="새로운 알림"
-              items={unreadItems}
-              variant="unread"
-              className="mt-6"
-              onItemClick={handleItemClick}
-            />
-
-            <NotificationSection
-              title="지난 알림"
-              items={readItems}
-              variant="read"
-              className="mt-10"
-              onItemClick={handleItemClick}
-            />
+            <ul className="mt-6 flex flex-col gap-7">
+              {notifications.map((item) => (
+                <NotificationListItem
+                  key={item.id}
+                  item={item}
+                  isNew={
+                    initialUnreadIdSet.has(item.id) ||
+                    !item.readAt ||
+                    isPendingRead(item.id)
+                  }
+                  onClick={handleItemClick}
+                />
+              ))}
+            </ul>
 
             {hasMore && <div ref={observe} className="h-16 w-full" aria-hidden />}
 
