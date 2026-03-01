@@ -18,7 +18,7 @@ type Props = {
   scale: MotionValue<number>;
   opacity: MotionValue<number>;
   onDragEnd: (offsetX: number) => void;
-  onAnimationComplete: () => void;
+  onAnimationComplete: (completedCardId?: string) => void;
 };
 
 export default function VoteCardStack({
@@ -110,10 +110,9 @@ export default function VoteCardStack({
                 top: 0,
                 bottom: 0,
               }}
-              drag="x"
+              drag={isAnimating ? false : "x"}
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.18}
-              dragListener={!isAnimating}
               onDragEnd={(_, info) => onDragEnd(info.offset.x)}
               initial={{ opacity: 0.2, scale: 0.98 }}
               animate={
@@ -127,7 +126,21 @@ export default function VoteCardStack({
                     }
                   : { opacity: 1, scale: 1 }
               }
-              onAnimationComplete={isAnimating ? onAnimationComplete : undefined}
+              onAnimationComplete={
+                isAnimating
+                  ? (definition) => {
+                      // exit animate 객체가 끝났을 때만 상위 상태를 커밋.
+                      if (
+                        !definition ||
+                        typeof definition !== "object" ||
+                        !("x" in definition)
+                      ) {
+                        return;
+                      }
+                      onAnimationComplete(String(active.id));
+                    }
+                  : undefined
+              }
             >
               <div className="absolute inset-4 overflow-hidden rounded-[22px] bg-transparent select-none">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

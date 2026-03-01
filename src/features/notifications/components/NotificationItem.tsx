@@ -7,9 +7,10 @@ import { formatDayLabel } from "@/src/features/notifications/utils/formatDayLabe
 type Props = {
   item: NotificationItemModel;
   onClick: (item: NotificationItemModel) => void;
+  isNew?: boolean;
 };
 
-export function NotificationItem({ item, onClick }: Props) {
+export function NotificationItem({ item, onClick, isNew = false }: Props) {
   const meta = (
     item as {
       meta?: {
@@ -29,12 +30,6 @@ export function NotificationItem({ item, onClick }: Props) {
             : "relative h-13 w-11 shrink-0 overflow-hidden rounded-[2px] bg-[#e9ecf1]"
         }
       >
-        {!item.readAt && (
-          <span
-            className="absolute right-0 top-0 z-10 h-[1px] w-[1px] rounded-full bg-black"
-            aria-hidden
-          />
-        )}
         {imageSrc ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -71,9 +66,17 @@ export function NotificationItem({ item, onClick }: Props) {
         className="flex-1 text-left"
         aria-label="알림 상세 이동"
       >
-        <p className="text-[13px] font-medium text-[#2b2b2b]">
-          {item.message ?? ""}
-        </p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-[13px] font-medium text-[#2b2b2b]">
+            {item.message ?? ""}
+          </p>
+          {isNew && (
+            <span
+              className="mt-1 h-2 w-2 shrink-0 rounded-full bg-black"
+              aria-hidden
+            />
+          )}
+        </div>
         <p className="mt-1 text-[12px] text-[#9aa0a6]">
           {formatDayLabel(item.createdAt)}
         </p>

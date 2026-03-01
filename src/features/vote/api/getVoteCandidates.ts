@@ -31,15 +31,22 @@ export async function getVoteCandidates(): Promise<{
   });
 
   const raw = await res.text();
-  const parsed = raw
-    ? ((JSON.parse(raw) as VoteCandidatesApiResponse) ?? {})
-    : {};
-  const data = parsed.data ?? (parsed as VoteCandidatesResponse);
 
   if (!res.ok) {
     if (res.status === 404) return null;
     throw new Error("투표 목록을 불러오지 못했습니다.");
   }
+
+  let parsed: VoteCandidatesApiResponse | VoteCandidatesResponse = {};
+  if (raw) {
+    try {
+      parsed = (JSON.parse(raw) as VoteCandidatesApiResponse) ?? {};
+    } catch {
+      parsed = {};
+    }
+  }
+  const data = (parsed as VoteCandidatesApiResponse).data ??
+    (parsed as VoteCandidatesResponse);
 
   const items = (data.items ?? [])
     .slice()

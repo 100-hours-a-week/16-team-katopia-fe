@@ -72,8 +72,7 @@ export default function HomePostActions({
             alt=""
             width={22}
             height={22}
-            className={liked ? "opacity-100" : "opacity-60"}
-            style={{ width: "auto", height: "auto" }}
+            className={`h-[22px] w-[22px] ${liked ? "opacity-100" : "opacity-60"}`}
           />
           <span className="text-[14px] font-semibold">{likes}</span>
         </button>

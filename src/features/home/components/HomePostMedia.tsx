@@ -40,7 +40,7 @@ export default function HomePostMedia({
   }
 
   return (
-    <div className="relative aspect-3/4 overflow-hidden rounded-[6px] bg-[#efefef]">
+    <div className="group relative aspect-3/4 overflow-hidden rounded-[6px] bg-[#efefef]">
       <div
         className="flex h-full w-full transition-transform duration-300 ease-out will-change-transform"
         style={{ transform: `translate3d(-${safeIndex * 100}%, 0, 0)` }}
@@ -75,7 +75,7 @@ export default function HomePostMedia({
 
       {hasMultiple && (
         <>
-          <div className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/50 px-2 py-1 text-[11px] text-white">
+          <div className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/50 px-2 py-1 text-[11px] text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
             {safeIndex + 1}/{total}
           </div>
           <button
