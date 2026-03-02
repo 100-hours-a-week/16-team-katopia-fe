@@ -4,8 +4,10 @@ import "react-toastify/dist/ReactToastify.css";
 import LayoutShell from "@/src/shared/components/layout/LayoutShell";
 import AuthProvider from "@/src/features/auth/providers/AuthProvider";
 import ReactQueryProvider from "@/src/features/auth/providers/ReactQueryProvider";
+import GA4PageTracker from "@/src/shared/analytics/GA4PageTracker";
 import { Suspense } from "react";
 import { Noto_Sans_KR } from "next/font/google";
+import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
 
 const notoSansKr = Noto_Sans_KR({
   weight: ["400", "500", "600", "700"],
@@ -18,11 +20,17 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+
   return (
     <html lang="ko">
       <body
         className={`${notoSansKr.variable} min-h-screen bg-[#ffffff] text-[#121212]`}
       >
+        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
+        {gaId ? <GA4PageTracker /> : null}
+        {!gaId && gtmId ? <GoogleTagManager gtmId={gtmId} /> : null}
         <ReactQueryProvider>
           <Suspense fallback={null}>
             <AuthProvider>
