@@ -14,7 +14,9 @@ export async function patchNotificationRead(
     cache: "no-store",
   });
 
-  const result = (await res.json().catch(() => ({}))) as PatchNotificationResponse;
+  const result = (await res
+    .json()
+    .catch(() => ({}))) as PatchNotificationResponse;
 
   if (!res.ok) {
     if (res.status === 401) return null;

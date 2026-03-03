@@ -13,10 +13,7 @@ type SearchGridProps = {
   loading?: boolean;
 };
 
-export default function SearchGrid({
-  posts,
-  loading,
-}: SearchGridProps) {
+export default function SearchGrid({ posts, loading }: SearchGridProps) {
   // 최초 로딩 스켈레톤
   if (loading && posts.length === 0) {
     return (

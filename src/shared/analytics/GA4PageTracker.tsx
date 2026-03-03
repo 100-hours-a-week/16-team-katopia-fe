@@ -1,0 +1,87 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { sendGAEvent } from "@next/third-parties/google";
+
+function getPagePath(pathname: string, searchParams: URLSearchParams) {
+  const query = searchParams.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+export default function GA4PageTracker() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const pageEnterAtRef = useRef<number>(0);
+  const lastPathRef = useRef<string>("");
+  const scrollTrackedRef = useRef<{ fifty: boolean; ninety: boolean }>({
+    fifty: false,
+    ninety: false,
+  });
+
+  useEffect(() => {
+    const currentPath = getPagePath(pathname ?? "/", searchParams);
+    const previousPath = lastPathRef.current;
+
+    // 이전 페이지 체류 시간을 페이지 전환 시점에 기록
+    if (previousPath) {
+      const elapsed = Date.now() - pageEnterAtRef.current;
+      sendGAEvent("event", "page_dwell", {
+        page_path: previousPath,
+        engagement_time_msec: elapsed,
+      });
+    }
+
+    pageEnterAtRef.current = Date.now();
+    lastPathRef.current = currentPath;
+    scrollTrackedRef.current = { fifty: false, ninety: false };
+
+    sendGAEvent("event", "page_view", {
+      page_path: currentPath,
+      page_location: window.location.href,
+      page_title: document.title,
+    });
+  }, [pathname, searchParams]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const doc = document.documentElement;
+      const scrollTop = window.scrollY;
+      const maxScrollable = Math.max(doc.scrollHeight - window.innerHeight, 1);
+      const ratio = (scrollTop / maxScrollable) * 100;
+      const currentPath = lastPathRef.current || pathname || "/";
+
+      if (ratio >= 50 && !scrollTrackedRef.current.fifty) {
+        scrollTrackedRef.current.fifty = true;
+        sendGAEvent("event", "scroll_depth", {
+          page_path: currentPath,
+          percent_scrolled: 50,
+        });
+      }
+
+      if (ratio >= 90 && !scrollTrackedRef.current.ninety) {
+        scrollTrackedRef.current.ninety = true;
+        sendGAEvent("event", "scroll_depth", {
+          page_path: currentPath,
+          percent_scrolled: 90,
+        });
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [pathname]);
+
+  useEffect(() => {
+    return () => {
+      if (!lastPathRef.current) return;
+      const elapsed = Date.now() - pageEnterAtRef.current;
+      sendGAEvent("event", "page_dwell", {
+        page_path: lastPathRef.current,
+        engagement_time_msec: elapsed,
+      });
+    };
+  }, []);
+
+  return null;
+}
