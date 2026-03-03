@@ -6,6 +6,7 @@ import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { deletePost } from "../api/deletePost";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
+import { getPostDetailViewerState } from "../api/getPostDetailViewerState";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
 import {
@@ -62,6 +63,10 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
 
   const post = initialPost;
   const loading = false;
+  const [viewerState, setViewerState] = useState<{
+    isLiked?: boolean;
+    isBookmarked?: boolean;
+  } | null>(null);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [bookmarkedOverride, setBookmarkedOverride] = useState<boolean | null>(
     null,
@@ -91,8 +96,34 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
     return false;
   }, [post, me]);
 
-  const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
-  const effectiveBookmarked = bookmarkedOverride ?? post?.isBookmarked ?? false;
+  const effectiveLiked =
+    likedOverride ?? viewerState?.isLiked ?? post?.isLiked ?? false;
+  const effectiveBookmarked =
+    bookmarkedOverride ??
+    viewerState?.isBookmarked ??
+    post?.isBookmarked ??
+    false;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getPostDetailViewerState(postId)
+      .then((res) => {
+        if (!cancelled && res) {
+          setViewerState(res);
+        }
+      })
+      .catch((e) => {
+        if (e?.code === "POST-E-005") {
+          alert("게시글을 찾을 수 없습니다.");
+          router.replace("/");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, router]);
 
   useEffect(() => {
     authFetch(`${API_BASE_URL}/api/members/me`, {
