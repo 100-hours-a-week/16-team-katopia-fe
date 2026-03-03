@@ -15,6 +15,11 @@ function getPageTitle(pathname: string, currentPath: string) {
   return title || pathname || currentPath || "/";
 }
 
+function getSiteDomain() {
+  if (typeof window === "undefined") return undefined;
+  return window.location.hostname || undefined;
+}
+
 type GA4PageTrackerProps = {
   gaId: string;
 };
@@ -61,6 +66,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
   useEffect(() => {
     const currentPath = getPagePath(pathname ?? "/", searchParams);
     const currentTitle = getPageTitle(pathname ?? "/", currentPath);
+    const siteDomain = getSiteDomain();
     const previousPath = lastPathRef.current;
 
     // 이전 페이지 체류 시간을 페이지 전환 시점에 기록
@@ -69,6 +75,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
       trackEvent("page_dwell", {
         page_path: previousPath,
         engagement_time_msec: elapsed,
+        site_domain: siteDomain,
       });
     }
 
@@ -80,6 +87,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
       page_path: currentPath,
       page_location: window.location.href,
       page_title: currentTitle,
+      site_domain: siteDomain,
     });
   }, [pathname, searchParams, trackEvent]);
 
@@ -96,6 +104,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
         trackEvent("scroll_depth", {
           page_path: currentPath,
           percent_scrolled: 50,
+          site_domain: getSiteDomain(),
         });
       }
 
@@ -104,6 +113,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
         trackEvent("scroll_depth", {
           page_path: currentPath,
           percent_scrolled: 90,
+          site_domain: getSiteDomain(),
         });
       }
     };
@@ -119,6 +129,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
       trackEvent("page_dwell", {
         page_path: lastPathRef.current,
         engagement_time_msec: elapsed,
+        site_domain: getSiteDomain(),
       });
     };
   }, [trackEvent]);
