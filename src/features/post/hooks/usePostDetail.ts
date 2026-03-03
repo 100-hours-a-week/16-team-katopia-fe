@@ -109,14 +109,6 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
 
   useEffect(() => {
     let cancelled = false;
-    const hasViewerStateInInitial =
-      post?.isLiked !== undefined || post?.isBookmarked !== undefined;
-
-    if (hasViewerStateInInitial) {
-      return () => {
-        cancelled = true;
-      };
-    }
 
     getPostDetailViewerState(postId)
       .then((res) => {
@@ -134,7 +126,7 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
     return () => {
       cancelled = true;
     };
-  }, [post?.isBookmarked, post?.isLiked, postId, router]);
+  }, [postId, router]);
 
   const handleEdit = useCallback(() => {
     if (!postId) return;
