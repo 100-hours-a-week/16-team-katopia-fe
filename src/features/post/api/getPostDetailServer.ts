@@ -11,12 +11,24 @@ type PostDetailApiResponse = {
 export async function getPostDetailServer(
   postId: string,
 ): Promise<PostDetail | null> {
-  const res = await fetch(`${API_BASE_URL}/api/posts/${postId}`, {
-    cache: "force-cache",
-    next: {
-      tags: [getPostDetailTag(postId)],
-    },
-  });
+  const serverApiBaseUrl = process.env.API_BASE_URL ?? API_BASE_URL;
+  let res: Response;
+
+  try {
+    res = await fetch(`${serverApiBaseUrl}/api/posts/${postId}`, {
+      cache: "force-cache",
+      next: {
+        tags: [getPostDetailTag(postId)],
+      },
+    });
+  } catch (error) {
+    console.error("[getPostDetailServer] failed to fetch post detail", {
+      postId,
+      serverApiBaseUrl,
+      error,
+    });
+    return null;
+  }
 
   const json = (await res.json().catch(() => null)) as PostDetailApiResponse;
   if (!res.ok) return null;
