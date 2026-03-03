@@ -1,6 +1,7 @@
 // app/layout.tsx
 import "./globals.css";
 import "react-toastify/dist/ReactToastify.css";
+import type { Metadata } from "next";
 import LayoutShell from "@/src/shared/components/layout/LayoutShell";
 import AuthProvider from "@/src/features/auth/providers/AuthProvider";
 import ReactQueryProvider from "@/src/features/auth/providers/ReactQueryProvider";
@@ -14,6 +15,13 @@ const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
   display: "swap",
 });
+
+export const metadata: Metadata = {
+  title: {
+    default: "KATOPIA",
+    template: "%s | KATOPIA",
+  },
+};
 
 export default function RootLayout({
   children,

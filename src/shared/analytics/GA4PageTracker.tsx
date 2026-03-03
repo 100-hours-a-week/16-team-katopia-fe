@@ -9,6 +9,12 @@ function getPagePath(pathname: string, searchParams: URLSearchParams) {
   return query ? `${pathname}?${query}` : pathname;
 }
 
+function getPageTitle(pathname: string, currentPath: string) {
+  if (typeof document === "undefined") return pathname || currentPath || "/";
+  const title = document.title?.trim();
+  return title || pathname || currentPath || "/";
+}
+
 type GA4PageTrackerProps = {
   gaId: string;
 };
@@ -54,6 +60,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
 
   useEffect(() => {
     const currentPath = getPagePath(pathname ?? "/", searchParams);
+    const currentTitle = getPageTitle(pathname ?? "/", currentPath);
     const previousPath = lastPathRef.current;
 
     // 이전 페이지 체류 시간을 페이지 전환 시점에 기록
@@ -72,7 +79,7 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
     trackEvent("page_view", {
       page_path: currentPath,
       page_location: window.location.href,
-      page_title: document.title,
+      page_title: currentTitle,
     });
   }, [pathname, searchParams, trackEvent]);
 
