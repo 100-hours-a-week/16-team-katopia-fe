@@ -26,10 +26,6 @@ export default function PostDetailPage({
     post,
     loading,
     sortedImageUrls,
-    effectiveLiked,
-    effectiveBookmarked,
-    setLikedOverride,
-    setBookmarkedOverride,
     deleteOpen,
     setDeleteOpen,
     isMine,
@@ -67,17 +63,12 @@ export default function PostDetailPage({
         <PostImageCarousel images={sortedImageUrls} />
 
         <PostContent
+          key={postId}
           postId={postId}
           content={post.content}
           likeCount={post.aggregate.likeCount}
-          isLiked={effectiveLiked}
-          isBookmarked={effectiveBookmarked}
-          onLikedChange={(next) => {
-            setLikedOverride(next);
-          }}
-          onBookmarkedChange={(next) => {
-            setBookmarkedOverride(next);
-          }}
+          isLiked={post.isLiked}
+          isBookmarked={post.isBookmarked}
         />
 
         <PostCommentSection

@@ -2,22 +2,36 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
-import { likePost } from "../api/likePost";
-import { unlikePost } from "../api/unlikePost";
-import { bookmarkPost } from "../api/bookmarkPost";
-import { unbookmarkPost } from "../api/unbookmarkPost";
 import { useCommentCount } from "../hooks/useCommentCountStore";
+import { getPostDetailViewerState } from "../api/getPostDetailViewerState";
+import { useHomeFeedPostActions } from "@/src/features/home/hooks/useHomeFeedPostActions";
+import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
 
 type PostContentProps = {
   postId: string;
   content: string;
   likeCount: number;
-  isLiked?: boolean; // (추후 API 대비)
+  isLiked?: boolean;
   isBookmarked?: boolean;
-  onLikedChange?: (nextLiked: boolean) => void;
-  onBookmarkedChange?: (nextBookmarked: boolean) => void;
 };
+
+type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
+
+function pickHomeFeedPost(
+  data: HomeFeedInfiniteData | undefined,
+  postId: number,
+) {
+  if (!data) return null;
+
+  for (const page of data.pages) {
+    const found = (page.posts ?? []).find((post) => post.id === postId);
+    if (found) return found;
+  }
+
+  return null;
+}
 
 function BookmarkIcon({ active }: { active: boolean }) {
   return (
@@ -44,25 +58,65 @@ export default function PostContent({
   likeCount,
   isLiked = false,
   isBookmarked = false,
-  onLikedChange,
-  onBookmarkedChange,
 }: PostContentProps) {
+  const queryClient = useQueryClient();
   const { count: commentCount } = useCommentCount();
-  const [liked, setLiked] = useState(isLiked);
-  const [likes, setLikes] = useState(likeCount);
-  const [liking, setLiking] = useState(false);
-  const [bookmarked, setBookmarked] = useState(isBookmarked);
-  const [bookmarking, setBookmarking] = useState(false);
-  const lastLikeCountRef = useRef(likeCount);
+  const {
+    toggleLikeAsync,
+    liking,
+    toggleBookmarkAsync,
+    bookmarking,
+  } = useHomeFeedPostActions();
+
+  const [viewerLiked, setViewerLiked] = useState(isLiked);
+  const [viewerBookmarked, setViewerBookmarked] = useState(isBookmarked);
+  const [viewerLikeCount, setViewerLikeCount] = useState(likeCount);
+  const interactedRef = useRef(false);
+  const numericPostId = Number(postId);
+
+  let homeFeedPost: GetHomePostsResponse["posts"][number] | null = null;
+  if (Number.isFinite(numericPostId)) {
+    const snapshots = queryClient.getQueriesData<HomeFeedInfiniteData>({
+      queryKey: ["home-feed"],
+    });
+
+    for (const [, data] of snapshots) {
+      const found = pickHomeFeedPost(data, numericPostId);
+      if (found) {
+        homeFeedPost = found;
+        break;
+      }
+    }
+  }
 
   useEffect(() => {
-    setLiked(isLiked);
-    setBookmarked(isBookmarked);
-    if (lastLikeCountRef.current !== likeCount) {
-      setLikes(likeCount);
-      lastLikeCountRef.current = likeCount;
+    if (
+      typeof homeFeedPost?.isLiked === "boolean" &&
+      typeof homeFeedPost?.isBookmarked === "boolean"
+    ) {
+      return;
     }
-  }, [isLiked, isBookmarked, likeCount]);
+
+    let cancelled = false;
+
+    getPostDetailViewerState(postId)
+      .then((res) => {
+        if (cancelled || !res || interactedRef.current) return;
+        if (typeof res.isLiked === "boolean") setViewerLiked(res.isLiked);
+        if (typeof res.isBookmarked === "boolean") {
+          setViewerBookmarked(res.isBookmarked);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [homeFeedPost?.isBookmarked, homeFeedPost?.isLiked, postId]);
+
+  const liked = homeFeedPost?.isLiked ?? viewerLiked;
+  const likes = Number(homeFeedPost?.aggregate?.likeCount ?? viewerLikeCount);
+  const bookmarked = homeFeedPost?.isBookmarked ?? viewerBookmarked;
 
   const formatCount = (value: number) => {
     if (value < 1000) return String(value);
@@ -72,110 +126,50 @@ export default function PostContent({
 
   const handleToggleLike = async () => {
     if (liking) return;
-    setLiking(true);
+
+    if (!Number.isFinite(numericPostId)) return;
+
+    interactedRef.current = true;
     const prevLiked = liked;
     const prevLikes = likes;
     const nextLiked = !prevLiked;
 
-    // 먼저 UI를 반응시키고, 실패 시 롤백합니다.
-    setLiked(nextLiked);
-    onLikedChange?.(nextLiked);
-    setLikes((count) => Math.max(0, count + (nextLiked ? 1 : -1)));
+    setViewerLiked(nextLiked);
+    setViewerLikeCount(Math.max(0, prevLikes + (nextLiked ? 1 : -1)));
 
     try {
-      const result = nextLiked
-        ? await likePost(postId)
-        : await unlikePost(postId);
+      const result = await toggleLikeAsync({
+        postId: numericPostId,
+        nextLiked,
+      });
       if (typeof result.likeCount === "number") {
-        setLikes(result.likeCount);
+        setViewerLikeCount(result.likeCount);
       }
-      setLiked(nextLiked);
-      onLikedChange?.(nextLiked);
-    } catch (e: unknown) {
-      const error = e as { code?: string; status?: number };
-
-      // 서버가 "이미 좋아요한 상태"를 409로 주는 경우,
-      // 토글 의도에 맞춰 해제 요청으로 한 번 더 시도합니다.
-      if (nextLiked && error.status === 409) {
-        try {
-          const result = await unlikePost(postId);
-          const resolvedLiked = false;
-          if (typeof result.likeCount === "number") {
-            setLikes(result.likeCount);
-          } else {
-            setLikes(Math.max(0, prevLikes - 1));
-          }
-          setLiked(resolvedLiked);
-          onLikedChange?.(resolvedLiked);
-          return;
-        } catch {
-          // 해제까지 실패하면 아래 롤백/에러 처리로 진행
-        }
-      }
-
-      // 실패 시 이전 상태로 되돌립니다.
-      setLiked(prevLiked);
-      setLikes(prevLikes);
-      onLikedChange?.(prevLiked);
-
-      switch (error.code) {
-        case "AUTH-E-002":
-          alert("로그인이 필요합니다.");
-          break;
-        case "POST-E-005":
-          alert("게시글을 찾을 수 없습니다.");
-          break;
-        default:
-          alert(
-            nextLiked
-              ? "좋아요에 실패했습니다."
-              : "좋아요 해제에 실패했습니다.",
-          );
-      }
-    } finally {
-      setLiking(false);
+      setViewerLiked(result.nextLiked);
+    } catch {
+      setViewerLiked(prevLiked);
+      setViewerLikeCount(prevLikes);
     }
   };
 
   const handleToggleBookmark = async () => {
     if (bookmarking) return;
-    setBookmarking(true);
+    if (!Number.isFinite(numericPostId)) return;
 
+    interactedRef.current = true;
     const prevBookmarked = bookmarked;
     const nextBookmarked = !prevBookmarked;
 
-    setBookmarked(nextBookmarked);
-    onBookmarkedChange?.(nextBookmarked);
+    setViewerBookmarked(nextBookmarked);
 
     try {
-      const result = nextBookmarked
-        ? await bookmarkPost(postId)
-        : await unbookmarkPost(postId);
-      if (typeof result.isBookmarked === "boolean") {
-        setBookmarked(result.isBookmarked);
-        onBookmarkedChange?.(result.isBookmarked);
-      }
-    } catch (e: unknown) {
-      const error = e as { code?: string; status?: number };
-      setBookmarked(prevBookmarked);
-      onBookmarkedChange?.(prevBookmarked);
-
-      switch (error.code) {
-        case "AUTH-E-002":
-          alert("로그인이 필요합니다.");
-          break;
-        case "POST-E-005":
-          alert("게시글을 찾을 수 없습니다.");
-          break;
-        default:
-          alert(
-            nextBookmarked
-              ? "북마크에 실패했습니다."
-              : "북마크 해제에 실패했습니다.",
-          );
-      }
-    } finally {
-      setBookmarking(false);
+      const result = await toggleBookmarkAsync({
+        postId: numericPostId,
+        nextBookmarked,
+      });
+      setViewerBookmarked(result.nextBookmarked);
+    } catch {
+      setViewerBookmarked(prevBookmarked);
     }
   };
 

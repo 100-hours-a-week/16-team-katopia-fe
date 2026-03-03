@@ -261,10 +261,14 @@ export function useHomeFeedPostActions() {
 
   return {
     toggleLike: (params: ToggleLikeParams) => likeMutation.mutate(params),
+    toggleLikeAsync: (params: ToggleLikeParams) =>
+      likeMutation.mutateAsync(params),
     liking: likeMutation.isPending,
 
     toggleBookmark: (params: ToggleBookmarkParams) =>
       bookmarkMutation.mutate(params),
+    toggleBookmarkAsync: (params: ToggleBookmarkParams) =>
+      bookmarkMutation.mutateAsync(params),
     bookmarking: bookmarkMutation.isPending,
   };
 }

@@ -26,7 +26,7 @@ export async function updatePost({ postId, content }: UpdatePostParams) {
     throw result;
   }
 
-  await revalidatePostDetail(postId);
+  void revalidatePostDetail(postId, "update");
 
   return result;
 }

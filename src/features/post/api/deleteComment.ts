@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
-import { revalidatePostDetail } from "./revalidatePostDetail";
 
 type DeleteCommentParams = {
   postId: string;
@@ -22,8 +21,6 @@ export async function deleteComment({
     const error = await res.json().catch(() => ({}));
     throw error;
   }
-
-  await revalidatePostDetail(postId);
 
   return true;
 }

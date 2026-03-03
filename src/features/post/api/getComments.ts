@@ -20,6 +20,8 @@ export type GetCommentsResponse = {
   nextCursor?: number | string | null;
 };
 
+const inFlightComments = new Map<string, Promise<GetCommentsResponse>>();
+
 export async function getComments(
   postId: string,
   params?: { size?: number; after?: number | string },
@@ -34,16 +36,29 @@ export async function getComments(
   }
 
   const query = search.toString();
-  const res = await authFetch(
-    `${API_BASE_URL}/api/posts/${postId}/comments${query ? `?${query}` : ""}`,
-    {},
-  );
+  const key = `${postId}?${query}`;
+  const existing = inFlightComments.get(key);
+  if (existing) return existing;
 
-  const result = await res.json();
+  const request = (async () => {
+    const res = await authFetch(
+      `${API_BASE_URL}/api/posts/${postId}/comments${query ? `?${query}` : ""}`,
+      {},
+    );
 
-  if (!res.ok) {
-    throw result;
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw result;
+    }
+
+    return result.data as GetCommentsResponse;
+  })();
+
+  inFlightComments.set(key, request);
+  try {
+    return await request;
+  } finally {
+    inFlightComments.delete(key);
   }
-
-  return result.data as GetCommentsResponse;
 }
