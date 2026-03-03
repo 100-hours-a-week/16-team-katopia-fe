@@ -32,7 +32,11 @@ export default function RootLayout({
         className={`${notoSansKr.variable} min-h-screen bg-[#ffffff] text-[#121212]`}
       >
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
-        {gaId ? <GA4PageTracker /> : null}
+        {gaId ? (
+          <Suspense fallback={null}>
+            <GA4PageTracker />
+          </Suspense>
+        ) : null}
         {!gaId && gtmId ? <GoogleTagManager gtmId={gtmId} /> : null}
         <ReactQueryProvider>
           <Suspense fallback={null}>

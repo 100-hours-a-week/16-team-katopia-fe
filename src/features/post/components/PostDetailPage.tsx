@@ -1,6 +1,7 @@
 "use client";
 
 import { usePostDetail } from "../hooks/usePostDetail";
+import type { PostDetail } from "../types/postDetail";
 
 import PostHeader from "./PostHeader";
 import PostDeleteConfirmModal from "./PostDeleteConfirmModal";
@@ -12,9 +13,16 @@ import {
   useCommentCountStore,
 } from "../hooks/useCommentCountStore";
 
-export default function PostDetailPage() {
+type PostDetailPageProps = {
+  postId: string;
+  initialPost: PostDetail;
+};
+
+export default function PostDetailPage({
+  postId,
+  initialPost,
+}: PostDetailPageProps) {
   const {
-    postId,
     post,
     loading,
     sortedImageUrls,
@@ -28,11 +36,11 @@ export default function PostDetailPage() {
     me,
     handleEdit,
     handleDeleteConfirm,
-  } = usePostDetail();
+  } = usePostDetail({ postId, initialPost });
 
   const commentCountStore = useCommentCountStore(
     post?.aggregate.commentCount ?? 0,
-    postId ?? "unknown",
+    postId,
   );
 
   if (loading) {
@@ -59,7 +67,7 @@ export default function PostDetailPage() {
         <PostImageCarousel images={sortedImageUrls} />
 
         <PostContent
-          postId={postId ?? ""}
+          postId={postId}
           content={post.content}
           likeCount={post.aggregate.likeCount}
           isLiked={effectiveLiked}

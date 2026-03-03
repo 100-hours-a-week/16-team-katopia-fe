@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { deletePost } from "../api/deletePost";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
-import { getPostDetail } from "../api/getPostDetail";
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
 import {
@@ -14,40 +13,7 @@ import {
   pickImageUrl,
 } from "@/src/features/upload/utils/normalizeImageUrls";
 import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
-
-type PostAuthor = {
-  nickname: string;
-  profileImageUrl?: string | null;
-  profileImageObjectKey?: string | null;
-  gender?: "M" | "F" | null;
-  height?: number | null;
-  weight?: number | null;
-  memberId?: number | string;
-  id?: number | string;
-  userId?: number | string;
-};
-
-type PostImageItem = {
-  imageObjectKey?: string;
-  imageUrl?: string;
-  accessUrl?: string;
-  url?: string;
-  sortOrder?: number;
-};
-
-type PostDetail = {
-  imageUrls?: PostImageItem[] | string[];
-  imageObjectKeys?: PostImageItem[] | string[];
-  content: string;
-  isLiked: boolean;
-  isBookmarked?: boolean;
-  aggregate: {
-    likeCount: number;
-    commentCount: number;
-  };
-  createdAt: string;
-  author: PostAuthor;
-};
+import type { PostDetail, PostImageItem } from "../types/postDetail";
 
 type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
 
@@ -84,14 +50,18 @@ function normalizePostImageUrls(
     .filter(Boolean) as string[];
 }
 
-export function usePostDetail() {
-  const { postId } = useParams<{ postId: string }>();
+type UsePostDetailOptions = {
+  postId: string;
+  initialPost: PostDetail;
+};
+
+export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
 
-  const [post, setPost] = useState<PostDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const post = initialPost;
+  const loading = false;
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [bookmarkedOverride, setBookmarkedOverride] = useState<boolean | null>(
     null,
@@ -120,23 +90,6 @@ export function usePostDetail() {
     }
     return false;
   }, [post, me]);
-
-  useEffect(() => {
-    if (!postId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLikedOverride(null);
-    setBookmarkedOverride(null);
-
-    getPostDetail(postId)
-      .then((res) => setPost(res.data))
-      .catch((e) => {
-        if (e?.code === "POST-E-005") {
-          alert("게시글을 찾을 수 없습니다.");
-          router.replace("/");
-        }
-      })
-      .finally(() => setLoading(false));
-  }, [postId, router]);
 
   const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
   const effectiveBookmarked = bookmarkedOverride ?? post?.isBookmarked ?? false;

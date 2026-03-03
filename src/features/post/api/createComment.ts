@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { revalidatePostDetail } from "./revalidatePostDetail";
 
 export type CreateCommentParams = {
   postId: string;
@@ -29,6 +30,8 @@ export async function createComment({
   if (!res.ok) {
     throw result; // COMMENT-E-xxx
   }
+
+  await revalidatePostDetail(postId);
 
   return result.data;
 }

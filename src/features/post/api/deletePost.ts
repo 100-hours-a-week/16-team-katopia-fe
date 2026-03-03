@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { revalidatePostDetail } from "./revalidatePostDetail";
 
 export async function deletePost(postId: string) {
   const res = await authFetch(`${API_BASE_URL}/api/posts/${postId}`, {
@@ -15,6 +16,8 @@ export async function deletePost(postId: string) {
       "게시글 삭제에 실패했습니다.";
     throw new Error(`(${res.status}) ${message}`);
   }
+
+  await revalidatePostDetail(postId);
 
   return { status: res.status, body: parsed };
 }

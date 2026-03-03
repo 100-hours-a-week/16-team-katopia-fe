@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import HomePage from "@/src/features/home/components/HomePage";
 
 export default function HomeLayout({
@@ -10,8 +11,10 @@ export default function HomeLayout({
   recommendation: React.ReactNode;
 }) {
   return (
-    <HomePage feed={feed} recommendation={recommendation}>
-      {children}
-    </HomePage>
+    <Suspense fallback={null}>
+      <HomePage feed={feed} recommendation={recommendation}>
+        {children}
+      </HomePage>
+    </Suspense>
   );
 }
