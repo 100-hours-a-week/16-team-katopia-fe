@@ -1,6 +1,5 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
-import { revalidatePostDetail } from "./revalidatePostDetail";
 
 export type LikePostResponse = {
   postId: number;
@@ -22,8 +21,6 @@ export async function likePost(postId: string): Promise<LikePostResponse> {
   if (!res.ok) {
     throw { ...(result ?? { code: "LIKE-UNKNOWN" }), status: res.status };
   }
-
-  await revalidatePostDetail(postId);
 
   const data = (result as { data?: LikePostResponse } | null)?.data;
   return data ?? { postId: Number(postId) };

@@ -6,7 +6,11 @@ type Props = {
   params: Promise<{ postId: string }>;
 };
 
-export async function POST(_: Request, { params }: Props) {
+type RevalidateBody = {
+  scope?: "update" | "delete";
+};
+
+export async function POST(request: Request, { params }: Props) {
   const { postId } = await params;
 
   if (!postId) {
@@ -16,8 +20,23 @@ export async function POST(_: Request, { params }: Props) {
     );
   }
 
+  const body = (await request.json().catch(() => ({}))) as RevalidateBody;
+  const scope = body.scope ?? "update";
+
   revalidateTag(getPostDetailTag(postId), "max");
   revalidatePath(`/post/${postId}`);
 
-  return NextResponse.json({ ok: true, revalidatedPostId: postId });
+  if (scope === "delete") {
+    // 삭제 시 상세 외에도 목록성 화면이 최신 상태를 보도록 함께 무효화합니다.
+    revalidateTag("home-feed", "max");
+    revalidatePath("/home");
+    revalidatePath("/search");
+    revalidatePath("/profile");
+  }
+
+  return NextResponse.json({
+    ok: true,
+    revalidatedPostId: postId,
+    scope,
+  });
 }

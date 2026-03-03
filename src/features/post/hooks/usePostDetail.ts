@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { deletePost } from "../api/deletePost";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
-import { getPostDetailViewerState } from "../api/getPostDetailViewerState";
 import {
   normalizeImageUrls,
   pickImageUrl,
@@ -63,21 +62,6 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
 
   const post = initialPost;
   const loading = false;
-  const [viewerState, setViewerState] = useState<{
-    isLiked?: boolean;
-    isBookmarked?: boolean;
-  } | null>(() =>
-    post?.isLiked !== undefined || post?.isBookmarked !== undefined
-      ? {
-          isLiked: post?.isLiked,
-          isBookmarked: post?.isBookmarked,
-        }
-      : null,
-  );
-  const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
-  const [bookmarkedOverride, setBookmarkedOverride] = useState<boolean | null>(
-    null,
-  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const me = currentMember;
 
@@ -98,35 +82,6 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
     }
     return false;
   }, [post, me]);
-
-  const effectiveLiked =
-    likedOverride ?? viewerState?.isLiked ?? post?.isLiked ?? false;
-  const effectiveBookmarked =
-    bookmarkedOverride ??
-    viewerState?.isBookmarked ??
-    post?.isBookmarked ??
-    false;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    getPostDetailViewerState(postId)
-      .then((res) => {
-        if (!cancelled && res) {
-          setViewerState(res);
-        }
-      })
-      .catch((e) => {
-        if (e?.code === "POST-E-005") {
-          alert("게시글을 찾을 수 없습니다.");
-          router.replace("/");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [postId, router]);
 
   const handleEdit = useCallback(() => {
     if (!postId) return;
@@ -162,11 +117,6 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
     post,
     loading,
     sortedImageUrls,
-    effectiveLiked,
-    effectiveBookmarked,
-    likedOverride,
-    setLikedOverride,
-    setBookmarkedOverride,
     deleteOpen,
     setDeleteOpen,
     isMine,
