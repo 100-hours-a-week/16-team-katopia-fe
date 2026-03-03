@@ -46,6 +46,12 @@ export default function HomePostActions({
   const likes = likeCount;
   const bookmarked = isBookmarked;
 
+  const formatCount = (value: number) => {
+    if (value < 1000) return String(value);
+    const formatted = (value / 1000).toFixed(1);
+    return `${formatted.endsWith(".0") ? formatted.slice(0, -2) : formatted}k`;
+  };
+
   const handleToggleLike = () => {
     if (liking) return;
     toggleLike({ postId, nextLiked: !liked });
@@ -83,7 +89,9 @@ export default function HomePostActions({
           aria-label="댓글"
         >
           <Image src="/icons/comment.svg" alt="" width={22} height={22} />
-          <span className="text-[14px] font-semibold">{commentCount}</span>
+          <span className="text-[14px] font-semibold">
+            {formatCount(commentCount)}
+          </span>
         </button>
       </div>
       <button
