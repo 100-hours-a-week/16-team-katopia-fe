@@ -22,8 +22,9 @@ export default function RootLayout({
 }) {
   const gaId =
     process.env.NEXT_PUBLIC_GA_ID ??
-    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-  const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ??
+    "G-ZJE89QY15L";
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-M86VXLL2";
 
   return (
     <html lang="ko">
