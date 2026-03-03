@@ -89,6 +89,7 @@ export default function BottomNav() {
               <li key={idx}>
                 <Link
                   href={item.href}
+                  prefetch={false}
                   className="flex flex-col items-center gap-1"
                 >
                   <Image

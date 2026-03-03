@@ -63,6 +63,7 @@ function UploadCard({
       <SheetClose asChild>
         <Link
           href={href}
+          prefetch={false}
           className="mt-4 flex h-9 items-center justify-center rounded-full bg-black text-[12px] font-semibold text-white"
         >
           선택하기

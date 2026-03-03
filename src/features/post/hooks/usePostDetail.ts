@@ -7,12 +7,11 @@ import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { deletePost } from "../api/deletePost";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
 import { getPostDetailViewerState } from "../api/getPostDetailViewerState";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
 import {
   normalizeImageUrls,
   pickImageUrl,
 } from "@/src/features/upload/utils/normalizeImageUrls";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
 import type { PostDetail, PostImageItem } from "../types/postDetail";
 
@@ -60,23 +59,27 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const { currentMember } = useAuth();
 
   const post = initialPost;
   const loading = false;
   const [viewerState, setViewerState] = useState<{
     isLiked?: boolean;
     isBookmarked?: boolean;
-  } | null>(null);
+  } | null>(() =>
+    post?.isLiked !== undefined || post?.isBookmarked !== undefined
+      ? {
+          isLiked: post?.isLiked,
+          isBookmarked: post?.isBookmarked,
+        }
+      : null,
+  );
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [bookmarkedOverride, setBookmarkedOverride] = useState<boolean | null>(
     null,
   );
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [me, setMe] = useState<{
-    id?: number | string;
-    nickname?: string;
-    profileImageUrl?: string | null;
-  } | null>(null);
+  const me = currentMember;
 
   const sortedImageUrls = useMemo(
     () => normalizePostImageUrls(post?.imageObjectKeys ?? post?.imageUrls),
@@ -106,6 +109,14 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
 
   useEffect(() => {
     let cancelled = false;
+    const hasViewerStateInInitial =
+      post?.isLiked !== undefined || post?.isBookmarked !== undefined;
+
+    if (hasViewerStateInInitial) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     getPostDetailViewerState(postId)
       .then((res) => {
@@ -123,28 +134,7 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
     return () => {
       cancelled = true;
     };
-  }, [postId, router]);
-
-  useEffect(() => {
-    authFetch(`${API_BASE_URL}/api/members/me`, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (!json) return;
-        const profile = json.data?.profile ?? {};
-        const memberId = json.data?.id ?? profile.memberId ?? profile.id;
-        setMe({
-          id: memberId,
-          nickname: profile.nickname,
-          profileImageUrl:
-            profile.profileImageObjectKey ?? profile.profileImageUrl ?? null,
-        });
-      })
-      .catch(() => {});
-  }, []);
+  }, [post?.isBookmarked, post?.isLiked, postId, router]);
 
   const handleEdit = useCallback(() => {
     if (!postId) return;

@@ -18,8 +18,8 @@ const notoSansKr = Noto_Sans_KR({
 
 export const metadata: Metadata = {
   title: {
-    default: "KATOPIA",
-    template: "%s | KATOPIA",
+    default: "FITCHECK",
+    template: "%s | FITCHECK",
   },
 };
 
