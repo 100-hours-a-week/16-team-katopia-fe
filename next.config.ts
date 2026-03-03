@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
+    qualities: [70, 75],
     remotePatterns: [
       // 기존 테스트용
       {
