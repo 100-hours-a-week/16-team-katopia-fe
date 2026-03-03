@@ -1,6 +1,7 @@
 // app/layout.tsx
 import "./globals.css";
 import "react-toastify/dist/ReactToastify.css";
+import type { Metadata } from "next";
 import LayoutShell from "@/src/shared/components/layout/LayoutShell";
 import AuthProvider from "@/src/features/auth/providers/AuthProvider";
 import ReactQueryProvider from "@/src/features/auth/providers/ReactQueryProvider";
@@ -15,14 +16,20 @@ const notoSansKr = Noto_Sans_KR({
   display: "swap",
 });
 
+export const metadata: Metadata = {
+  title: {
+    default: "FITCHECK",
+    template: "%s | FITCHECK",
+  },
+};
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const gaId =
-    process.env.NEXT_PUBLIC_GA_ID ??
-    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+    process.env.NEXT_PUBLIC_GA_ID ?? process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
 
   return (
@@ -31,7 +38,11 @@ export default function RootLayout({
         className={`${notoSansKr.variable} min-h-screen bg-[#ffffff] text-[#121212]`}
       >
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
-        {gaId ? <GA4PageTracker /> : null}
+        {gaId ? (
+          <Suspense fallback={null}>
+            <GA4PageTracker gaId={gaId} />
+          </Suspense>
+        ) : null}
         {!gaId && gtmId ? <GoogleTagManager gtmId={gtmId} /> : null}
         <ReactQueryProvider>
           <Suspense fallback={null}>

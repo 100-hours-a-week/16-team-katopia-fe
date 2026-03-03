@@ -40,6 +40,7 @@ export default function AppHeader({
       <div className="flex items-center gap-1">
         <Link
           href="/notifications"
+          prefetch={false}
           aria-label="알림"
           className="relative flex h-9 w-9 items-center justify-center"
         >

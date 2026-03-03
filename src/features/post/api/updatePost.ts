@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
 import { extractTags } from "@/src/features/post/utils/extractTags";
+import { revalidatePostDetail } from "./revalidatePostDetail";
 
 type UpdatePostParams = {
   postId: string;
@@ -24,6 +25,8 @@ export async function updatePost({ postId, content }: UpdatePostParams) {
   if (!res.ok) {
     throw result;
   }
+
+  await revalidatePostDetail(postId);
 
   return result;
 }

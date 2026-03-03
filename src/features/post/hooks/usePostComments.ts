@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { createComment } from "../api/createComment";
 import { deleteComment } from "../api/deleteComment";
 import { getComments, type CommentItemResponse } from "../api/getComments";
 import { updateComment } from "../api/updateComment";
 import type { Comment as CommentListItem } from "../components/CommentList";
+import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
 
 type CommentItem = CommentListItem;
+type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
 
 type CurrentUser = {
   id?: number | string;
@@ -27,11 +30,39 @@ function dedupeComments(items: CommentItem[]) {
   return next;
 }
 
+function incrementHomeFeedCommentCount(
+  data: HomeFeedInfiniteData | undefined,
+  postId: number,
+) {
+  if (!data) return data;
+  let changed = false;
+
+  const pages = data.pages.map((page) => {
+    const posts = page.posts ?? [];
+    const nextPosts = posts.map((post) => {
+      if (post.id !== postId) return post;
+      changed = true;
+      return {
+        ...post,
+        aggregate: {
+          ...(post.aggregate ?? {}),
+          commentCount: Number(post.aggregate?.commentCount ?? 0) + 1,
+        },
+      };
+    });
+    return changed ? { ...page, posts: nextPosts } : page;
+  });
+
+  if (!changed) return data;
+  return { ...data, pages };
+}
+
 export function usePostComments(
   postId: string | undefined,
   currentUser: CurrentUser | null,
   options?: { onCountChange?: (delta: number) => void },
 ) {
+  const queryClient = useQueryClient();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -142,6 +173,14 @@ export function usePostComments(
             ),
           ),
         );
+        const numericPostId = Number(postId);
+        if (Number.isFinite(numericPostId)) {
+          queryClient.setQueriesData<HomeFeedInfiniteData>(
+            { queryKey: ["home-feed"] },
+            (old) => incrementHomeFeedCommentCount(old, numericPostId),
+          );
+        }
+        queryClient.invalidateQueries({ queryKey: ["home-feed"] });
       } catch (error) {
         setComments((prev) => prev.filter((c) => c.id !== tempId));
         options?.onCountChange?.(-1);
@@ -154,6 +193,7 @@ export function usePostComments(
       currentUser?.profileImageUrl,
       options,
       postId,
+      queryClient,
     ],
   );
 

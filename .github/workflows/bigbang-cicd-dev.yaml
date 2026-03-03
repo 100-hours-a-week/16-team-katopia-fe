@@ -92,6 +92,8 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE_URL: https://dev.fitcheck.kr
           NEXT_PUBLIC_IMAGE_BASE_URL: https://df1ez4kkj7703.cloudfront.net
+          NEXT_PUBLIC_GA_ID: G-ZJE89QY15L
+          NEXT_PUBLIC_GTM_ID: GTM-M86VXLL2
 
       # 4.5) 전송할 압축 파일명 만들기
       - name: Prepare artifact filename (date + commit message)

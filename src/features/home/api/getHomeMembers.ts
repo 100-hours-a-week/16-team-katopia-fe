@@ -42,7 +42,7 @@ function normalizeHomeMembersResponse(result: unknown): GetHomeMembersResponse {
 export function toRecommendationMembers(
   members: HomeMemberApiItem[],
 ): HomeRecommendationMember[] {
-  // UI 모델을 API 모델에서 분리해서 서버/클라 공용으로 재사용
+  // UI 모델을 API 모델에서 분리해서 서버/클라이언트 공용으로 재사용
   return (members ?? []).map((member) => ({
     id: member.id,
     name: member.nickname ?? "",

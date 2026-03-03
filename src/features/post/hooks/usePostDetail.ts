@@ -1,53 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { deletePost } from "../api/deletePost";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
-import { getPostDetail } from "../api/getPostDetail";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
+import { getPostDetailViewerState } from "../api/getPostDetailViewerState";
 import {
   normalizeImageUrls,
   pickImageUrl,
 } from "@/src/features/upload/utils/normalizeImageUrls";
+import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
-
-type PostAuthor = {
-  nickname: string;
-  profileImageUrl?: string | null;
-  profileImageObjectKey?: string | null;
-  gender?: "M" | "F" | null;
-  height?: number | null;
-  weight?: number | null;
-  memberId?: number | string;
-  id?: number | string;
-  userId?: number | string;
-};
-
-type PostImageItem = {
-  imageObjectKey?: string;
-  imageUrl?: string;
-  accessUrl?: string;
-  url?: string;
-  sortOrder?: number;
-};
-
-type PostDetail = {
-  imageUrls?: PostImageItem[] | string[];
-  imageObjectKeys?: PostImageItem[] | string[];
-  content: string;
-  isLiked: boolean;
-  isBookmarked?: boolean;
-  aggregate: {
-    likeCount: number;
-    commentCount: number;
-  };
-  createdAt: string;
-  author: PostAuthor;
-};
+import type { PostDetail, PostImageItem } from "../types/postDetail";
 
 type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
 
@@ -84,24 +50,36 @@ function normalizePostImageUrls(
     .filter(Boolean) as string[];
 }
 
-export function usePostDetail() {
-  const { postId } = useParams<{ postId: string }>();
+type UsePostDetailOptions = {
+  postId: string;
+  initialPost: PostDetail;
+};
+
+export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
+  const { currentMember } = useAuth();
 
-  const [post, setPost] = useState<PostDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  const post = initialPost;
+  const loading = false;
+  const [viewerState, setViewerState] = useState<{
+    isLiked?: boolean;
+    isBookmarked?: boolean;
+  } | null>(() =>
+    post?.isLiked !== undefined || post?.isBookmarked !== undefined
+      ? {
+          isLiked: post?.isLiked,
+          isBookmarked: post?.isBookmarked,
+        }
+      : null,
+  );
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [bookmarkedOverride, setBookmarkedOverride] = useState<boolean | null>(
     null,
   );
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [me, setMe] = useState<{
-    id?: number | string;
-    nickname?: string;
-    profileImageUrl?: string | null;
-  } | null>(null);
+  const me = currentMember;
 
   const sortedImageUrls = useMemo(
     () => normalizePostImageUrls(post?.imageObjectKeys ?? post?.imageUrls),
@@ -121,46 +99,42 @@ export function usePostDetail() {
     return false;
   }, [post, me]);
 
-  useEffect(() => {
-    if (!postId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLikedOverride(null);
-    setBookmarkedOverride(null);
+  const effectiveLiked =
+    likedOverride ?? viewerState?.isLiked ?? post?.isLiked ?? false;
+  const effectiveBookmarked =
+    bookmarkedOverride ??
+    viewerState?.isBookmarked ??
+    post?.isBookmarked ??
+    false;
 
-    getPostDetail(postId)
-      .then((res) => setPost(res.data))
+  useEffect(() => {
+    let cancelled = false;
+    const hasViewerStateInInitial =
+      post?.isLiked !== undefined || post?.isBookmarked !== undefined;
+
+    if (hasViewerStateInInitial) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    getPostDetailViewerState(postId)
+      .then((res) => {
+        if (!cancelled && res) {
+          setViewerState(res);
+        }
+      })
       .catch((e) => {
         if (e?.code === "POST-E-005") {
           alert("게시글을 찾을 수 없습니다.");
           router.replace("/");
         }
-      })
-      .finally(() => setLoading(false));
-  }, [postId, router]);
+      });
 
-  const effectiveLiked = likedOverride ?? post?.isLiked ?? false;
-  const effectiveBookmarked = bookmarkedOverride ?? post?.isBookmarked ?? false;
-
-  useEffect(() => {
-    authFetch(`${API_BASE_URL}/api/members/me`, {
-      method: "GET",
-      credentials: "include",
-      cache: "no-store",
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (!json) return;
-        const profile = json.data?.profile ?? {};
-        const memberId = json.data?.id ?? profile.memberId ?? profile.id;
-        setMe({
-          id: memberId,
-          nickname: profile.nickname,
-          profileImageUrl:
-            profile.profileImageObjectKey ?? profile.profileImageUrl ?? null,
-        });
-      })
-      .catch(() => {});
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [post?.isBookmarked, post?.isLiked, postId, router]);
 
   const handleEdit = useCallback(() => {
     if (!postId) return;

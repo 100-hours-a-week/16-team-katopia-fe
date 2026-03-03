@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { revalidatePostDetail } from "./revalidatePostDetail";
 
 export type UnlikePostResponse = {
   postId: number;
@@ -21,6 +22,8 @@ export async function unlikePost(postId: string): Promise<UnlikePostResponse> {
   if (!res.ok) {
     throw { ...(result ?? { code: "UNLIKE-UNKNOWN" }), status: res.status };
   }
+
+  await revalidatePostDetail(postId);
 
   const data = (result as { data?: UnlikePostResponse } | null)?.data;
   return data ?? { postId: Number(postId) };
