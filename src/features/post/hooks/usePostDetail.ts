@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { deletePost } from "../api/deletePost";
+import { getPostDetail } from "../api/getPostDetail";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
 import {
   normalizeImageUrls,
@@ -60,10 +61,30 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
   const searchParams = useSearchParams();
   const { currentMember } = useAuth();
 
-  const post = initialPost;
+  const [post, setPost] = useState<PostDetail>(initialPost);
   const loading = false;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const me = currentMember;
+
+  useEffect(() => {
+    if (!postId) return;
+
+    let cancelled = false;
+
+    getPostDetail(postId)
+      .then((res) => {
+        if (cancelled) return;
+        const latest = (res as { data?: PostDetail } | null)?.data;
+        if (latest) {
+          setPost(latest);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [postId]);
 
   const sortedImageUrls = useMemo(
     () => normalizePostImageUrls(post?.imageObjectKeys ?? post?.imageUrls),
