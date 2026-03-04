@@ -116,7 +116,7 @@ export function usePostEdit() {
           window.localStorage.setItem(HOME_FEED_DIRTY_KEY, "1");
           window.dispatchEvent(new CustomEvent("home-feed:dirty"));
         } catch {}
-        window.location.replace(`/post/${postId}`);
+        window.location.replace(`/post/${postId}?from=home`);
       } catch (e: unknown) {
         if (!isApiError(e)) {
           alert("알 수 없는 오류가 발생했습니다.");
