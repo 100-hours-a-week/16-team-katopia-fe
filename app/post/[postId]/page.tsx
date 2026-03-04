@@ -12,7 +12,7 @@ type Props = {
 
 export async function generateStaticParams(): Promise<{ postId: string }[]> {
   // 빌드 시점 pre-render 없이, 첫 요청에 생성 후 태그 무효화로 갱신합니다.
-  return [];
+  return [{ postId: "1" }];
 }
 
 export default async function Page({ params }: Props) {

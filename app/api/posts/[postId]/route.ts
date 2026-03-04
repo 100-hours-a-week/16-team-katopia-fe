@@ -8,8 +8,8 @@ type Props = {
   params: Promise<{ postId: string }>;
 };
 
-const CONSISTENCY_ATTEMPTS = 2;
-const CONSISTENCY_DELAY_MS = 80;
+const CONSISTENCY_ATTEMPTS = 4;
+const CONSISTENCY_DELAY_MS = 120;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -18,8 +18,9 @@ function sleep(ms: number) {
 async function waitForDetailReadiness(options: {
   detailUrl: string;
   authorization: string | null;
+  expectedContent?: string;
 }) {
-  const { detailUrl, authorization } = options;
+  const { detailUrl, authorization, expectedContent } = options;
 
   for (let attempt = 1; attempt <= CONSISTENCY_ATTEMPTS; attempt += 1) {
     try {
@@ -33,7 +34,18 @@ async function waitForDetailReadiness(options: {
         },
       });
 
-      if (res.ok) {
+      if (!res.ok) {
+        throw new Error(`status:${res.status}`);
+      }
+
+      if (!expectedContent) {
+        return { ok: true, attempts: attempt };
+      }
+
+      const payload = (await res.json().catch(() => null)) as
+        | { data?: { content?: string | null } }
+        | null;
+      if (payload?.data?.content === expectedContent) {
         return { ok: true, attempts: attempt };
       }
     } catch {
@@ -55,6 +67,14 @@ export async function PATCH(request: Request, { params }: Props) {
   const authorization = request.headers.get("authorization");
   const contentType = request.headers.get("content-type") ?? "application/json";
   const bodyText = await request.text();
+  const expectedContent = (() => {
+    try {
+      const parsed = JSON.parse(bodyText || "{}") as { content?: unknown };
+      return typeof parsed.content === "string" ? parsed.content : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
 
   if (!postId) {
     return NextResponse.json(
@@ -99,6 +119,7 @@ export async function PATCH(request: Request, { params }: Props) {
     const consistency = await waitForDetailReadiness({
       detailUrl,
       authorization,
+      expectedContent,
     });
     revalidateTag(getPostDetailTag(postId), { expire: 0 });
     revalidatePath(`/post/${postId}`);
