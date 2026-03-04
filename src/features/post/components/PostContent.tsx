@@ -90,10 +90,15 @@ export default function PostContent({
   }
 
   useEffect(() => {
-    if (
+    const hasHomeFeedViewerState =
       typeof homeFeedPost?.isLiked === "boolean" &&
-      typeof homeFeedPost?.isBookmarked === "boolean"
-    ) {
+      typeof homeFeedPost?.isBookmarked === "boolean";
+    const hasInitialViewerState =
+      typeof isLiked === "boolean" && typeof isBookmarked === "boolean";
+
+    // 홈 피드 캐시나 서버 초기값에서 viewer state를 이미 알 수 있으면
+    // 상세 보정 API를 추가로 호출하지 않습니다.
+    if (hasHomeFeedViewerState || hasInitialViewerState) {
       return;
     }
 
@@ -112,7 +117,7 @@ export default function PostContent({
     return () => {
       cancelled = true;
     };
-  }, [homeFeedPost?.isBookmarked, homeFeedPost?.isLiked, postId]);
+  }, [homeFeedPost?.isBookmarked, homeFeedPost?.isLiked, isBookmarked, isLiked, postId]);
 
   const liked = homeFeedPost?.isLiked ?? viewerLiked;
   const likes = Number(homeFeedPost?.aggregate?.likeCount ?? viewerLikeCount);
