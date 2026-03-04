@@ -86,7 +86,7 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
 
     let cancelled = false;
 
-    getPostDetail(postId)
+    getPostDetail(postId, { forceFresh: true })
       .then((res) => {
         if (cancelled) return;
         const latest = (res as { data?: PostDetail } | null)?.data;

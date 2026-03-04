@@ -55,7 +55,7 @@ export async function PATCH(request: Request, { params }: Props) {
   }
 
   try {
-    revalidateTag(getPostDetailTag(postId), "max");
+    revalidateTag(getPostDetailTag(postId), { expire: 0 });
     revalidatePath(`/post/${postId}`);
     revalidatePath("/post/[postId]", "page");
     console.info("[api/posts/[postId]] revalidated", { postId, scope: "update" });
