@@ -8,17 +8,28 @@ type PostDetailApiResponse = {
   data?: PostDetail;
 };
 
+function getInstanceId() {
+  return (
+    process.env.HOSTNAME ??
+    process.env.VERCEL_REGION ??
+    process.env.K_SERVICE ??
+    "unknown-instance"
+  );
+}
+
 export async function getPostDetailServer(
   postId: string,
 ): Promise<PostDetail | null> {
   const serverApiBaseUrl = process.env.API_BASE_URL ?? API_BASE_URL;
+  const detailTag = getPostDetailTag(postId);
+  const detailUrl = `${serverApiBaseUrl}/api/posts/${postId}`;
   let res: Response;
 
   try {
-    res = await fetch(`${serverApiBaseUrl}/api/posts/${postId}`, {
+    res = await fetch(detailUrl, {
       cache: "force-cache",
       next: {
-        tags: [getPostDetailTag(postId)],
+        tags: [detailTag],
         revalidate: 3600,
       },
     });
@@ -26,12 +37,30 @@ export async function getPostDetailServer(
     console.error("[getPostDetailServer] failed to fetch post detail", {
       postId,
       serverApiBaseUrl,
+      detailTag,
+      detailUrl,
+      instanceId: getInstanceId(),
       error,
     });
     return null;
   }
 
   const json = (await res.json().catch(() => null)) as PostDetailApiResponse;
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.warn("[getPostDetailServer] non-ok response", {
+      postId,
+      status: res.status,
+      detailTag,
+      detailUrl,
+      instanceId: getInstanceId(),
+    });
+    return null;
+  }
+  console.info("[getPostDetailServer] served", {
+    postId,
+    detailTag,
+    detailUrl,
+    instanceId: getInstanceId(),
+  });
   return json?.data ?? null;
 }

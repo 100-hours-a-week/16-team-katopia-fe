@@ -8,6 +8,15 @@ type Props = {
   params: Promise<{ postId: string }>;
 };
 
+function getInstanceId() {
+  return (
+    process.env.HOSTNAME ??
+    process.env.VERCEL_REGION ??
+    process.env.K_SERVICE ??
+    "unknown-instance"
+  );
+}
+
 export async function PATCH(request: Request, { params }: Props) {
   const { postId } = await params;
   const serverApiBaseUrl = process.env.API_BASE_URL ?? API_BASE_URL;
@@ -58,10 +67,20 @@ export async function PATCH(request: Request, { params }: Props) {
     revalidateTag(getPostDetailTag(postId), { expire: 0 });
     revalidatePath(`/post/${postId}`);
     revalidatePath("/post/[postId]", "page");
-    console.info("[api/posts/[postId]] revalidated", { postId, scope: "update" });
+    console.info("[api/posts/[postId]] revalidated", {
+      postId,
+      scope: "update",
+      instanceId: getInstanceId(),
+      requestUrl: request.url,
+    });
   } catch (error) {
     // 수정 성공 응답은 보장하고, ISR 문제는 로그로 추적합니다.
-    console.warn("[api/posts/[postId]] revalidate failed", { postId, error });
+    console.warn("[api/posts/[postId]] revalidate failed", {
+      postId,
+      error,
+      instanceId: getInstanceId(),
+      requestUrl: request.url,
+    });
   }
 
   return new NextResponse(payloadText, {

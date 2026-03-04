@@ -47,10 +47,6 @@ function isApiError(e: unknown): e is { code?: string } {
   return typeof e === "object" && e !== null && "code" in e;
 }
 
-function getPostDetailRefetchFlagKey(postId: string) {
-  return `katopia.postDetailRefetch:${postId}`;
-}
-
 const HOME_FEED_DIRTY_KEY = "katopia.homeFeedDirty";
 
 export function usePostEdit() {
@@ -117,7 +113,6 @@ export function usePostEdit() {
 
         console.log("게시글이 수정되었습니다.");
         try {
-          window.sessionStorage.setItem(getPostDetailRefetchFlagKey(postId), "1");
           window.localStorage.setItem(HOME_FEED_DIRTY_KEY, "1");
           window.dispatchEvent(new CustomEvent("home-feed:dirty"));
         } catch {}

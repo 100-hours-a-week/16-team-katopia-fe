@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 
 import { deletePost } from "../api/deletePost";
-import { getPostDetail } from "../api/getPostDetail";
 import { dispatchPostCountChange } from "../utils/postCountEvents";
 import {
   normalizeImageUrls,
@@ -55,51 +54,16 @@ type UsePostDetailOptions = {
   initialPost: PostDetail;
 };
 
-function getPostDetailRefetchFlagKey(postId: string) {
-  return `katopia.postDetailRefetch:${postId}`;
-}
-
 export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const { currentMember } = useAuth();
 
-  const [post, setPost] = useState<PostDetail>(initialPost);
+  const post = initialPost;
   const loading = false;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const me = currentMember;
-
-  useEffect(() => {
-    if (!postId) return;
-    const refetchFlagKey = getPostDetailRefetchFlagKey(postId);
-    let shouldRefetch = false;
-
-    try {
-      shouldRefetch = window.sessionStorage.getItem(refetchFlagKey) === "1";
-      if (shouldRefetch) {
-        window.sessionStorage.removeItem(refetchFlagKey);
-      }
-    } catch {}
-
-    if (!shouldRefetch) return;
-
-    let cancelled = false;
-
-    getPostDetail(postId, { forceFresh: true })
-      .then((res) => {
-        if (cancelled) return;
-        const latest = (res as { data?: PostDetail } | null)?.data;
-        if (latest) {
-          setPost(latest);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [postId]);
 
   const sortedImageUrls = useMemo(
     () => normalizePostImageUrls(post?.imageObjectKeys ?? post?.imageUrls),
