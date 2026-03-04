@@ -4,6 +4,8 @@ import { authFetch } from "@/src/lib/auth";
 type ViewerState = {
   isLiked?: boolean;
   isBookmarked?: boolean;
+  likeCount?: number;
+  commentCount?: number;
 };
 
 const inFlightViewerState = new Map<string, Promise<ViewerState | null>>();
@@ -27,6 +29,14 @@ export async function getPostDetailViewerState(
     return {
       isLiked: result?.data?.isLiked,
       isBookmarked: result?.data?.isBookmarked,
+      likeCount:
+        typeof result?.data?.aggregate?.likeCount === "number"
+          ? result.data.aggregate.likeCount
+          : undefined,
+      commentCount:
+        typeof result?.data?.aggregate?.commentCount === "number"
+          ? result.data.aggregate.commentCount
+          : undefined,
     };
   })();
 

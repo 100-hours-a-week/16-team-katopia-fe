@@ -85,6 +85,8 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   try {
+    // 상세는 데이터 캐시(tag) + 경로 캐시(path)를 함께 무효화해
+    // 즉시성(동적 카운트 반영)과 정합성(페이지 HTML 재생성)을 동시에 보장합니다.
     revalidateTag(getPostDetailTag(postId), "max");
     revalidatePath(`/post/${postId}`);
 
