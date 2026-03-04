@@ -55,6 +55,10 @@ type UsePostDetailOptions = {
   initialPost: PostDetail;
 };
 
+function getPostDetailRefetchFlagKey(postId: string) {
+  return `katopia.postDetailRefetch:${postId}`;
+}
+
 export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -68,6 +72,17 @@ export function usePostDetail({ postId, initialPost }: UsePostDetailOptions) {
 
   useEffect(() => {
     if (!postId) return;
+    const refetchFlagKey = getPostDetailRefetchFlagKey(postId);
+    let shouldRefetch = false;
+
+    try {
+      shouldRefetch = window.sessionStorage.getItem(refetchFlagKey) === "1";
+      if (shouldRefetch) {
+        window.sessionStorage.removeItem(refetchFlagKey);
+      }
+    } catch {}
+
+    if (!shouldRefetch) return;
 
     let cancelled = false;
 

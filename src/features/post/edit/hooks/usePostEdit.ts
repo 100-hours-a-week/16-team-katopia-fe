@@ -47,6 +47,10 @@ function isApiError(e: unknown): e is { code?: string } {
   return typeof e === "object" && e !== null && "code" in e;
 }
 
+function getPostDetailRefetchFlagKey(postId: string) {
+  return `katopia.postDetailRefetch:${postId}`;
+}
+
 export function usePostEdit() {
   const router = useRouter();
   const { postId } = useParams<{ postId: string }>();
@@ -110,6 +114,9 @@ export function usePostEdit() {
         });
 
         console.log("게시글이 수정되었습니다.");
+        try {
+          window.sessionStorage.setItem(getPostDetailRefetchFlagKey(postId), "1");
+        } catch {}
         window.location.replace(`/post/${postId}`);
       } catch (e: unknown) {
         if (!isApiError(e)) {
