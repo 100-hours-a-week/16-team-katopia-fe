@@ -3,6 +3,7 @@ import { getPostDetailServer } from "@/src/features/post/api/getPostDetailServer
 import { notFound } from "next/navigation";
 
 export const revalidate = 3600;
+export const dynamic = "force-static";
 export const dynamicParams = true;
 
 type Props = {

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:isr-debug": "NEXT_PRIVATE_DEBUG_CACHE=1 next dev",
     "dev:env": "next dev",
     "build": "next build",
     "start": "next start",

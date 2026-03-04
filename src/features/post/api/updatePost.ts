@@ -1,7 +1,5 @@
-import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
 import { extractTags } from "@/src/features/post/utils/extractTags";
-import { revalidatePostDetail } from "./revalidatePostDetail";
 
 type UpdatePostParams = {
   postId: string;
@@ -9,7 +7,7 @@ type UpdatePostParams = {
 };
 
 export async function updatePost({ postId, content }: UpdatePostParams) {
-  const res = await authFetch(`${API_BASE_URL}/api/posts/${postId}`, {
+  const res = await authFetch(`/api/posts/${postId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -20,15 +18,10 @@ export async function updatePost({ postId, content }: UpdatePostParams) {
     }),
   });
 
-  const result = await res.json();
+  const result = await res.json().catch(() => ({}));
 
   if (!res.ok) {
     throw result;
-  }
-
-  const revalidated = await revalidatePostDetail(postId, "update");
-  if (!revalidated) {
-    console.warn("[updatePost] revalidate failed", { postId });
   }
 
   return result;

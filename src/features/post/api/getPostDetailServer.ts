@@ -19,6 +19,7 @@ export async function getPostDetailServer(
       cache: "force-cache",
       next: {
         tags: [getPostDetailTag(postId)],
+        revalidate: 3600,
       },
     });
   } catch (error) {
