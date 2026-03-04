@@ -19,7 +19,7 @@ export async function revalidatePostDetail(
       headers.Authorization = `Bearer ${token}`;
     }
 
-    await fetch(`/api/revalidate/post/${postId}`, {
+    await fetch(`/revalidate/post/${postId}`, {
       method: "POST",
       headers,
       body: JSON.stringify({ scope }),
