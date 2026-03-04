@@ -30,11 +30,13 @@ function dedupeComments(items: CommentItem[]) {
   return next;
 }
 
-function incrementHomeFeedCommentCount(
+function applyHomeFeedCommentCountDelta(
   data: HomeFeedInfiniteData | undefined,
   postId: number,
+  delta: number,
 ) {
   if (!data) return data;
+  if (delta === 0) return data;
   let changed = false;
 
   const pages = data.pages.map((page) => {
@@ -46,7 +48,10 @@ function incrementHomeFeedCommentCount(
         ...post,
         aggregate: {
           ...(post.aggregate ?? {}),
-          commentCount: Number(post.aggregate?.commentCount ?? 0) + 1,
+          commentCount: Math.max(
+            0,
+            Number(post.aggregate?.commentCount ?? 0) + delta,
+          ),
         },
       };
     });
@@ -177,7 +182,7 @@ export function usePostComments(
         if (Number.isFinite(numericPostId)) {
           queryClient.setQueriesData<HomeFeedInfiniteData>(
             { queryKey: ["home-feed"] },
-            (old) => incrementHomeFeedCommentCount(old, numericPostId),
+            (old) => applyHomeFeedCommentCountDelta(old, numericPostId, 1),
           );
         }
         queryClient.invalidateQueries({ queryKey: ["home-feed"] });
@@ -214,8 +219,16 @@ export function usePostComments(
       await deleteComment({ postId, commentId: id });
       setComments((prev) => prev.filter((c) => c.id !== id));
       options?.onCountChange?.(-1);
+      const numericPostId = Number(postId);
+      if (Number.isFinite(numericPostId)) {
+        queryClient.setQueriesData<HomeFeedInfiniteData>(
+          { queryKey: ["home-feed"] },
+          (old) => applyHomeFeedCommentCountDelta(old, numericPostId, -1),
+        );
+      }
+      queryClient.invalidateQueries({ queryKey: ["home-feed"] });
     },
-    [options, postId],
+    [options, postId, queryClient],
   );
 
   return {
