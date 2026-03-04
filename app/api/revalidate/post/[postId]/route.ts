@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { API_BASE_URL } from "@/src/config/api";
 import { getPostDetailTag } from "@/src/features/post/api/postDetailCache";
 
 type Props = {
@@ -30,10 +31,12 @@ function errorResponse(
 
 export async function POST(request: Request, { params }: Props) {
   const { postId } = await params;
+  const serverApiBaseUrl = process.env.API_BASE_URL ?? API_BASE_URL;
   const configuredSecret = process.env.REVALIDATE_SECRET;
   const requestSecret =
     request.headers.get("x-revalidate-secret") ??
     new URL(request.url).searchParams.get("secret");
+  const authorization = request.headers.get("authorization");
 
   if (!postId) {
     return errorResponse(
@@ -43,18 +46,29 @@ export async function POST(request: Request, { params }: Props) {
     );
   }
 
-  if (!configuredSecret) {
-    return errorResponse(
-      "REVALIDATE_SECRET_NOT_CONFIGURED",
-      "서버에 REVALIDATE_SECRET 환경 변수가 설정되지 않았습니다.",
-      500,
-    );
+  const secretMatched =
+    Boolean(configuredSecret) && requestSecret === configuredSecret;
+  let authorizedByMember = false;
+
+  if (!secretMatched && authorization) {
+    try {
+      const meRes = await fetch(`${serverApiBaseUrl}/api/members/me`, {
+        method: "GET",
+        headers: {
+          Authorization: authorization,
+        },
+        cache: "no-store",
+      });
+      authorizedByMember = meRes.ok;
+    } catch {
+      authorizedByMember = false;
+    }
   }
 
-  if (!requestSecret || requestSecret !== configuredSecret) {
+  if (!secretMatched && !authorizedByMember) {
     return errorResponse(
       "UNAUTHORIZED_REVALIDATE",
-      "유효하지 않은 revalidate secret 입니다.",
+      "유효하지 않은 revalidate 요청입니다.",
       401,
     );
   }
