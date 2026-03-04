@@ -26,7 +26,10 @@ export async function updatePost({ postId, content }: UpdatePostParams) {
     throw result;
   }
 
-  void revalidatePostDetail(postId, "update");
+  const revalidated = await revalidatePostDetail(postId, "update");
+  if (!revalidated) {
+    console.warn("[updatePost] revalidate failed", { postId });
+  }
 
   return result;
 }

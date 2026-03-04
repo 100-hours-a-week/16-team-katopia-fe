@@ -111,6 +111,7 @@ export function usePostEdit() {
 
         console.log("게시글이 수정되었습니다.");
         router.replace(`/post/${postId}`);
+        router.refresh();
       } catch (e: unknown) {
         if (!isApiError(e)) {
           alert("알 수 없는 오류가 발생했습니다.");
