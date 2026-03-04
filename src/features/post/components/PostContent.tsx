@@ -126,8 +126,10 @@ export default function PostContent({
     queryKey: ["post-viewer-state", postId],
     queryFn: () => getPostDetailViewerState(postId),
     initialData: initialViewerState,
-    // 상세 재진입 직후에는 seed 데이터를 재사용해 중복 호출 체감을 낮춥니다.
-    staleTime: 15_000,
+    // seed는 첫 paint에만 사용하고, 진입 시점마다 최신 viewer 상태를 재검증합니다.
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: true,
     refetchOnWindowFocus: false,
     enabled: Boolean(postId),
   });

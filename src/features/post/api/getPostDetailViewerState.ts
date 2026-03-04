@@ -10,6 +10,22 @@ type ViewerState = {
 
 const inFlightViewerState = new Map<string, Promise<ViewerState | null>>();
 
+function pickBoolean(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      if (["y", "yes", "true", "1"].includes(normalized)) return true;
+      if (["n", "no", "false", "0"].includes(normalized)) return false;
+    }
+    if (typeof value === "number") {
+      if (value === 1) return true;
+      if (value === 0) return false;
+    }
+  }
+  return undefined;
+}
+
 export async function getPostDetailViewerState(
   postId: string,
 ): Promise<ViewerState | null> {
@@ -26,16 +42,37 @@ export async function getPostDetailViewerState(
     const result = await res.json().catch(() => null);
     if (!res.ok) throw result;
 
+    const data = result?.data;
+    const aggregate = data?.aggregate;
+
     return {
-      isLiked: result?.data?.isLiked,
-      isBookmarked: result?.data?.isBookmarked,
+      isLiked: pickBoolean(
+        data?.isLiked,
+        data?.isLike,
+        data?.likeYn,
+        data?.likedYn,
+        aggregate?.isLiked,
+        aggregate?.isLike,
+        aggregate?.likeYn,
+        aggregate?.likedYn,
+      ),
+      isBookmarked: pickBoolean(
+        data?.isBookmarked,
+        data?.isBookmark,
+        data?.bookmarkYn,
+        data?.bookmarkedYn,
+        aggregate?.isBookmarked,
+        aggregate?.isBookmark,
+        aggregate?.bookmarkYn,
+        aggregate?.bookmarkedYn,
+      ),
       likeCount:
-        typeof result?.data?.aggregate?.likeCount === "number"
-          ? result.data.aggregate.likeCount
+        typeof aggregate?.likeCount === "number"
+          ? aggregate.likeCount
           : undefined,
       commentCount:
-        typeof result?.data?.aggregate?.commentCount === "number"
-          ? result.data.aggregate.commentCount
+        typeof aggregate?.commentCount === "number"
+          ? aggregate.commentCount
           : undefined,
     };
   })();
