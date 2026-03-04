@@ -83,7 +83,8 @@ export default function GA4PageTracker({ gaId }: GA4PageTrackerProps) {
     lastPathRef.current = currentPath;
     scrollTrackedRef.current = { fifty: false, ninety: false };
 
-    trackEvent("page_view", {
+    // GoogleAnalytics 기본 page_view와 중복되지 않도록 커스텀 이벤트명 사용
+    trackEvent("fitcheck_page_view", {
       page_path: currentPath,
       page_location: window.location.href,
       page_title: currentTitle,
