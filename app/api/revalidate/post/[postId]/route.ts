@@ -30,12 +30,32 @@ function errorResponse(
 
 export async function POST(request: Request, { params }: Props) {
   const { postId } = await params;
+  const configuredSecret = process.env.REVALIDATE_SECRET;
+  const requestSecret =
+    request.headers.get("x-revalidate-secret") ??
+    new URL(request.url).searchParams.get("secret");
 
   if (!postId) {
     return errorResponse(
       "POST_ID_MISSING",
       "게시글 ID가 제공되지 않았습니다. 다시 시도해주세요.",
       400,
+    );
+  }
+
+  if (!configuredSecret) {
+    return errorResponse(
+      "REVALIDATE_SECRET_NOT_CONFIGURED",
+      "서버에 REVALIDATE_SECRET 환경 변수가 설정되지 않았습니다.",
+      500,
+    );
+  }
+
+  if (!requestSecret || requestSecret !== configuredSecret) {
+    return errorResponse(
+      "UNAUTHORIZED_REVALIDATE",
+      "유효하지 않은 revalidate secret 입니다.",
+      401,
     );
   }
 
