@@ -47,8 +47,6 @@ function isApiError(e: unknown): e is { code?: string } {
   return typeof e === "object" && e !== null && "code" in e;
 }
 
-const HOME_FEED_DIRTY_KEY = "katopia.homeFeedDirty";
-
 export function usePostEdit() {
   const router = useRouter();
   const { postId } = useParams<{ postId: string }>();
@@ -112,11 +110,7 @@ export function usePostEdit() {
         });
 
         console.log("게시글이 수정되었습니다.");
-        try {
-          window.localStorage.setItem(HOME_FEED_DIRTY_KEY, "1");
-          window.dispatchEvent(new CustomEvent("home-feed:dirty"));
-        } catch {}
-        window.location.replace(`/post/${postId}?from=home`);
+        window.location.replace(`/post/${postId}`);
       } catch (e: unknown) {
         if (!isApiError(e)) {
           alert("알 수 없는 오류가 발생했습니다.");

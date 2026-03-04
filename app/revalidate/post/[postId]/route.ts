@@ -13,15 +13,6 @@ type RevalidateBody = {
 
 type RevalidateScope = "update" | "delete";
 
-function getInstanceId() {
-  return (
-    process.env.HOSTNAME ??
-    process.env.VERCEL_REGION ??
-    process.env.K_SERVICE ??
-    "unknown-instance"
-  );
-}
-
 function errorResponse(
   title: string,
   detail: string,
@@ -93,12 +84,7 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   try {
-    console.info("[revalidate-post] start", {
-      postId,
-      scope,
-      instanceId: getInstanceId(),
-      requestUrl: request.url,
-    });
+    console.info("[revalidate-post] start", { postId, scope });
     // 상세는 데이터 캐시(tag) + 경로 캐시(path)를 함께 무효화해
     // 즉시성(동적 카운트 반영)과 정합성(페이지 HTML 재생성)을 동시에 보장합니다.
     revalidateTag(getPostDetailTag(postId), { expire: 0 });
@@ -111,20 +97,9 @@ export async function POST(request: Request, { params }: Props) {
       revalidatePath("/search");
       revalidatePath("/profile");
     }
-    console.info("[revalidate-post] success", {
-      postId,
-      scope,
-      instanceId: getInstanceId(),
-      requestUrl: request.url,
-    });
+    console.info("[revalidate-post] success", { postId, scope });
   } catch (error) {
-    console.error("[revalidate-post] failed", {
-      postId,
-      scope,
-      error,
-      instanceId: getInstanceId(),
-      requestUrl: request.url,
-    });
+    console.error("[revalidate-post] failed", { postId, scope, error });
     return errorResponse(
       "REVALIDATE_FAILED",
       "캐시 무효화 처리 중 오류가 발생했습니다.",
