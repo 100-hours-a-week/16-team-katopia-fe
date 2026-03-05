@@ -34,16 +34,18 @@ export async function getPostDetailViewerState(
   if (existing) return existing;
 
   const request = (async () => {
-    const res = await authFetch(`${API_BASE_URL}/api/posts/${postId}`, {
+    const res = await authFetch(
+      `${API_BASE_URL}/api/posts/${postId}/viewer-state`,
+      {
       method: "GET",
       cache: "no-store",
-    });
+      },
+    );
 
     const result = await res.json().catch(() => null);
     if (!res.ok) throw result;
 
-    const data = result?.data;
-    const aggregate = data?.aggregate;
+    const data = result?.data ?? result;
 
     return {
       isLiked: pickBoolean(
@@ -51,29 +53,13 @@ export async function getPostDetailViewerState(
         data?.isLike,
         data?.likeYn,
         data?.likedYn,
-        aggregate?.isLiked,
-        aggregate?.isLike,
-        aggregate?.likeYn,
-        aggregate?.likedYn,
       ),
       isBookmarked: pickBoolean(
         data?.isBookmarked,
         data?.isBookmark,
         data?.bookmarkYn,
         data?.bookmarkedYn,
-        aggregate?.isBookmarked,
-        aggregate?.isBookmark,
-        aggregate?.bookmarkYn,
-        aggregate?.bookmarkedYn,
       ),
-      likeCount:
-        typeof aggregate?.likeCount === "number"
-          ? aggregate.likeCount
-          : undefined,
-      commentCount:
-        typeof aggregate?.commentCount === "number"
-          ? aggregate.commentCount
-          : undefined,
     };
   })();
 
