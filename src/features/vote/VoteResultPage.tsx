@@ -110,8 +110,6 @@ export default function VoteResultPage({ voteId }: Props) {
     <div
       className="min-h-svh bg-black px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
       style={{
-        fontFamily:
-          '"NanumSquare", "Pretendard", "Apple SD Gothic Neo", sans-serif',
         background: "#000000",
       }}
     >

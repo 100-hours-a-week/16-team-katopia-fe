@@ -88,7 +88,7 @@ export default function VotePage() {
   }
 
   return (
-    <div className='min-h-svh bg-black px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white [font-family:"NanumSquare","Pretendard","Apple_SD_Gothic_Neo",sans-serif]'>
+    <div className="min-h-svh bg-black px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white">
       <VoteHeader title="오늘의 투표" />
       {content}
 
