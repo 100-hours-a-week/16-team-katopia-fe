@@ -95,8 +95,11 @@ export function useNotificationStream({
       if (!toastEnabled) return;
       items.forEach((item) => {
         const id = item?.id;
+
+        //이미 본 알림 ID면 토스트 스킵
         if (typeof id === "number" && seenIdsRef.current.has(id)) return;
 
+        // 새 ID 저장 + 상한 초과 시 가장 오래된 ID제거
         if (typeof id === "number") {
           seenIdsRef.current.add(id);
           if (seenIdsRef.current.size > seenIdsLimit) {
@@ -148,7 +151,9 @@ export function useNotificationStream({
       if (reconnectAttemptRef.current >= MAX_RETRY) {
         // 최대 재시도 초과
         if (!isProd) {
-          console.warn("[notifications:sse] max retry reached. stop reconnect."); // 로그
+          console.warn(
+            "[notifications:sse] max retry reached. stop reconnect.",
+          ); // 로그
         }
         return; // 종료
       }
@@ -338,11 +343,14 @@ export function useNotificationStream({
             Math.max(30_000, reconnectIntervalMs * 4), // 최소 30초 또는 4배
           ); // 계산 끝
           if (!isProd) {
-            console.warn("[notifications:sse] server error, backoff reconnect", {
-              // 로그
-              status, // 상태 코드
-              retryDelay, // 지연 시간
-            }); // 로그 끝
+            console.warn(
+              "[notifications:sse] server error, backoff reconnect",
+              {
+                // 로그
+                status, // 상태 코드
+                retryDelay, // 지연 시간
+              },
+            ); // 로그 끝
           }
           scheduleReconnect(retryDelay); // 재연결 예약
           return; // 종료
