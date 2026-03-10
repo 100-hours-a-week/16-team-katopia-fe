@@ -3,12 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import LikeBurstHeart from "@/src/components/LikeBurstHeart";
+import { saveHomeScrollPosition } from "../utils/homeScrollPosition";
 
 type HomePostMediaProps = {
   postId: number;
   imageUrl?: string | null;
   imageUrls?: string[];
   prioritizeFirstImage?: boolean;
+  likeBurstTrigger?: number;
 };
 
 export default function HomePostMedia({
@@ -16,9 +19,15 @@ export default function HomePostMedia({
   imageUrl,
   imageUrls,
   prioritizeFirstImage = false,
+  likeBurstTrigger = 0,
 }: HomePostMediaProps) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
+
+  const handleOpenPostDetail = () => {
+    saveHomeScrollPosition();
+    router.push(`/post/${postId}?from=home`);
+  };
 
   const images = useMemo(() => {
     const list = imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : [];
@@ -41,6 +50,7 @@ export default function HomePostMedia({
 
   return (
     <div className="group relative aspect-3/4 overflow-hidden rounded-[6px] bg-[#efefef]">
+      <LikeBurstHeart trigger={likeBurstTrigger} />
       <div
         className="flex h-full w-full transition-transform duration-300 ease-out will-change-transform"
         style={{ transform: `translate3d(-${safeIndex * 100}%, 0, 0)` }}
@@ -49,7 +59,7 @@ export default function HomePostMedia({
           <div key={imageIndex} className="h-full w-full shrink-0">
             <button
               type="button"
-              onClick={() => router.push(`/post/${postId}?from=home`)}
+              onClick={handleOpenPostDetail}
               className="relative block h-full w-full"
               aria-label="게시물 이미지"
             >

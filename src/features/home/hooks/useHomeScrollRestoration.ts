@@ -1,4 +1,8 @@
 import { useEffect, useRef } from "react";
+import {
+  readHomeScrollPosition,
+  saveHomeScrollPosition,
+} from "../utils/homeScrollPosition";
 
 export function useHomeScrollRestoration(postsLength: number) {
   const restoreAttemptedRef = useRef(false);
@@ -7,30 +11,14 @@ export function useHomeScrollRestoration(postsLength: number) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const key = "katopia.home.scrollY";
-    const readScroll = () => {
-      try {
-        const stored = window.sessionStorage.getItem(key);
-        if (!stored) return null;
-        const y = Number(stored);
-        return Number.isFinite(y) ? y : null;
-      } catch {
-        return null;
-      }
-    };
-
-    pendingScrollYRef.current = readScroll();
+    pendingScrollYRef.current = readHomeScrollPosition();
 
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
 
     const saveScroll = () => {
-      try {
-        window.sessionStorage.setItem(key, String(window.scrollY));
-      } catch {
-        // ignore storage errors
-      }
+      saveHomeScrollPosition();
     };
     const onScroll = () => {
       saveScroll();
@@ -52,11 +40,7 @@ export function useHomeScrollRestoration(postsLength: number) {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", onPageHide);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      try {
-        window.sessionStorage.setItem(key, String(window.scrollY));
-      } catch {
-        // ignore storage errors
-      }
+      saveHomeScrollPosition();
     };
   }, []);
 

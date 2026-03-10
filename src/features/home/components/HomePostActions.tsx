@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useHomeFeedPostActions } from "@/src/features/home/hooks/useHomeFeedPostActions";
+import { saveHomeScrollPosition } from "../utils/homeScrollPosition";
 
 type HomePostActionsProps = {
   postId: number;
@@ -10,6 +11,7 @@ type HomePostActionsProps = {
   commentCount: number;
   isLiked?: boolean;
   isBookmarked?: boolean;
+  onLikeBurst?: () => void;
 };
 
 function BookmarkIcon({ active }: { active: boolean }) {
@@ -37,6 +39,7 @@ export default function HomePostActions({
   commentCount,
   isLiked = false,
   isBookmarked = false,
+  onLikeBurst,
 }: HomePostActionsProps) {
   const router = useRouter();
   const { toggleLike, liking, toggleBookmark, bookmarking } =
@@ -54,12 +57,19 @@ export default function HomePostActions({
 
   const handleToggleLike = () => {
     if (liking) return;
-    toggleLike({ postId, nextLiked: !liked });
+    const nextLiked = !liked;
+    if (nextLiked) onLikeBurst?.();
+    toggleLike({ postId, nextLiked });
   };
 
   const handleToggleBookmark = () => {
     if (bookmarking) return;
     toggleBookmark({ postId, nextBookmarked: !bookmarked });
+  };
+
+  const handleOpenPostDetail = () => {
+    saveHomeScrollPosition();
+    router.push(`/post/${postId}?from=home`);
   };
 
   return (
@@ -84,7 +94,7 @@ export default function HomePostActions({
         </button>
         <button
           type="button"
-          onClick={() => router.push(`/post/${postId}?from=home`)}
+          onClick={handleOpenPostDetail}
           className="flex items-center gap-2 text-neutral-900"
           aria-label="댓글"
         >

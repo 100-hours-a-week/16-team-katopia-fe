@@ -19,6 +19,7 @@ type PostContentProps = {
   likeCount: number;
   isLiked?: boolean;
   isBookmarked?: boolean;
+  onLikeBurst?: () => void;
 };
 
 type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
@@ -62,6 +63,7 @@ export default function PostContent({
   likeCount,
   isLiked = false,
   isBookmarked = false,
+  onLikeBurst,
 }: PostContentProps) {
   const queryClient = useQueryClient();
   const { count: commentCount, set: setCommentCount } = useCommentCount();
@@ -166,6 +168,7 @@ export default function PostContent({
     const prevLikes = likes;
     const nextLiked = !prevLiked;
 
+    if (nextLiked) onLikeBurst?.();
     setViewerLiked(nextLiked);
     setViewerLikeCount(Math.max(0, prevLikes + (nextLiked ? 1 : -1)));
 

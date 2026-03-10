@@ -145,8 +145,8 @@ export default function VoteResultPage({ voteId }: Props) {
             }))}
             onRefresh={handleRefresh}
             showRefresh={false}
-            cardWidth={320}
-            cardHeight={460}
+            cardWidth={360}
+            cardHeight={540}
           />
           {loading && (
             <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-6">

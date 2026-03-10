@@ -8,12 +8,17 @@ import {
   CarouselPrevious,
   useCarousel,
 } from "@/components/ui/carousel";
+import LikeBurstHeart from "@/src/components/LikeBurstHeart";
 
 type PostImageCarouselProps = {
   images: string[];
+  likeBurstTrigger?: number;
 };
 
-export default function PostImageCarousel({ images }: PostImageCarouselProps) {
+export default function PostImageCarousel({
+  images,
+  likeBurstTrigger = 0,
+}: PostImageCarouselProps) {
   const total = images.length;
 
   const Indicators = () => {
@@ -43,6 +48,7 @@ export default function PostImageCarousel({ images }: PostImageCarouselProps) {
         {images.map((src, i) => (
           <CarouselItem key={i}>
             <div className="relative aspect-3/4 bg-muted">
+              <LikeBurstHeart trigger={likeBurstTrigger} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={src}

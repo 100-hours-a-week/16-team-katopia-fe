@@ -14,6 +14,35 @@ type VoteCard = {
 
 const THRESHOLD = 120;
 const RESULT_REVEAL_DELAY_MS = 3000;
+const MOCK_VOTE_ID = "mock-vote-1";
+const MOCK_VOTE_TITLE = "어떤 룩이 더 어울릴까요?";
+const MOCK_VOTE_ITEMS: VoteCard[] = [
+  { id: "mock-1", imageUrl: "/images/vote_1.jpeg" },
+  { id: "mock-2", imageUrl: "/images/vote_2.jpeg" },
+  { id: "mock-3", imageUrl: "/images/vote_3.webp" },
+  { id: "mock-4", imageUrl: "/images/vote_4.webp" },
+];
+
+function buildMockCandidates() {
+  return {
+    id: MOCK_VOTE_ID,
+    title: MOCK_VOTE_TITLE,
+    items: MOCK_VOTE_ITEMS,
+  };
+}
+
+function getMockResultStats(length: number) {
+  if (length === 0) return [];
+  const mockPercents = [38, 27, 22, 13];
+  const totalVotes = 126;
+  return new Array(length).fill(null).map((_, index) => {
+    const likePercent = mockPercents[index] ?? 10;
+    return {
+      likePercent,
+      likeCount: Math.round((totalVotes * likePercent) / 100),
+    };
+  });
+}
 
 export function useVoteFlow() {
   const [cards, setCards] = useState<VoteCard[]>([]);
@@ -133,17 +162,11 @@ export function useVoteFlow() {
       setLoading(true);
       const result = await getVoteCandidates();
       console.log("[vote] candidates response", result);
-      if (!result) {
-        setCards([]);
-        setTitle("");
-        setVoteId(null);
-        setNoActiveVote(true);
-      } else {
-        setCards(result.items);
-        setTitle(result.title);
-        setVoteId(result.id ?? null);
-        setNoActiveVote(false);
-      }
+      const next = result ?? buildMockCandidates();
+      setCards(next.items);
+      setTitle(next.title);
+      setVoteId(next.id ?? null);
+      setNoActiveVote(false);
       setIndex(0);
       selectedIdsRef.current = [];
       selectedByIndexRef.current = {};
@@ -163,9 +186,10 @@ export function useVoteFlow() {
       x.set(0);
       submitAttemptedRef.current = false;
     } catch {
-      setCards([]);
-      setTitle("");
-      setVoteId(null);
+      const next = buildMockCandidates();
+      setCards(next.items);
+      setTitle(next.title);
+      setVoteId(next.id);
       setNoActiveVote(false);
     } finally {
       setLoading(false);
@@ -182,6 +206,21 @@ export function useVoteFlow() {
       return;
     }
     if (submitting || submitAttemptedRef.current) return;
+    if (String(voteId).startsWith("mock-")) {
+      submitAttemptedRef.current = true;
+      setResultItems(
+        cards.map((card) => ({
+          ...card,
+          imageUrl: card.imageUrl || "/images/white.png",
+        })),
+      );
+      setResultStats(getMockResultStats(cards.length));
+      resultRevealTimerRef.current = window.setTimeout(() => {
+        setShowResult(true);
+        resultRevealTimerRef.current = null;
+      }, RESULT_REVEAL_DELAY_MS);
+      return;
+    }
     if (selectedIdsRef.current.length === 0) {
       submitAttemptedRef.current = true;
       void refreshCandidates();
@@ -260,7 +299,7 @@ export function useVoteFlow() {
       .finally(() => {
         setSubmitting(false);
       });
-  }, [isFinished, refreshCandidates, submitting, voteId]);
+  }, [cards, isFinished, refreshCandidates, submitting, voteId]);
 
   useEffect(() => {
     return () => {
