@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
-    qualities: [70, 75],
+    qualities: [65, 70, 75],
     remotePatterns: [
       // 기존 테스트용
       {

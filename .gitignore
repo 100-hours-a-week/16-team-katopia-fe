@@ -43,3 +43,19 @@ next-env.d.ts
 
 # md
 AGENTS.md
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# E2E test code and config
+/tests/
+/e2e/
+/playwright/
+/playwright.config.ts
+/.github/workflows/playwright.yml
+*.e2e.spec.ts
