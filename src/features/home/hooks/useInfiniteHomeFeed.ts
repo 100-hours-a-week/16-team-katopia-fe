@@ -66,9 +66,12 @@ function mapHomePosts(data: GetHomePostsResponse) {
 export function useInfiniteHomeFeed(params?: {
   size?: number;
   enabled?: boolean;
+  initialData?: GetHomePostsResponse | null;
 }) {
   const size = params?.size ?? 10;
   const enabled = params?.enabled ?? true;
+  const initialData = params?.initialData;
+  const hasSeededPosts = (initialData?.posts?.length ?? 0) > 0;
 
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -77,6 +80,14 @@ export function useInfiniteHomeFeed(params?: {
       queryKey: ["home-feed", size],
       enabled,
       initialPageParam: null as string | null,
+      initialData: initialData
+        ? {
+            pages: [initialData],
+            pageParams: [null],
+          }
+        : undefined,
+      refetchOnMount: hasSeededPosts ? false : true,
+      refetchOnWindowFocus: false,
       staleTime: 30_000,
       gcTime: 10 * 60_000,
       queryFn: async ({ pageParam }) =>

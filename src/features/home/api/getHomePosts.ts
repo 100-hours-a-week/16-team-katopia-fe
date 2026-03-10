@@ -1,5 +1,10 @@
 import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
+import {
+  clearAccessToken,
+  getAccessToken,
+  isAccessTokenExpired,
+  issueAccessToken,
+} from "@/src/lib/auth";
 import { normalizeImageUrls } from "@/src/features/upload/utils/normalizeImageUrls";
 
 export type HomeAuthor = {
@@ -38,6 +43,12 @@ export type GetHomePostsResponse = {
   nextCursor: string | null;
 };
 
+export type HomePostsFetchOptions = {
+  cookieHeader?: string | null;
+  size?: number;
+  after?: string | null;
+};
+
 function normalizeHomeImageUrls(post: HomePostApiItem) {
   const rawKeys = post.imageObjectKeys ?? [];
   if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
@@ -62,21 +73,67 @@ function normalizeHomeImageUrls(post: HomePostApiItem) {
   );
 }
 
-export async function getHomePosts(params?: {
-  size?: number;
-  after?: string;
-}): Promise<GetHomePostsResponse> {
+function normalizeHomePostsResponse(result: unknown): GetHomePostsResponse {
+  const data =
+    (result as { data?: GetHomePostsResponse })?.data ??
+    (result as GetHomePostsResponse);
+
+  return {
+    ...data,
+    posts: (data.posts ?? []).map((post) => {
+      const imageUrls = normalizeHomeImageUrls(post);
+      return {
+        ...post,
+        imageObjectKeys: undefined,
+        imageUrls,
+      };
+    }),
+  };
+}
+
+function buildHomePostsUrl(params?: { size?: number; after?: string | null }) {
   const searchParams = new URLSearchParams();
 
   if (params?.size) searchParams.set("size", String(params.size));
   if (params?.after) searchParams.set("after", params.after);
+  return `${API_BASE_URL}/api/home/posts?${searchParams.toString()}`;
+}
 
+export async function getHomePosts(params?: {
+  size?: number;
+  after?: string;
+}): Promise<GetHomePostsResponse> {
+  const url = buildHomePostsUrl(params);
   let res: Response;
   try {
-    res = await authFetch(`${API_BASE_URL}/api/home/posts?${searchParams.toString()}`, {
+    const existing = getAccessToken();
+    const candidateToken =
+      existing && !isAccessTokenExpired(existing) ? existing : null;
+
+    res = await fetch(url, {
       method: "GET",
       cache: "no-store",
+      credentials: "include",
+      headers: candidateToken
+        ? {
+            Authorization: `Bearer ${candidateToken}`,
+          }
+        : undefined,
     });
+
+    // 토큰 발급을 선행하지 않고, 401일 때만 재발급 후 1회 재시도합니다.
+    if (res.status === 401) {
+      clearAccessToken();
+      const refreshed = await issueAccessToken();
+      res = await fetch(url, {
+        method: "GET",
+        cache: "no-store",
+        credentials: "include",
+        headers: {
+          Authorization: `Bearer ${refreshed}`,
+        },
+      });
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (
@@ -98,17 +155,52 @@ export async function getHomePosts(params?: {
     throw result;
   }
 
-  const data = (result.data ?? result) as GetHomePostsResponse;
+  return normalizeHomePostsResponse(result);
+}
 
-  return {
-    ...data,
-    posts: (data.posts ?? []).map((post) => {
-      const imageUrls = normalizeHomeImageUrls(post);
-      return {
-        ...post,
-        imageObjectKeys: undefined,
-        imageUrls,
-      };
+async function issueServerAccessToken(
+  cookieHeader?: string | null,
+): Promise<string | null> {
+  if (!cookieHeader) return null;
+  const tokenRes = await fetch(`${API_BASE_URL}/api/auth/tokens`, {
+    method: "POST",
+    headers: { Cookie: cookieHeader },
+    cache: "no-store",
+  });
+
+  if (!tokenRes.ok) return null;
+
+  const tokenJson = (await tokenRes.json().catch(() => null)) as {
+    data?: { accessToken?: string | null };
+  } | null;
+  return tokenJson?.data?.accessToken ?? null;
+}
+
+export async function getHomePostsServer(
+  options: HomePostsFetchOptions = {},
+): Promise<GetHomePostsResponse> {
+  const token = await issueServerAccessToken(options.cookieHeader);
+  if (!token) return { posts: [], nextCursor: null };
+
+  const res = await fetch(
+    buildHomePostsUrl({
+      size: options.size,
+      after: options.after ?? undefined,
     }),
-  };
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!res.ok) {
+    if (res.status === 401) return { posts: [], nextCursor: null };
+    throw new Error(`Failed to fetch home posts: ${res.status}`);
+  }
+
+  const result = await res.json().catch(() => ({}));
+  return normalizeHomePostsResponse(result);
 }

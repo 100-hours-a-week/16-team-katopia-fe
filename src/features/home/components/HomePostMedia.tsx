@@ -57,7 +57,7 @@ export default function HomePostMedia({
                 src={src}
                 alt={`게시물 이미지 ${imageIndex + 1}`}
                 fill
-                sizes="(max-width: 430px) 100vw, 430px"
+                sizes="(max-width: 768px) 100vw, 420px"
                 className="object-cover"
                 priority={prioritizeFirstImage && imageIndex === 0}
                 fetchPriority={
@@ -66,7 +66,7 @@ export default function HomePostMedia({
                 loading={
                   prioritizeFirstImage && imageIndex === 0 ? "eager" : "lazy"
                 }
-                quality={70}
+                quality={65}
               />
             </button>
           </div>
