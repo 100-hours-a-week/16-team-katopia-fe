@@ -10,11 +10,11 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
-import heic2any from "heic2any";
 import {
   requestUploadPresign,
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
+import { processImageFile } from "@/src/features/upload/utils/processImage";
 
 const MAX_FILES = 5;
 const MAX_FILE_SIZE = 30 * 1024 * 1024;
@@ -49,79 +49,6 @@ const isSupportedImageFile = (file: File) => {
   if (!file.type && ext) return ALLOWED_EXTENSIONS.has(ext);
   return true;
 };
-
-type EncodedImage = {
-  blob: Blob;
-  contentType: string;
-  extension: string;
-};
-
-async function resizeAndCompress(
-  file: File,
-  maxLongSide = 1440,
-): Promise<EncodedImage> {
-  let sourceFile = file;
-  const isHeicLike =
-    file.type === "image/heic" ||
-    file.type === "image/heif" ||
-    file.name.toLowerCase().endsWith(".heic") ||
-    file.name.toLowerCase().endsWith(".heif");
-  if (isHeicLike) {
-    try {
-      const buffer = await file.arrayBuffer();
-      const heicBlob = new Blob([buffer], {
-        type: file.type || "image/heic",
-      });
-      const converted = await heic2any({
-        blob: heicBlob,
-        toType: "image/jpeg",
-        quality: 0.92,
-      });
-
-      const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-      const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
-      sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
-    } catch {
-      throw new Error(
-        "HEIC 파일은 업로드할 수 없습니다. JPG/PNG로 변환해주세요.",
-      );
-    }
-  }
-
-  const bitmap = await createImageBitmap(sourceFile, {
-    imageOrientation: "from-image",
-  });
-
-  const scale = Math.min(
-    1,
-    maxLongSide / Math.max(bitmap.width, bitmap.height),
-  );
-  const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width * scale;
-  canvas.height = bitmap.height * scale;
-
-  const ctx = canvas.getContext("2d")!;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-  const blob = await new Promise<Blob>((resolve) =>
-    canvas.toBlob(
-      (result) => {
-        if (!result) throw new Error("이미지 압축 실패");
-        resolve(result);
-      },
-      "image/webp",
-      0.92,
-    ),
-  );
-
-  return {
-    blob,
-    contentType: "image/webp",
-    extension: "webp",
-  };
-}
 
 export function useVoteImageUploader() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -230,7 +157,16 @@ export function useVoteImageUploader() {
         setIsUploading(true);
 
         const encoded = await Promise.all(
-          validSelected.map((file) => resizeAndCompress(file)),
+          validSelected.map((file) =>
+            processImageFile(file, {
+              maxLongSide: 1440,
+              quality: 0.92,
+              outputType: "image/webp",
+              heicToJpegQuality: 0.92,
+              heicErrorMessage:
+                "HEIC 파일은 업로드할 수 없습니다. JPG/PNG로 변환해주세요.",
+            }),
+          ),
         );
 
         const presigned = await requestUploadPresign(

@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import heic2any from "heic2any";
 
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
 import { API_BASE_URL } from "@/src/config/api";
@@ -18,6 +17,7 @@ import {
   requestUploadPresign,
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
+import { processImageFile } from "@/src/features/upload/utils/processImage";
 
 const STYLE_TO_ENUM: Record<string, string> = {
   미니멀: "MINIMAL",
@@ -231,65 +231,6 @@ export function useProfileEdit() {
     }, durationMs);
   }, []);
 
-  const resizeAndCompress = useCallback(
-    async (target: File, maxWidth = 1080, quality = 0.8): Promise<Blob> => {
-      let sourceFile = target;
-
-      const lowerName = target.name.toLowerCase();
-      if (
-        target.type === "image/heic" ||
-        target.type === "image/heif" ||
-        lowerName.endsWith(".heic") ||
-        lowerName.endsWith(".heif")
-      ) {
-        const buffer = await target.arrayBuffer();
-        const heicBlob = new Blob([buffer], {
-          type: target.type || "image/heic",
-        });
-        const converted = await heic2any({
-          blob: heicBlob,
-          toType: "image/jpeg",
-          quality: 0.9,
-        });
-
-        const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-
-        const safeName = target.name.replace(/\.heic$|\.heif$/i, ".jpg");
-        sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
-      }
-
-      const bitmap = await createImageBitmap(sourceFile, {
-        imageOrientation: "from-image",
-      });
-
-      const scale = Math.min(1, maxWidth / bitmap.width);
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width * scale;
-      canvas.height = bitmap.height * scale;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("이미지 처리 실패");
-      }
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-      return new Promise((resolve, reject) =>
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error("이미지 변환 실패"));
-              return;
-            }
-            resolve(blob);
-          },
-          "image/webp",
-          quality,
-        ),
-      );
-    },
-    [],
-  );
-
   const handleImageChange = useCallback(
     (file: File) => {
       if (file.size > 30 * 1024 * 1024) {
@@ -308,8 +249,13 @@ export function useProfileEdit() {
       previewUrlRef.current = localUrl;
       setPreview(localUrl);
 
-      resizeAndCompress(file)
-        .then((blob) => {
+      processImageFile(file, {
+        maxWidth: 1080,
+        quality: 0.8,
+        outputType: "image/webp",
+        heicToJpegQuality: 0.9,
+      })
+        .then(({ blob }) => {
           setImageBlob(blob);
           const processedUrl = URL.createObjectURL(blob);
           if (previewUrlRef.current) {
@@ -329,7 +275,7 @@ export function useProfileEdit() {
           );
         });
     },
-    [resizeAndCompress],
+    [],
   );
 
   const handleRemoveImage = useCallback(() => {
