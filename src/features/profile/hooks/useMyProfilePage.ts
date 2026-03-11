@@ -8,6 +8,8 @@ import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePost
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { useInfiniteMyVotes } from "@/src/features/vote/hooks/useInfiniteMyVotes";
 import { deleteVote } from "@/src/features/vote/api/deleteVote";
+import { useOptimisticPostCount } from "./useOptimisticPostCount";
+import { extractProfileCounts } from "../utils/extractProfileCounts";
 
 export type Profile = {
   userId: number;
@@ -17,12 +19,6 @@ export type Profile = {
   height: number | null;
   weight: number | null;
   style: string[];
-};
-
-type ApiAggregate = {
-  postCount?: number | null;
-  followerCount?: number | null;
-  followingCount?: number | null;
 };
 
 export function useMyProfilePage() {
@@ -47,6 +43,7 @@ export function useMyProfilePage() {
   >(null);
   const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
   const [voteDeleting, setVoteDeleting] = useState(false);
+  const optimisticPostCount = useOptimisticPostCount(postCount);
   const profileNickname = profile?.nickname ?? "";
   const profileMemberId = profile?.userId ?? "";
 
@@ -101,8 +98,7 @@ export function useMyProfilePage() {
 
         const json = await res.json();
         const rawProfile = json.data.profile;
-        const apiAggregate: ApiAggregate | undefined =
-          json.data?.aggregate ?? json.aggregate;
+        const counts = extractProfileCounts(json);
         const userId = json.data.id;
         const normalizedGender =
           rawProfile.gender === "M" || rawProfile.gender === "MALE"
@@ -121,12 +117,15 @@ export function useMyProfilePage() {
           height: rawProfile.height,
           weight: rawProfile.weight,
         });
-        setPostCount((prev) => {
-          const next = Number(apiAggregate?.postCount ?? 0) || 0;
-          return Math.max(prev, next);
-        });
-        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
-        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
+        if (counts.postCount !== null) {
+          setPostCount((prev) => Math.max(prev, counts.postCount ?? 0));
+        }
+        if (counts.followerCount !== null) {
+          setFollowerCount(counts.followerCount);
+        }
+        if (counts.followingCount !== null) {
+          setFollowingCount(counts.followingCount);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -167,11 +166,11 @@ export function useMyProfilePage() {
 
   const stats = useMemo(
     () => ({
-      postCount,
+      postCount: optimisticPostCount,
       followerCount,
       followingCount,
     }),
-    [postCount, followerCount, followingCount],
+    [optimisticPostCount, followerCount, followingCount],
   );
 
   const handleFollowerClick = useCallback(() => {

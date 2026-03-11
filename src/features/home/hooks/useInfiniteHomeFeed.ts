@@ -88,6 +88,7 @@ export function useInfiniteHomeFeed(params?: {
         : undefined,
       refetchOnMount: hasSeededPosts ? false : true,
       refetchOnWindowFocus: false,
+      // 짧은 staleTime으로 과도한 재요청은 줄이고 최신성은 유지합니다.
       staleTime: 30_000,
       gcTime: 10 * 60_000,
       queryFn: async ({ pageParam }) =>
@@ -99,6 +100,7 @@ export function useInfiniteHomeFeed(params?: {
         const rawNextCursor =
           lastPage.nextCursor === "" ? null : (lastPage.nextCursor ?? null);
         if (rawNextCursor == null) return undefined;
+        // 같은 커서 반복 응답 시 무한 재호출을 방지합니다.
         if (rawNextCursor === lastPageParam) return undefined;
         return rawNextCursor;
       },

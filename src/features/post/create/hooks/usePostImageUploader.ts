@@ -81,6 +81,7 @@ async function resizeAndCompress(
     imageOrientation: "from-image",
   });
 
+  // 업로드 전 클라이언트에서 해상도 축소해 전송량/업로드 시간을 절감합니다.
   const scale = Math.min(
     1,
     maxLongSide / Math.max(bitmap.width, bitmap.height),
@@ -237,10 +238,12 @@ export function usePostImageUploader() {
           id,
           url: URL.createObjectURL(file),
           name: file.name,
+          // 업로드 완료 전까지 pending 키를 써서 submit을 막고 순서를 유지합니다.
           objectKey: `pending:${id}`,
         };
       });
 
+      // 처리/업로드가 끝나기 전에도 즉시 미리보기를 보여 체감 응답성을 높입니다.
       setPreviews((prev) => [...prev, ...tempItems]);
 
       setValue(

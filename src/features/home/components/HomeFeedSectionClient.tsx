@@ -38,6 +38,7 @@ function filterOwnPostsByAge(
     if (String(post.author.id) !== myId) return true;
     const createdAtMs = toTimestamp(post.createdAt);
     if (createdAtMs == null) return true;
+    // 내 글은 하루 동안만 피드에 유지해 긴 리스트 누적을 완화합니다.
     return now - createdAtMs <= OWN_POST_VISIBLE_WINDOW_MS;
   });
 }
@@ -67,6 +68,7 @@ export default function HomeFeedSectionClient({
     [currentMember?.id, posts],
   );
 
+  // 게시글 수가 많아지면 가상화 리스트로 전환해 DOM 렌더링 비용을 줄입니다.
   const virtualizationEnabled =
     visiblePosts.length >= VIRTUALIZATION_START_COUNT;
 

@@ -11,6 +11,7 @@ import ProfileSummary from "../components/ProfileSummary";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { followMember } from "@/src/features/profile/api/followMember";
 import { unfollowMember } from "@/src/features/profile/api/unfollowMember";
+import { extractProfileCounts } from "../utils/extractProfileCounts";
 
 interface Props {
   userId: string;
@@ -37,12 +38,6 @@ type UserProfile = {
   height: number | null;
   weight: number | null;
   style?: string[] | null;
-};
-
-type ApiAggregate = {
-  postCount?: number | null;
-  followerCount?: number | null;
-  followingCount?: number | null;
 };
 
 /* ================= 페이지 ================= */
@@ -89,7 +84,6 @@ export default function UserProfilePage({ userId }: Props) {
         if (!res.ok) throw new Error("프로필 조회 실패");
 
         const json = await res.json();
-        console.log("[profile] /api/members/{id} response", json);
         const apiProfile: ApiProfile | undefined = json.data?.profile;
         const apiIsFollowingRaw =
           json.data?.isFollowing ??
@@ -100,8 +94,7 @@ export default function UserProfilePage({ userId }: Props) {
           json.data?.profile?.followed ??
           json.data?.profile?.isFollow ??
           json.data?.profile?.following;
-        const apiAggregate: ApiAggregate | undefined =
-          json.data?.aggregate ?? json.aggregate;
+        const counts = extractProfileCounts(json);
 
         if (!apiProfile) {
           setProfile(null);
@@ -126,9 +119,15 @@ export default function UserProfilePage({ userId }: Props) {
           style: apiProfile.style ?? [],
         });
 
-        setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
-        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
+        if (counts.postCount !== null) {
+          setPostCount(counts.postCount);
+        }
+        if (counts.followerCount !== null) {
+          setFollowerCount(counts.followerCount);
+        }
+        if (counts.followingCount !== null) {
+          setFollowingCount(counts.followingCount);
+        }
 
         if (typeof apiIsFollowingRaw === "boolean") {
           setIsFollowing(apiIsFollowingRaw);

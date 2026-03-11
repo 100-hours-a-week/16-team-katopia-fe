@@ -69,6 +69,7 @@ export default function HomePostMedia({
                 fill
                 sizes="(max-width: 768px) 100vw, 420px"
                 className="object-cover"
+                // 상단 피드 카드의 첫 이미지는 우선 로딩해 LCP 지연을 줄입니다.
                 priority={prioritizeFirstImage && imageIndex === 0}
                 fetchPriority={
                   prioritizeFirstImage && imageIndex === 0 ? "high" : "auto"
@@ -76,6 +77,7 @@ export default function HomePostMedia({
                 loading={
                   prioritizeFirstImage && imageIndex === 0 ? "eager" : "lazy"
                 }
+                // next.config.ts images.qualities와 맞춘 압축 품질입니다.
                 quality={65}
               />
             </button>

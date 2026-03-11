@@ -56,6 +56,7 @@ export async function uploadToPresignedUrl(
   const headers: Record<string, string> = {};
   if (contentType) headers["Content-Type"] = contentType;
 
+  // 파일 바이트는 스토리지로 직접 업로드해 앱 서버 릴레이 비용을 줄입니다.
   const res = await fetch(uploadUrl, {
     method: "PUT",
     headers,
