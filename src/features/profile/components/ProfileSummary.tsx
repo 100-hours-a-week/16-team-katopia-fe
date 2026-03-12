@@ -43,6 +43,8 @@ function ProfileSummary({
   const followingCount = stats?.followingCount ?? null;
   const friendCount = stats?.friendCount ?? null;
 
+  console.log(stats);
+
   const statsItems = [
     postCount !== null && { label: "게시물", value: postCount },
     followerCount !== null && {

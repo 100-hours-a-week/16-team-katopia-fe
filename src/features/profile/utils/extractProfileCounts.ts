@@ -1,17 +1,26 @@
+type ProfileAggregate = {
+  postCount?: number;
+  followerCount?: number;
+  followingCount?: number;
+};
+
 type ProfileResponse = {
-  aggregate?: {
-    postCount?: number;
-    followerCount?: number;
-    followingCount?: number;
+  aggregate?: ProfileAggregate;
+  data?: {
+    aggregate?: ProfileAggregate;
   };
 };
 
+function toNumberOrNull(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 export function extractProfileCounts(payload: ProfileResponse) {
-  const aggregate = payload.aggregate;
+  const aggregate = payload.data?.aggregate ?? payload.aggregate;
 
   return {
-    postCount: aggregate?.postCount ?? null,
-    followerCount: aggregate?.followerCount ?? null,
-    followingCount: aggregate?.followingCount ?? null,
+    postCount: toNumberOrNull(aggregate?.postCount),
+    followerCount: toNumberOrNull(aggregate?.followerCount),
+    followingCount: toNumberOrNull(aggregate?.followingCount),
   };
 }

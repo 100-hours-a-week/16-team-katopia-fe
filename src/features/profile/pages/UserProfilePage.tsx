@@ -297,7 +297,7 @@ export default function UserProfilePage({ userId }: Props) {
         )}
       </div>
 
-      <div className="mx-auto w-full max-w-[430px]">
+      <div className="mx-auto w-full max-w-107.5">
         <ProfileSummary
           profile={profile}
           loading={false}

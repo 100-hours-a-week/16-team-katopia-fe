@@ -186,18 +186,27 @@ export default function ProfileFollowListPage() {
             <>
               <ul className="mt-8 space-y-6">
                 {items.map((item) => (
-                  <li key={item.followId} className="flex items-center gap-4">
-                    <Avatar
-                      src={item.profileImageObjectKey ?? null}
-                      alt="profile"
-                      size={40}
-                      fallbackSrc="/icons/user.svg"
-                      fallbackSize={20}
-                      className="bg-gray-200"
-                    />
-                    <p className="text-[12px] font-semibold text-[#121212]">
-                      {item.nickname}
-                    </p>
+                  <li key={item.followId}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!item.id) return;
+                        router.push(`/profile/${item.id}`);
+                      }}
+                      className="flex w-full items-center gap-4 text-left"
+                    >
+                      <Avatar
+                        src={item.profileImageObjectKey ?? null}
+                        alt="profile"
+                        size={40}
+                        fallbackSrc="/icons/user.svg"
+                        fallbackSize={20}
+                        className="bg-gray-200"
+                      />
+                      <p className="text-[12px] font-semibold text-[#121212]">
+                        {item.nickname}
+                      </p>
+                    </button>
                   </li>
                 ))}
               </ul>
