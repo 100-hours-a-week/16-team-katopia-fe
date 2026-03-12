@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import type { HomePost } from "../hooks/useInfiniteHomeFeed";
 import HomePostActions from "./HomePostActions";
 import HomePostCaption from "./HomePostCaption";
@@ -12,11 +12,12 @@ type HomePostCardProps = {
   prioritizeMedia?: boolean;
 };
 
-export default function HomePostCard({
-  post,
-  prioritizeMedia = false,
-}: HomePostCardProps) {
+function HomePostCard({ post, prioritizeMedia = false }: HomePostCardProps) {
   const [likeBurstTrigger, setLikeBurstTrigger] = useState(0);
+
+  const handleLikeBurst = useCallback(() => {
+    setLikeBurstTrigger((prev) => prev + 1);
+  }, []);
 
   return (
     <article className="flex flex-col gap-4">
@@ -37,7 +38,7 @@ export default function HomePostCard({
           commentCount={post.commentCount}
           isLiked={post.isLiked}
           isBookmarked={post.isBookmarked}
-          onLikeBurst={() => setLikeBurstTrigger((prev) => prev + 1)}
+          onLikeBurst={handleLikeBurst}
         />
       </div>
       <div className="px-1">
@@ -49,3 +50,7 @@ export default function HomePostCard({
     </article>
   );
 }
+
+export default memo(HomePostCard, (prev, next) => {
+  return prev.post === next.post && prev.prioritizeMedia === next.prioritizeMedia;
+});

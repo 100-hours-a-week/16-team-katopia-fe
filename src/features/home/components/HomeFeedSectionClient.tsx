@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import HomeFeed from "./HomeFeed";
 import HomeFeedSkeleton from "./HomeFeedSkeleton";
 import { useInfiniteHomeFeed } from "../hooks/useInfiniteHomeFeed";
 import { useHomeScrollRestoration } from "../hooks/useHomeScrollRestoration";
@@ -15,62 +14,33 @@ type HomeFeedSectionClientProps = {
   initialFeed?: GetHomePostsResponse | null;
 };
 
-const VIRTUALIZATION_START_COUNT = 30;
-const OWN_POST_VISIBLE_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-function toTimestamp(createdAt?: string | null) {
-  if (!createdAt) return null;
-  const normalized = createdAt.endsWith("Z") ? createdAt : `${createdAt}Z`;
-  const ms = new Date(normalized).getTime();
-  return Number.isNaN(ms) ? null : ms;
-}
-
-function filterOwnPostsByAge(
-  posts: HomePost[],
-  currentMemberId?: number | string,
-) {
-  if (currentMemberId == null) return posts;
-
-  const now = Date.now();
-  const myId = String(currentMemberId);
-
-  return posts.filter((post) => {
-    if (String(post.author.id) !== myId) return true;
-    const createdAtMs = toTimestamp(post.createdAt);
-    if (createdAtMs == null) return true;
-    // 내 글은 하루 동안만 피드에 유지해 긴 리스트 누적을 완화합니다.
-    return now - createdAtMs <= OWN_POST_VISIBLE_WINDOW_MS;
-  });
+function filterOwnPostsByAge(posts: HomePost[]) {
+  // 임시 비활성화: 홈 비어 보이는 현상 원인 분리를 위해 내 글 24시간 필터를 적용하지 않습니다.
+  return posts;
 }
 
 export default function HomeFeedSectionClient({
   size = 10,
   initialFeed = null,
 }: HomeFeedSectionClientProps) {
-  const { ready, isAuthenticated, currentMember } = useAuth();
+  const { ready, isAuthenticated } = useAuth();
   const hasInitialFeed = (initialFeed?.posts?.length ?? 0) > 0;
-  // auth bootstrap 완료 전에도 피드 요청을 먼저 시작해 LCP 리소스 발견 시점을 앞당깁니다.
-  const feedEnabled = !ready || isAuthenticated;
+  // 인증 상태 확정 후에만 피드 요청을 수행해 초기 빈 캐시를 방지합니다.
+  const feedEnabled = ready && isAuthenticated;
 
   const {
     items: posts,
     hasMore: postsHasMore,
-    observe: observePosts,
     loading,
+    isFetchingNextPage,
+    loadMore,
   } = useInfiniteHomeFeed({
     size,
     enabled: feedEnabled,
     initialData: hasInitialFeed ? initialFeed : null,
   });
 
-  const visiblePosts = useMemo(
-    () => filterOwnPostsByAge(posts, currentMember?.id),
-    [currentMember?.id, posts],
-  );
-
-  // 게시글 수가 많아지면 가상화 리스트로 전환해 DOM 렌더링 비용을 줄입니다.
-  const virtualizationEnabled =
-    visiblePosts.length >= VIRTUALIZATION_START_COUNT;
+  const visiblePosts = useMemo(() => filterOwnPostsByAge(posts), [posts]);
 
   useHomeScrollRestoration(visiblePosts.length);
 
@@ -88,12 +58,12 @@ export default function HomeFeedSectionClient({
 
   return (
     <>
-      {virtualizationEnabled ? (
-        <HomeVirtualFeed posts={visiblePosts} />
-      ) : (
-        <HomeFeed posts={visiblePosts} />
-      )}
-      {feedEnabled && postsHasMore && <div ref={observePosts} className="h-24" />}
+      <HomeVirtualFeed
+        posts={visiblePosts}
+        hasMore={feedEnabled && postsHasMore}
+        loading={isFetchingNextPage}
+        loadMore={loadMore}
+      />
     </>
   );
 }
