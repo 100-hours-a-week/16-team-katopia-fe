@@ -9,6 +9,7 @@ type GetMyChatRoomsResponse = {
         rooms?: Array<{
           roomId?: string | number;
           id?: string | number;
+          owner?: boolean;
           isOwner?: boolean;
           joined?: boolean;
           title?: string;
@@ -18,12 +19,14 @@ type GetMyChatRoomsResponse = {
           participantCount?: number;
           memberCount?: number;
           currentMemberCount?: number;
+          unreadMessageCount?: number;
           unreadCount?: number;
         }>;
       }
     | Array<{
         roomId?: string | number;
         id?: string | number;
+        owner?: boolean;
         isOwner?: boolean;
         joined?: boolean;
         title?: string;
@@ -33,11 +36,13 @@ type GetMyChatRoomsResponse = {
         participantCount?: number;
         memberCount?: number;
         currentMemberCount?: number;
+        unreadMessageCount?: number;
         unreadCount?: number;
       }>;
   rooms?: Array<{
     roomId?: string | number;
     id?: string | number;
+    owner?: boolean;
     isOwner?: boolean;
     joined?: boolean;
     title?: string;
@@ -47,6 +52,7 @@ type GetMyChatRoomsResponse = {
     participantCount?: number;
     memberCount?: number;
     currentMemberCount?: number;
+    unreadMessageCount?: number;
     unreadCount?: number;
   }>;
   message?: string;
@@ -107,9 +113,9 @@ export async function getMyChatRooms() {
           room.thumbnailImageUrl ??
           room.thumbnailUrl,
       ),
-      isOwner: room.isOwner,
+      isOwner: room.owner ?? room.isOwner,
       joined: room.joined,
-      unreadCount: room.unreadCount,
+      unreadCount: room.unreadMessageCount ?? room.unreadCount,
     })),
   };
 }

@@ -8,12 +8,14 @@ import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { createChatMessage } from "@/src/features/chat/api/createChatMessage";
 import { deleteChatRoom } from "@/src/features/chat/api/deleteChatRoom";
 import { getChatMessages } from "@/src/features/chat/api/getChatMessages";
+import { getMyChatRooms } from "@/src/features/chat/api/getMyChatRooms";
 import { leaveChatRoom } from "@/src/features/chat/api/leaveChatRoom";
 import CreateChatRoomModal from "@/src/features/chat/components/CreateChatRoomModal";
 import {
   DEFAULT_CHAT_ROOM_IMAGES,
   DEFAULT_CHAT_ROOM_THUMBNAIL_OBJECT_KEY,
 } from "@/src/features/chat/constants";
+import { useChatSocketConnection } from "@/src/features/chat/hooks/useChatSocketConnection";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import { updateChatRoom } from "@/src/features/chat/api/updateChatRoom";
 import {
@@ -121,7 +123,7 @@ export default function ChatRoomPage({
   initialIsOwner,
 }: ChatRoomPageProps) {
   const router = useRouter();
-  const { currentMember } = useAuth();
+  const { currentMember, isAuthenticated, ready } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -147,6 +149,12 @@ export default function ChatRoomPage({
   const [isUpdatingRoom, setIsUpdatingRoom] = useState(false);
   const [isDeletingRoom, setIsDeletingRoom] = useState(false);
   const [isLeavingRoom, setIsLeavingRoom] = useState(false);
+  const [roomMemberCount, setRoomMemberCount] = useState(
+    Number(initialMemberCount) > 0 ? Number(initialMemberCount) : 15,
+  );
+  const [resolvedIsOwner, setResolvedIsOwner] = useState(
+    initialIsOwner === "1",
+  );
   const [messageInput, setMessageInput] = useState("");
   const [pendingImagePreview, setPendingImagePreview] = useState<string | null>(
     null,
@@ -161,9 +169,6 @@ export default function ChatRoomPage({
   const editImageInputRef = useRef<HTMLInputElement>(null);
   const messageImageInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
-  const memberCount =
-    Number(initialMemberCount) > 0 ? initialMemberCount : "15";
-  const isOwner = initialIsOwner === "1";
   const hasEditedTitle = editTitle.trim() !== roomTitle.trim();
   const hasEditedThumbnail = Boolean(editThumbnailFile) ||
     (editSelectedDefaultThumbnail !== null &&
@@ -174,6 +179,47 @@ export default function ChatRoomPage({
       !isUpdatingRoom &&
       (hasEditedTitle || hasEditedThumbnail),
   );
+  useChatSocketConnection({
+    enabled: ready && isAuthenticated,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRoomSummary = async () => {
+      try {
+        const response = await getMyChatRooms();
+        if (cancelled) return;
+
+        const currentRoom = response.rooms.find(
+          (room) => String(room.id) === String(roomId),
+        );
+        if (!currentRoom) return;
+
+        setResolvedIsOwner(Boolean(currentRoom.isOwner));
+        setRoomTitle(currentRoom.title);
+        setEditTitle(currentRoom.title);
+        setRoomMemberCount(currentRoom.memberCount);
+
+        if (currentRoom.thumbnailImageObjectKey) {
+          setRoomThumbnailObjectKey(currentRoom.thumbnailImageObjectKey);
+        }
+
+        if (currentRoom.thumbnailImageUrl) {
+          setRoomThumbnailSrc(currentRoom.thumbnailImageUrl);
+          setEditThumbnailPreview(currentRoom.thumbnailImageUrl);
+        }
+      } catch {
+        // 상세 페이지는 쿼리 파라미터 기본값으로도 렌더 가능하므로 복원 실패는 무시
+      }
+    };
+
+    void loadRoomSummary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [roomId]);
 
   useEffect(() => {
     return () => {
@@ -379,7 +425,7 @@ export default function ChatRoomPage({
             </p>
             <div className="mt-2 flex items-center gap-1 text-[13px] font-medium text-[#111111]">
               <Image src="/icons/user.svg" alt="" width={14} height={14} />
-              <span className="leading-none">{memberCount}</span>
+              <span className="leading-none">{roomMemberCount}</span>
             </div>
           </div>
 
@@ -394,7 +440,7 @@ export default function ChatRoomPage({
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-[42px] z-30 min-w-[88px] rounded-[14px] border border-[#d9d9d9] bg-white shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
-                {isOwner ? (
+                {resolvedIsOwner ? (
                   <div className="flex flex-col gap-0.4">
                     <button
                       type="button"
