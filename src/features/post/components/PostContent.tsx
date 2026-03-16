@@ -12,6 +12,11 @@ import { useCommentCount } from "../hooks/useCommentCountStore";
 import { getPostDetailViewerState } from "../api/getPostDetailViewerState";
 import { useHomeFeedPostActions } from "@/src/features/home/hooks/useHomeFeedPostActions";
 import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
+import {
+  dismissBookmarkAddedToast,
+  showBookmarkAddedToast,
+} from "@/src/shared/lib/showBookmarkAddedToast";
+import { useRouter } from "next/navigation";
 
 type PostContentProps = {
   postId: string;
@@ -65,6 +70,7 @@ export default function PostContent({
   isBookmarked = false,
   onLikeBurst,
 }: PostContentProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { count: commentCount, set: setCommentCount } = useCommentCount();
   const {
@@ -196,6 +202,13 @@ export default function PostContent({
     const nextBookmarked = !prevBookmarked;
 
     setViewerBookmarked(nextBookmarked);
+    if (nextBookmarked) {
+      showBookmarkAddedToast({
+        onView: () => router.push("/profile?tab=bookmarks"),
+      });
+    } else {
+      dismissBookmarkAddedToast();
+    }
 
     try {
       const result = await toggleBookmarkAsync({
@@ -203,7 +216,11 @@ export default function PostContent({
         nextBookmarked,
       });
       setViewerBookmarked(result.nextBookmarked);
+      if (!result.nextBookmarked) {
+        dismissBookmarkAddedToast();
+      }
     } catch {
+      dismissBookmarkAddedToast();
       setViewerBookmarked(prevBookmarked);
     }
   };

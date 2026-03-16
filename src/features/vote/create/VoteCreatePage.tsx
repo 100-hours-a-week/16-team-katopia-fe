@@ -10,6 +10,7 @@ import VoteSubmitButton from "./components/VoteSubmitButton";
 import VoteCancelConfirmModal from "./components/VoteCancelConfirmModal";
 import type { PreviewItem } from "./hooks/useVoteImageUploader";
 import { createVote } from "../api/createVote";
+import { markPendingVoteAddedToast } from "@/src/shared/lib/showBookmarkAddedToast";
 
 const MIN_VOTE_IMAGES = 2;
 
@@ -96,6 +97,7 @@ export default function VoteCreatePage() {
       }
 
       success = true;
+      markPendingVoteAddedToast();
       router.replace("/vote");
     } catch (error) {
       console.error(error);

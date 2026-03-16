@@ -16,14 +16,16 @@ function sleep(ms: number) {
 }
 
 async function waitForDetailReadiness(options: {
-  detailUrl: string;
+  postId: string;
   authorization: string | null;
   expectedContent?: string;
 }) {
-  const { detailUrl, authorization, expectedContent } = options;
+  const { postId, authorization, expectedContent } = options;
 
   for (let attempt = 1; attempt <= CONSISTENCY_ATTEMPTS; attempt += 1) {
     try {
+      const serverApiBaseUrl = process.env.API_BASE_URL ?? API_BASE_URL;
+      const detailUrl = `${serverApiBaseUrl}/api/posts/${postId}`;
       const res = await fetch(detailUrl, {
         method: "GET",
         cache: "no-store",
@@ -63,7 +65,6 @@ async function waitForDetailReadiness(options: {
 export async function PATCH(request: Request, { params }: Props) {
   const { postId } = await params;
   const serverApiBaseUrl = process.env.API_BASE_URL ?? API_BASE_URL;
-  const detailUrl = `${serverApiBaseUrl}/api/posts/${postId}`;
   const authorization = request.headers.get("authorization");
   const contentType = request.headers.get("content-type") ?? "application/json";
   const bodyText = await request.text();
@@ -117,7 +118,7 @@ export async function PATCH(request: Request, { params }: Props) {
 
   try {
     const consistency = await waitForDetailReadiness({
-      detailUrl,
+      postId,
       authorization,
       expectedContent,
     });

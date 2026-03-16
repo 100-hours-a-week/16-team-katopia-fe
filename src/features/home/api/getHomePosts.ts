@@ -91,19 +91,29 @@ function normalizeHomePostsResponse(result: unknown): GetHomePostsResponse {
   };
 }
 
-function buildHomePostsUrl(params?: { size?: number; after?: string | null }) {
+function buildHomePostsQuery(params?: { size?: number; after?: string | null }) {
   const searchParams = new URLSearchParams();
 
   if (params?.size) searchParams.set("size", String(params.size));
   if (params?.after) searchParams.set("after", params.after);
-  return `${API_BASE_URL}/api/home/posts?${searchParams.toString()}`;
+  return searchParams.toString();
+}
+
+function buildHomePostsUpstreamUrl(params?: {
+  size?: number;
+  after?: string | null;
+}) {
+  const query = buildHomePostsQuery(params);
+  return query
+    ? `${API_BASE_URL}/api/home/posts?${query}`
+    : `${API_BASE_URL}/api/home/posts`;
 }
 
 export async function getHomePosts(params?: {
   size?: number;
   after?: string;
 }): Promise<GetHomePostsResponse> {
-  const url = buildHomePostsUrl(params);
+  const url = buildHomePostsUpstreamUrl(params);
   let res: Response;
   try {
     const existing = getAccessToken();
@@ -183,7 +193,7 @@ export async function getHomePostsServer(
   if (!token) return { posts: [], nextCursor: null };
 
   const res = await fetch(
-    buildHomePostsUrl({
+    buildHomePostsUpstreamUrl({
       size: options.size,
       after: options.after ?? undefined,
     }),

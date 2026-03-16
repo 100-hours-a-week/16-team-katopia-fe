@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import VoteActions from "./components/VoteActions";
 import VoteCardStack from "./components/VoteCardStack";
 import VoteEmptyState from "./components/VoteEmptyState";
@@ -11,10 +12,15 @@ import VoteOnboardingModal from "./components/VoteOnboardingModal";
 import VoteProgress from "./components/VoteProgress";
 import VoteResultLoading from "./components/VoteResultLoading";
 import { useVoteFlow } from "./hooks/useVoteFlow";
+import {
+  consumePendingVoteAddedToast,
+  showVoteAddedToast,
+} from "@/src/shared/lib/showBookmarkAddedToast";
 
 const VOTE_ONBOARDING_KEY = "katopia.vote.onboardingSeen";
 
 export default function VotePage() {
+  const router = useRouter();
   const [onboardingOpen, setOnboardingOpen] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(VOTE_ONBOARDING_KEY) !== "1";
@@ -63,6 +69,13 @@ export default function VotePage() {
     }, 5000);
     return () => window.clearTimeout(timeoutId);
   }, [index, isFinished, swipeHintVisible, total]);
+
+  useEffect(() => {
+    if (!consumePendingVoteAddedToast()) return;
+    showVoteAddedToast({
+      onView: () => router.push("/profile?tab=votes"),
+    });
+  }, [router]);
 
   const hideSwipeHint = useCallback(() => {
     setSwipeHintVisible(false);

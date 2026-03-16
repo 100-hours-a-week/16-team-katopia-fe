@@ -51,13 +51,14 @@ export default function AppHeader({
             </span>
           )}
         </Link>
-        <button
-          type="button"
+        <Link
+          href="/chat"
+          prefetch={false}
           aria-label="메시지"
           className="flex h-9 w-9 items-center justify-center"
         >
           <Image src="/icons/home_send.svg" alt="" width={23} height={23} />
-        </button>
+        </Link>
       </div>
     </header>
   );

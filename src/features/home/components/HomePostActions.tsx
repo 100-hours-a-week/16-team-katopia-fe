@@ -4,6 +4,10 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useHomeFeedPostActions } from "@/src/features/home/hooks/useHomeFeedPostActions";
 import { saveHomeScrollPosition } from "../utils/homeScrollPosition";
+import {
+  dismissBookmarkAddedToast,
+  showBookmarkAddedToast,
+} from "@/src/shared/lib/showBookmarkAddedToast";
 
 type HomePostActionsProps = {
   postId: number;
@@ -42,7 +46,7 @@ export default function HomePostActions({
   onLikeBurst,
 }: HomePostActionsProps) {
   const router = useRouter();
-  const { toggleLike, liking, toggleBookmark, bookmarking } =
+  const { toggleLike, liking, toggleBookmarkAsync, bookmarking } =
     useHomeFeedPostActions();
 
   const liked = isLiked;
@@ -62,9 +66,28 @@ export default function HomePostActions({
     toggleLike({ postId, nextLiked });
   };
 
-  const handleToggleBookmark = () => {
+  const handleToggleBookmark = async () => {
     if (bookmarking) return;
-    toggleBookmark({ postId, nextBookmarked: !bookmarked });
+    const nextBookmarked = !bookmarked;
+    if (nextBookmarked) {
+      showBookmarkAddedToast({
+        onView: () => router.push("/profile?tab=bookmarks"),
+      });
+    } else {
+      dismissBookmarkAddedToast();
+    }
+    try {
+      const result = await toggleBookmarkAsync({
+        postId,
+        nextBookmarked,
+      });
+      if (!result.nextBookmarked) {
+        dismissBookmarkAddedToast();
+      }
+    } catch {
+      dismissBookmarkAddedToast();
+      // mutation onError handles user-facing failure messaging
+    }
   };
 
   const handleOpenPostDetail = () => {

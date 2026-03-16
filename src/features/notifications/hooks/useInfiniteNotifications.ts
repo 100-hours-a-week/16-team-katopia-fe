@@ -14,6 +14,7 @@ export function useInfiniteNotifications(params?: Params) {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   const size = params?.size ?? 20;
   const enabled = params?.enabled ?? true;
@@ -67,6 +68,7 @@ export function useInfiniteNotifications(params?: Params) {
       if (!mountedRef.current) return;
       inFlightRef.current = false;
       setLoading(false);
+      setInitialized(true);
     }
   }, [enabled, mergeItems, size]);
 
@@ -101,6 +103,7 @@ export function useInfiniteNotifications(params?: Params) {
     mountedRef.current = true;
     setNextCursor(null);
     setHasMore(true);
+    setInitialized(false);
     cursorRef.current = null;
     hasMoreRef.current = true;
     inFlightRef.current = false;
@@ -145,5 +148,5 @@ export function useInfiniteNotifications(params?: Params) {
     };
   }, [enabled, loadMore]);
 
-  return { items, setItems, hasMore, observe, loading, loadMore };
+  return { items, setItems, hasMore, observe, loading, loadMore, initialized };
 }

@@ -25,7 +25,10 @@ type Props = {
 export default function LayoutShell({ children }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const hideBottomNav = HIDE_BOTTOM_NAV_PATHS.includes(pathname ?? "");
+  const isChatRoomPath =
+    pathname?.startsWith("/chat/") && pathname !== "/chat";
+  const hideBottomNav =
+    HIDE_BOTTOM_NAV_PATHS.includes(pathname ?? "") || Boolean(isChatRoomPath);
   const { ready, isAuthenticated, authInvalidated } = useAuth();
   const hasAlertedRef = useRef(false);
   const [showBottomNav, setShowBottomNav] = useState(false);
