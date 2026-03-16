@@ -2,260 +2,111 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createChatRoom } from "@/src/features/chat/api/createChatRoom";
+import { getMyChatRooms } from "@/src/features/chat/api/getMyChatRooms";
 import { getOpenChatRooms } from "@/src/features/chat/api/getOpenChatRooms";
-import { DEFAULT_CHAT_ROOM_THUMBNAIL_OBJECT_KEY } from "@/src/features/chat/constants";
+import { joinChatRoom } from "@/src/features/chat/api/joinChatRoom";
+import ChatActionModal from "@/src/features/chat/components/ChatActionModal";
+import ChatPageToolbar from "@/src/features/chat/components/ChatPageToolbar";
+import ChatRoomCard from "@/src/features/chat/components/ChatRoomCard";
+import CreateChatRoomModal from "@/src/features/chat/components/CreateChatRoomModal";
+import {
+  DEFAULT_CHAT_ROOM_IMAGES,
+  DEFAULT_CHAT_ROOM_THUMBNAIL_OBJECT_KEY,
+} from "@/src/features/chat/constants";
+import type { ChatRoom, ChatTab } from "@/src/features/chat/types";
+import { buildChatRoomHref } from "@/src/features/chat/utils/buildChatRoomHref";
+import {
+  requestUploadPresign,
+  uploadToPresignedUrl,
+} from "@/src/features/upload/api/presignUpload";
 
-type ChatTab = "mine" | "open";
-
-type ChatRoom = {
-  id: string;
-  title: string;
-  memberCount: number;
-  thumbnailImageUrl?: string | null;
-  joined?: boolean;
-  unreadCount?: number;
-  category: ChatTab;
-};
-
-function buildChatRoomHref(room: Pick<ChatRoom, "id" | "title" | "memberCount" | "thumbnailImageUrl">) {
-  const searchParams = new URLSearchParams({
-    title: room.title,
-    memberCount: String(room.memberCount),
-  });
-
-  if (room.thumbnailImageUrl) {
-    searchParams.set("thumbnail", room.thumbnailImageUrl);
-  }
-
-  return `/chat/${room.id}?${searchParams.toString()}`;
-}
-
-const INITIAL_CHAT_ROOMS: ChatRoom[] = [
-  {
-    id: "mine-1",
-    title: "패션에 고민있는 분들 모여라!!!!",
-    memberCount: 15,
-    unreadCount: 20,
-    category: "mine",
-  },
-  {
-    id: "mine-2",
-    title: "오늘 출근룩 같이 골라요",
-    memberCount: 15,
-    category: "mine",
-  },
-  {
-    id: "mine-3",
-    title: "주말 데이트룩 추천방",
-    memberCount: 15,
-    category: "mine",
-  },
-  {
-    id: "open-1",
-    title: "여름 셔츠 코디 같이 보실 분",
-    memberCount: 28,
-    category: "open",
-  },
-  {
-    id: "open-2",
-    title: "데님 좋아하는 사람들 모임",
-    memberCount: 42,
-    category: "open",
-  },
-  {
-    id: "open-3",
-    title: "OOTD 피드백 편하게 해요",
-    memberCount: 31,
-    category: "open",
-  },
-];
-
-function SearchIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-5 w-5 text-[#202020]"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.9"
-    >
-      <circle cx="11" cy="11" r="6.5" />
-      <path d="M16 16l4 4" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="h-7 w-7"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 8v8M8 12h8" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ChatRoomCard({
-  room,
-  onClick,
-}: {
-  room: ChatRoom;
-  onClick?: () => void;
-}) {
-  const isMine = room.category === "mine";
-  const isOpen = room.category === "open";
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={
-        isMine
-          ? "relative w-full rounded-[30px] bg-[#f6f6f6] px-8 py-5 text-left transition-colors hover:bg-[#f0f0f0]"
-          : isOpen
-            ? "w-full bg-[#f3f3f3] px-6 pb-5 pt-5 text-center transition-colors hover:bg-[#ededed]"
-            : "relative w-full transform-gpu rounded-[22px] border border-[#1a1a1a] bg-white px-5 py-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[transform,box-shadow,background-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[2px] hover:scale-[1.003] hover:bg-[#fcfcfc] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] active:translate-y-0 active:scale-[0.998]"
-      }
-      style={
-        isOpen
-          ? {
-              borderTopLeftRadius: "45px",
-              borderBottomLeftRadius: "40px",
-              borderTopRightRadius: "0px",
-              borderBottomRightRadius: "45px",
-            }
-          : undefined
-      }
-    >
-      {isOpen && (
-        <div className="mx-auto flex w-fit items-center justify-center gap-3">
-          <div className="relative h-[50px] w-[50px] overflow-hidden rounded-full bg-[#dddddd]">
-            <Image
-              src={room.thumbnailImageUrl || "/images/chat_default.png"}
-              alt=""
-              fill
-              sizes="50px"
-              className="object-cover"
-            />
-          </div>
-          <div className="flex items-center gap-1.5 text-[13px] font-medium text-[#111111]">
-            <Image src="/icons/user.svg" alt="" width={12} height={12} />
-            <span className="leading-none">{room.memberCount}</span>
-          </div>
-        </div>
-      )}
-      <p
-        className={
-          isMine
-            ? "pr-12 text-[15px] font-semibold leading-[1.3] tracking-[-0.03em] text-[#111111]"
-            : isOpen
-              ? "mt-6 text-[15px] font-semibold leading-[1.32] tracking-[-0.03em] text-[#111111]"
-              : "pr-8 text-[14px] font-semibold leading-[1.35] text-[#111111]"
-        }
-      >
-        {room.title}
-      </p>
-      {!isOpen && (
-        <div
-          className={
-            isMine
-              ? "mt-2.5 flex items-center gap-1.5 text-[15px] font-medium text-[#111111]"
-              : "mt-3 flex items-center gap-1 text-[13px] font-medium text-[#1c1c1c]"
-          }
-        >
-          <Image
-            src="/icons/user.svg"
-            alt=""
-            width={isMine ? 16 : 13}
-            height={isMine ? 16 : 13}
-          />
-          <span className="leading-none">{room.memberCount}</span>
-        </div>
-      )}
-      {typeof room.unreadCount === "number" && room.unreadCount > 0 && (
-        <span
-          className={
-            isMine
-              ? "absolute right-5 top-4 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#111111] px-1.5 text-[11px] font-semibold text-white"
-              : "absolute right-4 top-1/2 flex h-6 min-w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#111111] px-1.5 text-[11px] font-semibold text-white"
-          }
-        >
-          {room.unreadCount}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function ChatActionModal({
-  open,
-  title,
-  children,
-  onCancel,
-  onConfirm,
-  confirmLabel,
-  confirmDisabled = false,
-}: {
-  open: boolean;
-  title: string;
-  children: React.ReactNode;
-  onCancel: () => void;
-  onConfirm: () => void;
-  confirmLabel: string;
-  confirmDisabled?: boolean;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-80 flex items-center justify-center bg-black/45 px-6">
-      <div className="w-full max-w-[376px] bg-white px-6 py-7 shadow-[0_24px_80px_rgba(0,0,0,0.22)]">
-        <p className="text-[20px] font-semibold whitespace-pre-line text-[#111111]">
-          {title}
-        </p>
-        <div className="mt-5">{children}</div>
-        <div className="mt-7 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-12 border border-[#191919] text-[17px] font-semibold text-[#111111]"
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={confirmDisabled}
-            className="h-12 bg-black text-[17px] font-semibold text-white disabled:bg-[#bdbdbd]"
-          >
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const INITIAL_CHAT_ROOMS: ChatRoom[] = [];
 
 export default function ChatPage() {
   const router = useRouter();
+  const createImageInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<ChatTab>("mine");
   const [searchQuery, setSearchQuery] = useState("");
   const [rooms, setRooms] = useState(INITIAL_CHAT_ROOMS);
   const [createOpen, setCreateOpen] = useState(false);
   const [newRoomTitle, setNewRoomTitle] = useState("");
+  const [newRoomThumbnailPreview, setNewRoomThumbnailPreview] = useState<
+    string | null
+  >(null);
+  const [newRoomThumbnailFile, setNewRoomThumbnailFile] = useState<File | null>(
+    null,
+  );
+  const [selectedDefaultThumbnail, setSelectedDefaultThumbnail] = useState<
+    string | null
+  >(null);
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [isJoiningRoom, setIsJoiningRoom] = useState(false);
+  const [isLoadingMineRooms, setIsLoadingMineRooms] = useState(true);
+  const [mineRoomsError, setMineRoomsError] = useState<string | null>(null);
   const [isLoadingOpenRooms, setIsLoadingOpenRooms] = useState(true);
   const [openRoomsError, setOpenRoomsError] = useState<string | null>(null);
   const [pendingJoinRoom, setPendingJoinRoom] = useState<ChatRoom | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (
+        newRoomThumbnailPreview &&
+        newRoomThumbnailPreview.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(newRoomThumbnailPreview);
+      }
+    };
+  }, [newRoomThumbnailPreview]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMineRooms = async () => {
+      try {
+        setIsLoadingMineRooms(true);
+        setMineRoomsError(null);
+        const response = await getMyChatRooms();
+        if (cancelled) return;
+
+        setRooms((prev) => {
+          const openRooms = prev.filter((room) => room.category === "open");
+          const mineRooms = response.rooms.map((room) => ({
+            id: room.id,
+            title: room.title,
+            memberCount: room.memberCount,
+            thumbnailImageUrl: room.thumbnailImageUrl,
+            thumbnailImageObjectKey: room.thumbnailImageObjectKey ?? undefined,
+            unreadCount: room.unreadCount,
+            isOwner: room.isOwner,
+            joined: room.joined,
+            category: "mine" as const,
+          }));
+
+          return [...mineRooms, ...openRooms];
+        });
+      } catch (error) {
+        if (cancelled) return;
+        setMineRoomsError(
+          error instanceof Error
+            ? error.message
+            : "내 채팅방 목록을 불러오지 못했습니다.",
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoadingMineRooms(false);
+        }
+      }
+    };
+
+    void loadMineRooms();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -274,6 +125,8 @@ export default function ChatPage() {
             title: room.title,
             memberCount: room.memberCount,
             thumbnailImageUrl: room.thumbnailImageUrl,
+            thumbnailImageObjectKey: room.thumbnailImageObjectKey,
+            isOwner: room.isOwner,
             joined: room.joined,
             category: "open" as const,
           }));
@@ -301,24 +154,80 @@ export default function ChatPage() {
     };
   }, []);
 
+  const joinedRoomIds = useMemo(
+    () =>
+      new Set(
+        rooms
+          .filter((room) => room.category === "mine")
+          .map((room) => String(room.id)),
+      ),
+    [rooms],
+  );
+
   const filteredRooms = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
     return rooms.filter((room) => {
       if (room.category !== activeTab) return false;
+      if (
+        activeTab === "open" &&
+        (room.joined === true || joinedRoomIds.has(String(room.id)))
+      ) {
+        return false;
+      }
       if (!normalizedQuery) return true;
       return room.title.toLowerCase().includes(normalizedQuery);
     });
-  }, [activeTab, rooms, searchQuery]);
+  }, [activeTab, joinedRoomIds, rooms, searchQuery]);
+
+  const resetCreateRoomDraft = () => {
+    if (newRoomThumbnailPreview?.startsWith("blob:")) {
+      URL.revokeObjectURL(newRoomThumbnailPreview);
+    }
+    setNewRoomTitle("");
+    setNewRoomThumbnailPreview(null);
+    setNewRoomThumbnailFile(null);
+    setSelectedDefaultThumbnail(null);
+  };
 
   const handleCreateRoom = async () => {
     const trimmedTitle = newRoomTitle.trim();
-    if (!trimmedTitle || isCreatingRoom) return;
+    if (!trimmedTitle || isCreatingRoom || !newRoomThumbnailPreview) return;
 
     try {
       setIsCreatingRoom(true);
+      let thumbnailImageObjectKey = DEFAULT_CHAT_ROOM_THUMBNAIL_OBJECT_KEY;
+
+      if (newRoomThumbnailFile) {
+        const extension =
+          newRoomThumbnailFile.name.split(".").pop()?.toLowerCase() || "png";
+        const [presigned] = await requestUploadPresign("POST", [extension]);
+        await uploadToPresignedUrl(
+          presigned.uploadUrl,
+          newRoomThumbnailFile,
+          newRoomThumbnailFile.type || undefined,
+        );
+        thumbnailImageObjectKey = presigned.imageObjectKey.replace(/^\/+/, "");
+      } else if (selectedDefaultThumbnail) {
+        const imageResponse = await fetch(selectedDefaultThumbnail);
+        if (!imageResponse.ok) {
+          throw new Error("기본 이미지를 불러오지 못했습니다.");
+        }
+
+        const imageBlob = await imageResponse.blob();
+        const extension =
+          selectedDefaultThumbnail.split(".").pop()?.toLowerCase() || "png";
+        const [presigned] = await requestUploadPresign("POST", [extension]);
+        await uploadToPresignedUrl(
+          presigned.uploadUrl,
+          imageBlob,
+          imageBlob.type || `image/${extension}`,
+        );
+        thumbnailImageObjectKey = presigned.imageObjectKey.replace(/^\/+/, "");
+      }
+
       const createdRoom = await createChatRoom({
         title: trimmedTitle,
-        thumbnailImageObjectKey: DEFAULT_CHAT_ROOM_THUMBNAIL_OBJECT_KEY,
+        thumbnailImageObjectKey,
       });
 
       setRooms((prev) => [
@@ -326,11 +235,16 @@ export default function ChatPage() {
           id: String(createdRoom.id ?? `mine-${Date.now()}`),
           title: createdRoom.title,
           memberCount: createdRoom.memberCount,
+          thumbnailImageUrl:
+            createdRoom.thumbnailImageUrl ?? newRoomThumbnailPreview,
+          thumbnailImageObjectKey:
+            createdRoom.thumbnailImageObjectKey ?? thumbnailImageObjectKey,
+          isOwner: createdRoom.isOwner ?? true,
           category: "mine",
         },
         ...prev,
       ]);
-      setNewRoomTitle("");
+      resetCreateRoomDraft();
       setCreateOpen(false);
       setActiveTab("mine");
     } catch (error) {
@@ -344,92 +258,80 @@ export default function ChatPage() {
     }
   };
 
-  const handleJoinRoom = () => {
+  const handleCloseCreateModal = () => {
+    if (isCreatingRoom) return;
+    setCreateOpen(false);
+    resetCreateRoomDraft();
+  };
+
+  const handleCreateImageUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (
+      newRoomThumbnailPreview &&
+      newRoomThumbnailPreview.startsWith("blob:")
+    ) {
+      URL.revokeObjectURL(newRoomThumbnailPreview);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setNewRoomThumbnailPreview(objectUrl);
+    setNewRoomThumbnailFile(file);
+    setSelectedDefaultThumbnail(null);
+    event.target.value = "";
+  };
+
+  const handleJoinRoom = async () => {
     if (!pendingJoinRoom) return;
 
-    const joinedRoom = {
-      ...pendingJoinRoom,
-      id: `mine-copy-${pendingJoinRoom.id}`,
-      category: "mine" as const,
-      unreadCount: undefined,
-    };
+    try {
+      setIsJoiningRoom(true);
+      const joined = await joinChatRoom(String(pendingJoinRoom.id));
+      const joinedRoom = {
+        ...pendingJoinRoom,
+        memberCount:
+          joined.participantCount ?? Math.max(pendingJoinRoom.memberCount + 1, 1),
+        joined: joined.joined ?? true,
+        category: "mine" as const,
+        unreadCount: undefined,
+      };
 
-    setRooms((prev) => {
-      const alreadyJoined = prev.some(
-        (room) =>
-          room.title === pendingJoinRoom.title && room.category === "mine",
-      );
-      if (alreadyJoined) return prev;
+      setRooms((prev) => {
+        const alreadyJoined = prev.some(
+          (room) => room.id === pendingJoinRoom.id && room.category === "mine",
+        );
+        if (alreadyJoined) return prev;
 
-      return [joinedRoom, ...prev];
-    });
-    setPendingJoinRoom(null);
-    setActiveTab("mine");
-    router.push(buildChatRoomHref(joinedRoom));
+        return [joinedRoom, ...prev];
+      });
+      setPendingJoinRoom(null);
+      setActiveTab("mine");
+      router.push(buildChatRoomHref(joinedRoom));
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "채팅방 참여 중 오류가 발생했습니다.";
+      window.alert(message);
+    } finally {
+      setIsJoiningRoom(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-white">
       <main className="px-6 pb-20 pt-10">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="뒤로 가기"
-          className="-ml-3 flex h-10 w-10 items-center justify-center"
-        >
-          <Image src="/icons/back.svg" alt="" width={22} height={22} />
-        </button>
-
-        <div className="flex items-center justify-between">
-          <h1 className="mt-7 text-[26px] font-semibold tracking-[-0.04em] text-[#121212]">
-            채팅
-          </h1>
-          <button
-            type="button"
-            aria-label="그룹 채팅방 만들기"
-            onClick={() => setCreateOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-full text-[#111111]"
-          >
-            <PlusIcon />
-          </button>
-        </div>
-
-        <div className="mt-6 rounded-[20px] bg-[#f2f2f2] px-4 py-4">
-          <label className="flex items-center gap-3">
-            <SearchIcon />
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="찾으시는 채팅방 이름을 검색해주세요."
-              className="w-full bg-transparent text-[14px] text-[#202020] outline-none placeholder:text-[#b8b8b8]"
-            />
-          </label>
-        </div>
-
-        <div className="mt-6 flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab("mine")}
-            className={`rounded-full border px-4 py-2 text-[15px] font-medium leading-none transition-colors ${
-              activeTab === "mine"
-                ? "border-black bg-black text-white"
-                : "border-[#101010] bg-white text-[#111111]"
-            }`}
-          >
-            내 그룹채팅
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("open")}
-            className={`rounded-full border px-4 py-2 text-[15px] font-medium leading-none transition-colors ${
-              activeTab === "open"
-                ? "border-black bg-black text-white"
-                : "border-[#101010] bg-white text-[#111111]"
-            }`}
-          >
-            오픈그룹채팅
-          </button>
-        </div>
+        <ChatPageToolbar
+          activeTab={activeTab}
+          searchQuery={searchQuery}
+          onBack={() => router.back()}
+          onCreate={() => setCreateOpen(true)}
+          onSearchChange={setSearchQuery}
+          onTabChange={setActiveTab}
+        />
 
         <div
           className={
@@ -438,6 +340,18 @@ export default function ChatPage() {
               : "mt-11 space-y-5"
           }
         >
+          {activeTab === "mine" && isLoadingMineRooms && (
+            <div className="rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
+              내 채팅방을 불러오는 중입니다.
+            </div>
+          )}
+
+          {activeTab === "mine" && mineRoomsError && !isLoadingMineRooms && (
+            <div className="rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
+              {mineRoomsError}
+            </div>
+          )}
+
           {activeTab === "open" && isLoadingOpenRooms && (
             <div className="col-span-2 rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
               오픈 채팅방을 불러오는 중입니다.
@@ -450,7 +364,10 @@ export default function ChatPage() {
             </div>
           )}
 
-          {!isLoadingOpenRooms &&
+          {!(
+            (activeTab === "mine" && isLoadingMineRooms) ||
+            (activeTab === "open" && isLoadingOpenRooms)
+          ) &&
             filteredRooms.map((room) => (
               <ChatRoomCard
                 key={room.id}
@@ -466,41 +383,69 @@ export default function ChatPage() {
               />
             ))}
 
-          {!isLoadingOpenRooms && !openRoomsError && filteredRooms.length === 0 && (
-            <div className="rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
-              조건에 맞는 채팅방이 없습니다.
-            </div>
-          )}
+          {activeTab === "mine" &&
+            !isLoadingMineRooms &&
+            !mineRoomsError &&
+            filteredRooms.length === 0 && (
+              <div className="rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
+                조건에 맞는 채팅방이 없습니다.
+              </div>
+            )}
+
+          {activeTab === "open" &&
+            !isLoadingOpenRooms &&
+            !openRoomsError &&
+            filteredRooms.length === 0 && (
+              <div className="col-span-2 flex flex-col items-center justify-center px-5 py-20 text-center">
+                <Image src="/icons/sadface.svg" alt="" width={75} height={75} />
+                <p className="mt-5 text-[14px] font-medium tracking-[-0.03em] text-[#7d7d7d]">
+                  현재 남아있는 오픈채팅그룹방이 존재하지 않습니다.
+                </p>
+              </div>
+            )}
         </div>
       </main>
 
-      <ChatActionModal
+      <CreateChatRoomModal
         open={createOpen}
-        title="그룹 채팅방 만들기"
-        onCancel={() => {
-          if (isCreatingRoom) return;
-          setCreateOpen(false);
-          setNewRoomTitle("");
+        title={newRoomTitle}
+        thumbnailPreview={newRoomThumbnailPreview}
+        defaultImages={DEFAULT_CHAT_ROOM_IMAGES}
+        isSubmitting={isCreatingRoom}
+        onTitleChange={setNewRoomTitle}
+        onUploadClick={() => createImageInputRef.current?.click()}
+        onSelectDefaultImage={(image) => {
+          if (
+            newRoomThumbnailPreview &&
+            newRoomThumbnailPreview.startsWith("blob:")
+          ) {
+            URL.revokeObjectURL(newRoomThumbnailPreview);
+          }
+          setNewRoomThumbnailPreview(image);
+          setNewRoomThumbnailFile(null);
+          setSelectedDefaultThumbnail(image);
         }}
+        onClose={handleCloseCreateModal}
         onConfirm={handleCreateRoom}
-        confirmLabel={isCreatingRoom ? "생성 중..." : "완료"}
-        confirmDisabled={!newRoomTitle.trim() || isCreatingRoom}
-      >
-        <input
-          value={newRoomTitle}
-          onChange={(event) => setNewRoomTitle(event.target.value)}
-          placeholder="채팅방 제목을 입력해주세요."
-          disabled={isCreatingRoom}
-          className="h-14 w-full rounded-[20px] bg-[#f3f3f3] px-5 text-[16px] text-[#111111] outline-none placeholder:text-[#bbbbbb]"
-        />
-      </ChatActionModal>
+      />
+      <input
+        ref={createImageInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleCreateImageUpload}
+        className="hidden"
+      />
 
       <ChatActionModal
         open={Boolean(pendingJoinRoom)}
         title={`“ ${pendingJoinRoom?.title ?? ""} ”\n현재 채팅방에 참여하시겠습니까?`}
-        onCancel={() => setPendingJoinRoom(null)}
+        onCancel={() => {
+          if (isJoiningRoom) return;
+          setPendingJoinRoom(null);
+        }}
         onConfirm={handleJoinRoom}
-        confirmLabel="참여하기"
+        confirmLabel={isJoiningRoom ? "참여 중..." : "참여하기"}
+        confirmDisabled={isJoiningRoom}
       >
         <div className="rounded-[20px] bg-[#f8f8f8] px-5 py-4">
           <p className="text-[15px] leading-6 text-[#444444]">

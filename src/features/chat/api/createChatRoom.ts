@@ -11,17 +11,23 @@ type CreateChatRoomResponse = {
   data?: {
     id?: number | string;
     roomId?: number | string;
+    isOwner?: boolean;
     title?: string;
+    participantCount?: number;
     memberCount?: number;
     currentMemberCount?: number;
+    thumbnailImageObjectKey?: string;
     thumbnailImageUrl?: string;
     thumbnailUrl?: string;
   };
   id?: number | string;
   roomId?: number | string;
+  isOwner?: boolean;
   title?: string;
+  participantCount?: number;
   memberCount?: number;
   currentMemberCount?: number;
+  thumbnailImageObjectKey?: string;
   thumbnailImageUrl?: string;
   thumbnailUrl?: string;
   message?: string;
@@ -51,8 +57,12 @@ export async function createChatRoom(payload: CreateChatRoomPayload) {
 
   return {
     id: data?.id ?? data?.roomId,
+    isOwner: data?.isOwner,
     title: data?.title ?? payload.title,
-    memberCount: data?.memberCount ?? data?.currentMemberCount ?? 1,
+    memberCount:
+      data?.participantCount ?? data?.memberCount ?? data?.currentMemberCount ?? 1,
+    thumbnailImageObjectKey:
+      data?.thumbnailImageObjectKey ?? payload.thumbnailImageObjectKey,
     thumbnailImageUrl: data?.thumbnailImageUrl ?? data?.thumbnailUrl,
   };
 }

@@ -8,6 +8,8 @@ type ChatRoomRoutePageProps = {
     title?: string;
     memberCount?: string;
     thumbnail?: string;
+    thumbnailObjectKey?: string;
+    isOwner?: string;
   }>;
 };
 
@@ -24,6 +26,8 @@ export default async function Page({
       initialTitle={resolvedSearchParams?.title}
       initialMemberCount={resolvedSearchParams?.memberCount}
       initialThumbnail={resolvedSearchParams?.thumbnail}
+      initialThumbnailObjectKey={resolvedSearchParams?.thumbnailObjectKey}
+      initialIsOwner={resolvedSearchParams?.isOwner}
     />
   );
 }

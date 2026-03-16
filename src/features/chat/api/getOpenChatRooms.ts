@@ -4,17 +4,23 @@ import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import { authFetch } from "@/src/lib/auth";
 
 type GetOpenChatRoomsResponse = {
-  rooms?: Array<{
-    roomId?: string;
-    ownerId?: number;
-    title?: string;
-    thumbnailImageObjectKey?: string | null;
-    participantCount?: number;
-    joined?: boolean;
-    createdAt?: string;
-    updatedAt?: string;
-  }>;
-  nextCursor?: string | null;
+  data?: {
+    rooms?: Array<{
+      roomId?: string | number;
+      isOwner?: boolean;
+      title?: string;
+      thumbnailImageObjectKey?: string | null;
+      thumbnailImageUrl?: string | null;
+      thumbnailUrl?: string | null;
+      participantCount?: number;
+      memberCount?: number;
+      currentMemberCount?: number;
+      joined?: boolean;
+      createdAt?: string;
+      updatedAt?: string;
+    }>;
+    nextCursor?: string | null;
+  };
   message?: string;
 };
 
@@ -23,6 +29,8 @@ export type OpenChatRoom = {
   title: string;
   memberCount: number;
   thumbnailImageUrl: string | null;
+  thumbnailImageObjectKey?: string | null;
+  isOwner?: boolean;
   joined: boolean;
 };
 
@@ -45,16 +53,26 @@ export async function getOpenChatRooms() {
     throw new Error(`(${res.status}) ${message}`);
   }
 
-  const rooms = Array.isArray(parsed?.rooms) ? parsed.rooms : [];
+  const rooms = Array.isArray(parsed?.data?.rooms) ? parsed.data.rooms : [];
 
   return {
     rooms: rooms.map((room) => ({
       id: String(room.roomId ?? ""),
       title: room.title?.trim() || "이름 없는 채팅방",
-      memberCount: room.participantCount ?? 0,
-      thumbnailImageUrl: resolveMediaUrl(room.thumbnailImageObjectKey),
+      memberCount:
+        room.participantCount ??
+        room.memberCount ??
+        room.currentMemberCount ??
+        0,
+      thumbnailImageObjectKey: room.thumbnailImageObjectKey ?? null,
+      thumbnailImageUrl: resolveMediaUrl(
+        room.thumbnailImageObjectKey ??
+          room.thumbnailImageUrl ??
+          room.thumbnailUrl,
+      ),
+      isOwner: room.isOwner,
       joined: Boolean(room.joined),
     })),
-    nextCursor: parsed?.nextCursor ?? null,
+    nextCursor: parsed?.data?.nextCursor ?? null,
   };
 }
