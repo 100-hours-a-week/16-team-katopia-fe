@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { parseChatApiResponse } from "@/src/features/chat/api/parseChatApiResponse";
+import { normalizeChatMessage } from "@/src/features/chat/utils/normalizeChatMessage";
 import { authFetch } from "@/src/lib/auth";
 
 type ChatMessageItem = {
@@ -54,19 +55,9 @@ export async function getChatMessages(roomId: string, size = 20, after?: string)
       : [];
 
   return {
-    messages: messages.map((item) => ({
-      id: String(item.id ?? item.messageId ?? ""),
-      messageId: item.messageId,
-      roomId: item.roomId ?? roomId,
-      senderId: item.senderId,
-      senderNickname: item.senderNicknameSnapshot ?? null,
-      senderProfileImageObjectKey:
-        item.senderProfileImageObjectKeySnapshot ?? null,
-      message: item.message ?? "",
-      imageObjectKey: item.imageObjectKey ?? null,
-      messageType: item.messageType ?? "TEXT",
-      createdAt: item.createdAt ?? "",
-    })),
+    messages: messages
+      .map((item) => normalizeChatMessage(item, roomId))
+      .filter((item) => item !== null),
     nextCursor: parsed?.nextCursor ?? parsed?.data?.nextCursor ?? null,
   };
 }

@@ -77,11 +77,6 @@ export async function getMyChatRooms() {
   const raw = await res.text();
   const parsed = parseChatApiResponse<GetMyChatRoomsResponse>(raw);
 
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[getMyChatRooms] raw response", raw);
-    console.log("[getMyChatRooms] parsed response", parsed);
-  }
-
   if (!res.ok) {
     const fallbackMessage =
       raw.trim() || "내 채팅방 목록을 불러오지 못했습니다.";

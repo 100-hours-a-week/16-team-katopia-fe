@@ -2,10 +2,10 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import type { IMessage, StompSubscription } from "@stomp/stompjs";
 import { useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
-import { createChatMessage } from "@/src/features/chat/api/createChatMessage";
 import { deleteChatRoom } from "@/src/features/chat/api/deleteChatRoom";
 import { getChatMessages } from "@/src/features/chat/api/getChatMessages";
 import { getMyChatRooms } from "@/src/features/chat/api/getMyChatRooms";
@@ -18,6 +18,11 @@ import {
 import { useChatSocketConnection } from "@/src/features/chat/hooks/useChatSocketConnection";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 import { updateChatRoom } from "@/src/features/chat/api/updateChatRoom";
+import {
+  normalizeChatMessage,
+  type NormalizedChatMessage,
+} from "@/src/features/chat/utils/normalizeChatMessage";
+import { processImageFile } from "@/src/features/upload/utils/processImage";
 import {
   requestUploadPresign,
   uploadToPresignedUrl,
@@ -38,7 +43,129 @@ type ChatMessage = {
   message: string;
   imageUrl?: string | null;
   createdAt?: string;
+  optimistic?: boolean;
 };
+
+function buildChatRoomSubscribeDestination(roomId: string) {
+  return `/topic/chat/rooms/${roomId}/messages`;
+}
+
+function buildChatRoomReadStateSubscribeDestination(roomId: string) {
+  return `/topic/chat/rooms/${roomId}/read-state`;
+}
+
+const CHAT_MESSAGE_SUBSCRIPTION_ID = "sub-messages";
+const CHAT_READ_STATE_SUBSCRIPTION_ID = "sub-read-state";
+const CHAT_MESSAGE_SEND_DESTINATION = "/app/chat.message";
+const CHAT_READ_STATE_SEND_DESTINATION = "/app/chat.read-state";
+
+function toUiMessage(
+  message: NormalizedChatMessage | null,
+  currentMemberId?: string | number | null,
+): ChatMessage | null {
+  if (!message) return null;
+
+  return {
+    id: message.id,
+    direction:
+      String(message.senderId ?? "") === String(currentMemberId ?? "")
+        ? "right"
+        : "left",
+    message: message.imageObjectKey ? "" : message.message,
+    imageUrl: message.imageObjectKey
+      ? resolveMediaUrl(message.imageObjectKey)
+      : null,
+    createdAt: message.createdAt,
+    optimistic: false,
+  };
+}
+
+function isChatMessage(value: ChatMessage | null): value is ChatMessage {
+  return value !== null;
+}
+
+function mergeChatMessages(prev: ChatMessage[], next: ChatMessage) {
+  const existingIndex = prev.findIndex((item) => item.id === next.id);
+  if (existingIndex >= 0) {
+    const copy = [...prev];
+    copy[existingIndex] = next;
+    return copy;
+  }
+
+  return sortChatMessagesAsc([...prev, next]);
+}
+
+function reconcileIncomingMessage(
+  prev: ChatMessage[],
+  next: ChatMessage,
+  isOwnMessage: boolean,
+) {
+  if (isOwnMessage) {
+    const optimisticIndex = prev.findIndex((item) => {
+      if (item.optimistic !== true || item.direction !== "right") {
+        return false;
+      }
+
+      const itemHasImage = Boolean(item.imageUrl);
+      const nextHasImage = Boolean(next.imageUrl);
+      if (itemHasImage !== nextHasImage) {
+        return false;
+      }
+
+      // 이미지 메시지는 blob preview URL과 서버 URL이 다르므로
+      // "이미지 포함 여부 + 텍스트" 기준으로 동일 메시지로 본다.
+      if (itemHasImage && nextHasImage) {
+        return item.message === next.message;
+      }
+
+      return item.message === next.message;
+    });
+
+    if (optimisticIndex >= 0) {
+      const copy = [...prev];
+      copy[optimisticIndex] = {
+        ...next,
+        optimistic: false,
+      };
+      return copy;
+    }
+  }
+
+  return mergeChatMessages(prev, next);
+}
+
+function getLastReadableMessageId(messages: ChatMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const current = messages[index];
+    if (current?.optimistic) continue;
+
+    const numericId = Number(current.id);
+    if (Number.isFinite(numericId) && numericId > 0) {
+      return numericId;
+    }
+  }
+
+  return null;
+}
+
+function sortChatMessagesAsc(messages: ChatMessage[]) {
+  return [...messages].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+
+    if (aTime !== bTime) {
+      return aTime - bTime;
+    }
+
+    const aId = Number(a.id);
+    const bId = Number(b.id);
+    if (Number.isFinite(aId) && Number.isFinite(bId) && aId !== bId) {
+      return aId - bId;
+    }
+
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
 
 function formatMessageTime(value?: string) {
   if (!value) return "";
@@ -58,11 +185,13 @@ function ChatBubble({
   message,
   imageUrl,
   createdAt,
+  onImageClick,
 }: {
   direction: "left" | "right";
   message: string;
   imageUrl?: string | null;
   createdAt?: string;
+  onImageClick?: (imageUrl: string) => void;
 }) {
   const isRight = direction === "right";
   const formattedTime = formatMessageTime(createdAt);
@@ -90,14 +219,19 @@ function ChatBubble({
         >
           {imageUrl ? (
             <div className="overflow-hidden rounded-[18px]">
-              <div className="relative h-[180px] w-[180px] max-w-full bg-[#e7e7e7]">
-                <Image
-                  src={imageUrl}
-                  alt=""
-                  fill
-                  sizes="180px"
-                  className="object-cover"
-                />
+              <div className="max-w-[min(72vw,280px)] bg-[#e7e7e7]">
+                <button
+                  type="button"
+                  onClick={() => onImageClick?.(imageUrl)}
+                  className="block w-full"
+                  aria-label="이미지 크게 보기"
+                >
+                  <img
+                    src={imageUrl}
+                    alt=""
+                    className="block h-auto max-h-[360px] w-full object-contain"
+                  />
+                </button>
               </div>
               {message ? (
                 <p className="px-4 pb-4 pt-3 text-[14px] leading-6 text-[#111111]">
@@ -160,6 +294,7 @@ export default function ChatRoomPage({
     null,
   );
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
   const [messagesError, setMessagesError] = useState<string | null>(null);
@@ -169,6 +304,7 @@ export default function ChatRoomPage({
   const editImageInputRef = useRef<HTMLInputElement>(null);
   const messageImageInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
+  const lastPublishedReadMessageIdRef = useRef<number | null>(null);
   const hasEditedTitle = editTitle.trim() !== roomTitle.trim();
   const hasEditedThumbnail = Boolean(editThumbnailFile) ||
     (editSelectedDefaultThumbnail !== null &&
@@ -179,7 +315,7 @@ export default function ChatRoomPage({
       !isUpdatingRoom &&
       (hasEditedTitle || hasEditedThumbnail),
   );
-  useChatSocketConnection({
+  const { status: socketStatus, subscribe, publish } = useChatSocketConnection({
     enabled: ready && isAuthenticated,
   });
 
@@ -259,24 +395,11 @@ export default function ChatRoomPage({
         if (cancelled) return;
 
         setMessages(
-          [...response.messages]
-            .sort((a, b) => {
-              const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-              const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-              return aTime - bTime;
-            })
-            .map((item) => ({
-              id: item.id,
-              direction:
-                String(item.senderId ?? "") === String(currentMember?.id ?? "")
-                  ? "right"
-                  : "left",
-              message: item.imageObjectKey ? "" : item.message,
-              imageUrl: item.imageObjectKey
-                ? resolveMediaUrl(item.imageObjectKey)
-                : null,
-              createdAt: item.createdAt,
-            })),
+          sortChatMessagesAsc(
+            response.messages
+            .map((item) => toUiMessage(item, currentMember?.id))
+            .filter(isChatMessage),
+          ),
         );
       } catch (error) {
         if (cancelled) return;
@@ -300,6 +423,123 @@ export default function ChatRoomPage({
   }, [currentMember?.id, roomId]);
 
   useEffect(() => {
+    if (socketStatus !== "connected") return;
+
+    let messageSubscription: StompSubscription | null = null;
+    let readStateSubscription: StompSubscription | null = null;
+    const messageDestination = buildChatRoomSubscribeDestination(roomId);
+    const readStateDestination = buildChatRoomReadStateSubscribeDestination(
+      roomId,
+    );
+
+    const handleMessage = (frame: IMessage) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[chat:subscribe] frame received", {
+          roomId,
+          destination: messageDestination,
+          body: frame.body,
+          headers: frame.headers,
+        });
+      }
+
+      const rawBody = frame.body?.trim();
+      if (!rawBody) return;
+
+      let parsedBody: unknown;
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        return;
+      }
+
+      const normalized = normalizeChatMessage(parsedBody, roomId);
+      if (!normalized) return;
+      if (String(normalized.roomId) !== String(roomId)) return;
+
+      const nextMessage = toUiMessage(normalized, currentMember?.id);
+      if (!nextMessage) return;
+
+      const isOwnMessage =
+        String(normalized.senderId ?? "") === String(currentMember?.id ?? "");
+
+      setMessages((prev) =>
+        reconcileIncomingMessage(prev, nextMessage, isOwnMessage),
+      );
+    };
+
+    const handleReadState = (frame: IMessage) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[chat:read-state] frame received", {
+          roomId,
+          destination: readStateDestination,
+          body: frame.body,
+          headers: frame.headers,
+        });
+      }
+    };
+
+    messageSubscription = subscribe(messageDestination, handleMessage, {
+      id: CHAT_MESSAGE_SUBSCRIPTION_ID,
+    });
+    readStateSubscription = subscribe(readStateDestination, handleReadState, {
+      id: CHAT_READ_STATE_SUBSCRIPTION_ID,
+    });
+
+    if (process.env.NODE_ENV !== "production") {
+      if (messageSubscription) {
+        console.log("[chat:subscribe] subscribed", {
+          roomId,
+          destination: messageDestination,
+          subscriptionId: CHAT_MESSAGE_SUBSCRIPTION_ID,
+          socketStatus,
+        });
+      } else {
+        console.warn("[chat:subscribe] subscribe skipped", {
+          roomId,
+          destination: messageDestination,
+          subscriptionId: CHAT_MESSAGE_SUBSCRIPTION_ID,
+          socketStatus,
+        });
+      }
+
+      if (readStateSubscription) {
+        console.log("[chat:read-state] subscribed", {
+          roomId,
+          destination: readStateDestination,
+          subscriptionId: CHAT_READ_STATE_SUBSCRIPTION_ID,
+          socketStatus,
+        });
+      } else {
+        console.warn("[chat:read-state] subscribe skipped", {
+          roomId,
+          destination: readStateDestination,
+          subscriptionId: CHAT_READ_STATE_SUBSCRIPTION_ID,
+          socketStatus,
+        });
+      }
+    }
+
+    return () => {
+      if (process.env.NODE_ENV !== "production" && messageSubscription) {
+        console.log("[chat:subscribe] unsubscribed", {
+          roomId,
+          destination: messageDestination,
+          subscriptionId: CHAT_MESSAGE_SUBSCRIPTION_ID,
+        });
+      }
+      if (process.env.NODE_ENV !== "production" && readStateSubscription) {
+        console.log("[chat:read-state] unsubscribed", {
+          roomId,
+          destination: readStateDestination,
+          subscriptionId: CHAT_READ_STATE_SUBSCRIPTION_ID,
+        });
+      }
+      messageSubscription?.unsubscribe();
+      readStateSubscription?.unsubscribe();
+    };
+  }, [currentMember?.id, roomId, socketStatus, subscribe]);
+
+  useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       messageEndRef.current?.scrollIntoView({
         block: "end",
@@ -314,9 +554,52 @@ export default function ChatRoomPage({
     return () => window.cancelAnimationFrame(frameId);
   }, [messages]);
 
+  useEffect(() => {
+    if (socketStatus !== "connected") return;
+
+    const lastReadMessageId = getLastReadableMessageId(messages);
+    if (!lastReadMessageId) return;
+    if (lastPublishedReadMessageIdRef.current === lastReadMessageId) return;
+
+    lastPublishedReadMessageIdRef.current = lastReadMessageId;
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[chat:read-state] publish", {
+        destination: CHAT_READ_STATE_SEND_DESTINATION,
+        body: {
+          roomId,
+          lastReadMessageId,
+        },
+      });
+    }
+
+    try {
+      publish({
+        destination: CHAT_READ_STATE_SEND_DESTINATION,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          roomId,
+          lastReadMessageId,
+        }),
+      });
+    } catch (error) {
+      lastPublishedReadMessageIdRef.current = null;
+
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[chat:read-state] publish failed", error);
+      }
+    }
+  }, [messages, publish, roomId, socketStatus]);
+
   const handleSendMessage = async () => {
     const trimmedMessage = messageInput.trim();
     if ((!trimmedMessage && !pendingImageFile) || isSendingMessage) return;
+    if (socketStatus !== "connected") {
+      window.alert("채팅 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
 
     const optimisticId = `temp-${Date.now()}`;
     const currentImagePreview = pendingImagePreview;
@@ -333,6 +616,7 @@ export default function ChatRoomPage({
         message: trimmedMessage,
         imageUrl: currentImagePreview,
         createdAt: new Date().toISOString(),
+        optimistic: true,
       },
     ]);
 
@@ -340,9 +624,9 @@ export default function ChatRoomPage({
       let imageObjectKey: string | undefined;
 
       if (currentImageFile) {
-        const extension =
-          currentImageFile.name.split(".").pop()?.toLowerCase() || "png";
-        const [presigned] = await requestUploadPresign("POST", [extension]);
+        const [presigned] = await requestUploadPresign("POST", [
+          currentImageFile.name.split(".").pop()?.toLowerCase() || "webp",
+        ]);
         await uploadToPresignedUrl(
           presigned.uploadUrl,
           currentImageFile,
@@ -361,26 +645,28 @@ export default function ChatRoomPage({
         throw new Error("텍스트 또는 이미지 중 하나는 포함해야 합니다.");
       }
 
-      const created = await createChatMessage(roomId, payload);
-
-      setMessages((prev) =>
-        prev.map((item) =>
-          item.id === optimisticId
-            ? {
-                id: created.id,
-                direction: "right",
-                message: created.imageObjectKey ? "" : created.message,
-                imageUrl: created.imageObjectKey
-                  ? resolveMediaUrl(created.imageObjectKey)
-                  : currentImagePreview,
-                createdAt: created.createdAt,
-              }
-            : item,
-        ),
-      );
-      if (currentImagePreview?.startsWith("blob:") && created.imageObjectKey) {
-        URL.revokeObjectURL(currentImagePreview);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[chat:send] publish", {
+          destination: CHAT_MESSAGE_SEND_DESTINATION,
+          body: {
+            roomId,
+            message: payload.message ?? "",
+            imageObjectKey: payload.imageObjectKey ?? null,
+          },
+        });
       }
+
+      publish({
+        destination: CHAT_MESSAGE_SEND_DESTINATION,
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          roomId,
+          message: payload.message ?? "",
+          imageObjectKey: payload.imageObjectKey ?? null,
+        }),
+      });
     } catch (error) {
       setMessages((prev) => prev.filter((item) => item.id !== optimisticId));
       setMessageInput(trimmedMessage);
@@ -392,6 +678,11 @@ export default function ChatRoomPage({
           : "메시지 전송 중 오류가 발생했습니다.",
       );
     } finally {
+      if (currentImagePreview?.startsWith("blob:")) {
+        window.setTimeout(() => {
+          URL.revokeObjectURL(currentImagePreview);
+        }, 30_000);
+      }
       setIsSendingMessage(false);
     }
   };
@@ -504,6 +795,7 @@ export default function ChatRoomPage({
               message={message.message}
               imageUrl={message.imageUrl}
               createdAt={message.createdAt}
+              onImageClick={setExpandedImageUrl}
             />
           ))}
           <div ref={messageEndRef} />
@@ -621,20 +913,43 @@ export default function ChatRoomPage({
           ref={messageImageInputRef}
           type="file"
           accept="image/*"
-          onChange={(event) => {
+          onChange={async (event) => {
             const file = event.target.files?.[0];
             if (!file) return;
-            setMessageInput("");
-            if (pendingImagePreview?.startsWith("blob:")) {
-              URL.revokeObjectURL(pendingImagePreview);
+            try {
+              const processed = await processImageFile(file, {
+                maxLongSide: 1600,
+                quality: 0.92,
+                outputType: "image/webp",
+              });
+
+              setMessageInput("");
+              if (pendingImagePreview?.startsWith("blob:")) {
+                URL.revokeObjectURL(pendingImagePreview);
+              }
+
+              const processedFile = new File(
+                [processed.blob],
+                file.name.replace(/\.[^.]+$/, `.${processed.extension}`),
+                {
+                  type: processed.contentType,
+                },
+              );
+              const objectUrl = URL.createObjectURL(processedFile);
+              setPendingImagePreview(objectUrl);
+              setPendingImageFile(processedFile);
+              window.requestAnimationFrame(() => {
+                messageInputRef.current?.focus();
+              });
+            } catch (error) {
+              window.alert(
+                error instanceof Error
+                  ? error.message
+                  : "이미지 처리 중 오류가 발생했습니다.",
+              );
+            } finally {
+              event.target.value = "";
             }
-            const objectUrl = URL.createObjectURL(file);
-            setPendingImagePreview(objectUrl);
-            setPendingImageFile(file);
-            window.requestAnimationFrame(() => {
-              messageInputRef.current?.focus();
-            });
-            event.target.value = "";
           }}
           className="hidden"
         />
@@ -851,6 +1166,54 @@ export default function ChatRoomPage({
           </div>
         </div>
       )}
+
+      {expandedImageUrl ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/88 px-4"
+          onClick={() => setExpandedImageUrl(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="확대 이미지"
+        >
+          <div className="absolute right-5 top-5 flex items-center gap-2">
+            <a
+              href={expandedImageUrl}
+              download
+              onClick={(event) => event.stopPropagation()}
+              className="flex h-11 items-center justify-center rounded-full bg-white px-4 text-[13px] font-semibold text-[#111111]"
+            >
+              저장
+            </a>
+            <button
+              type="button"
+              onClick={() => setExpandedImageUrl(null)}
+              aria-label="확대 이미지 닫기"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-white/12 text-white"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
+          <div
+            className="relative max-h-[72vh] w-full max-w-[560px]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <img
+              src={expandedImageUrl}
+              alt=""
+              className="mx-auto max-h-[72vh] w-auto max-w-full rounded-[20px] object-contain"
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

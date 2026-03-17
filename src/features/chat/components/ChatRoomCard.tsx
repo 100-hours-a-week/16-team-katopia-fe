@@ -55,7 +55,7 @@ export default function ChatRoomCard({ room, onClick }: ChatRoomCardProps) {
       <p
         className={
           isMine
-            ? "pr-12 text-[15px] font-semibold leading-[1.3] tracking-[-0.03em] text-[#111111]"
+            ? "pr-14 text-[15px] font-semibold leading-[1.3] tracking-[-0.03em] text-[#111111]"
             : isOpen
               ? "mt-6 text-[15px] font-semibold leading-[1.32] tracking-[-0.03em] text-[#111111]"
               : "pr-8 text-[14px] font-semibold leading-[1.35] text-[#111111]"
@@ -84,11 +84,11 @@ export default function ChatRoomCard({ room, onClick }: ChatRoomCardProps) {
         <span
           className={
             isMine
-              ? "absolute right-5 top-4 flex h-6 min-w-6 items-center justify-center rounded-full bg-[#111111] px-1.5 text-[11px] font-semibold text-white"
+              ? "absolute right-6 top-1/2 flex h-6 min-w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#111111] px-1.5 text-[11px] font-semibold text-white"
               : "absolute right-4 top-1/2 flex h-6 min-w-6 -translate-y-1/2 items-center justify-center rounded-full bg-[#111111] px-1.5 text-[11px] font-semibold text-white"
           }
         >
-          {room.unreadCount}
+          {room.unreadCount > 99 ? "99+" : room.unreadCount}
         </span>
       )}
     </button>
