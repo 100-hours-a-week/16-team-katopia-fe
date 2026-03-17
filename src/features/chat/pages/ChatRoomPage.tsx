@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { IMessage, StompSubscription } from "@stomp/stompjs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { deleteChatRoom } from "@/src/features/chat/api/deleteChatRoom";
@@ -42,6 +42,7 @@ type ChatMessage = {
   id: string;
   messageId: number | null;
   direction: "left" | "right";
+  senderId?: string | null;
   senderNickname?: string | null;
   senderProfileImageUrl?: string | null;
   message: string;
@@ -78,6 +79,7 @@ function toUiMessage(
   return {
     id: message.id,
     messageId: message.messageId,
+    senderId: message.senderId,
     direction:
       String(message.senderId ?? "") === String(currentMemberId ?? "")
         ? "right"
@@ -154,9 +156,8 @@ function getLastReadableMessageId(messages: ChatMessage[]) {
     const current = messages[index];
     if (current?.optimistic) continue;
 
-    const numericId =
-      current.messageId ?? (Number.isFinite(Number(current.id)) ? Number(current.id) : null);
-    if (numericId !== null && Number.isFinite(numericId) && numericId > 0) {
+    const numericId = current.messageId ?? parseNumericMessageId(current.id);
+    if (numericId !== null) {
       return numericId;
     }
   }
@@ -238,23 +239,20 @@ function getUnreadCountForMessage({
   message,
   participants,
   roomMemberCount,
-  currentMemberId,
 }: {
   message: ChatMessage;
   participants: Record<string, ReadStateParticipant>;
   roomMemberCount: number;
-  currentMemberId?: string | number | null;
 }) {
-  if (message.direction !== "right") return null;
-
   const messageId = message.messageId ?? parseNumericMessageId(message.id);
   if (!messageId) return null;
 
+  const senderId = String(message.senderId ?? "");
   const totalOtherParticipants = Math.max(roomMemberCount - 1, 0);
   if (totalOtherParticipants === 0) return 0;
 
   const readCount = Object.values(participants).filter((participant) => {
-    if (String(participant.memberId) === String(currentMemberId ?? "")) {
+    if (String(participant.memberId) === senderId) {
       return false;
     }
 
@@ -262,6 +260,31 @@ function getUnreadCountForMessage({
   }).length;
 
   return Math.max(totalOtherParticipants - readCount, 0);
+}
+
+function buildUnreadCountByMessageId({
+  messages,
+  participants,
+  roomMemberCount,
+}: {
+  messages: ChatMessage[];
+  participants: Record<string, ReadStateParticipant>;
+  roomMemberCount: number;
+}) {
+  const unreadCountByMessageId: Record<number, number> = {};
+
+  messages.forEach((message) => {
+    const messageId = message.messageId ?? parseNumericMessageId(message.id);
+    if (!messageId) return;
+
+    unreadCountByMessageId[messageId] = getUnreadCountForMessage({
+      message,
+      participants,
+      roomMemberCount,
+    }) ?? 0;
+  });
+
+  return unreadCountByMessageId;
 }
 
 function sortChatMessagesAsc(messages: ChatMessage[]) {
@@ -377,26 +400,35 @@ function ChatBubble({
               <div className="max-w-[280px] rounded-[22px] bg-[#f1f1f1] text-[14px] leading-6 text-[#111111]">
                 {bubbleContent}
               </div>
-              {formattedTime && (
-                <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
-                  {formattedTime}
-                </span>
-              )}
+              <div className="flex shrink-0 flex-col items-start px-1">
+                {typeof unreadCount === "number" && unreadCount > 0 ? (
+                  <span className="whitespace-nowrap text-[11px] font-medium text-[#9a9a9a]">
+                    {unreadCount}
+                  </span>
+                ) : null}
+                {formattedTime && (
+                  <span className="whitespace-nowrap text-[11px] text-[#9a9a9a]">
+                    {formattedTime}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         ) : null}
         {isRight ? (
           <>
-            {typeof unreadCount === "number" && unreadCount > 0 ? (
-              <span className="shrink-0 whitespace-nowrap px-1 text-[11px] font-medium text-[#9a9a9a]">
-                {unreadCount}
-              </span>
-            ) : null}
-            {formattedTime ? (
-              <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
-                {formattedTime}
-              </span>
-            ) : null}
+            <div className="flex shrink-0 flex-col items-end px-1">
+              {typeof unreadCount === "number" && unreadCount > 0 ? (
+                <span className="whitespace-nowrap text-[11px] font-medium text-[#9a9a9a]">
+                  {unreadCount}
+                </span>
+              ) : null}
+              {formattedTime ? (
+                <span className="whitespace-nowrap text-[11px] text-[#9a9a9a]">
+                  {formattedTime}
+                </span>
+              ) : null}
+            </div>
             <div className="min-w-0 max-w-[280px] rounded-bl-[22px] rounded-br-[22px] rounded-tl-[22px] rounded-tr-none bg-[#d3d3d3] text-[14px] leading-6 text-[#111111]">
               {bubbleContent}
             </div>
@@ -490,6 +522,15 @@ export default function ChatRoomPage({
   } = useChatSocketConnection({
     enabled: ready && isAuthenticated,
   });
+  const unreadCountByMessageId = useMemo(
+    () =>
+      buildUnreadCountByMessageId({
+        messages,
+        participants: readStateParticipants,
+        roomMemberCount,
+      }),
+    [messages, readStateParticipants, roomMemberCount],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -665,6 +706,16 @@ export default function ChatRoomPage({
       setReadStateParticipants((prev) =>
         mergeReadStateParticipants(prev, nextParticipants),
       );
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[chat:read-state] merged participants", {
+          roomId,
+          participants: mergeReadStateParticipants(
+            readStateParticipants,
+            nextParticipants,
+          ),
+        });
+      }
     };
 
     messageSubscription = subscribe(messageDestination, handleMessage, {
@@ -1090,12 +1141,9 @@ export default function ChatRoomPage({
               message={message.message}
               imageUrl={message.imageUrl}
               createdAt={message.createdAt}
-              unreadCount={getUnreadCountForMessage({
-                message,
-                participants: readStateParticipants,
-                roomMemberCount,
-                currentMemberId: currentMember?.id,
-              })}
+              unreadCount={
+                message.messageId ? unreadCountByMessageId[message.messageId] : null
+              }
               onImageClick={setExpandedImageUrl}
             />
           ))}
