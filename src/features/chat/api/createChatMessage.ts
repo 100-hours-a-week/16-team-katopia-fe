@@ -32,7 +32,6 @@ type CreateChatMessageResponse = {
   createdAt?: string;
   error?: string;
   messageText?: string;
-  message?: string;
 };
 
 export async function createChatMessage(
