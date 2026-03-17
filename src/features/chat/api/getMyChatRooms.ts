@@ -111,6 +111,19 @@ export async function getMyChatRooms() {
       isOwner: room.owner ?? room.isOwner,
       joined: room.joined,
       unreadCount: room.unreadMessageCount ?? room.unreadCount,
-    })),
+    })).map((room, index) => {
+      if (process.env.NODE_ENV !== "production") {
+        const rawRoom = rooms[index];
+        console.log("[chat:list] unread mapping", {
+          roomId: room.id,
+          title: room.title,
+          unreadMessageCount: rawRoom?.unreadMessageCount,
+          unreadCountRaw: rawRoom?.unreadCount,
+          mappedUnreadCount: room.unreadCount,
+        });
+      }
+
+      return room;
+    }),
   };
 }

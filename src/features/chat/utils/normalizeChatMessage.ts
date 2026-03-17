@@ -1,5 +1,6 @@
 export type NormalizedChatMessage = {
   id: string;
+  messageId: number | null;
   roomId: string;
   senderId: string | null;
   senderNickname: string | null;
@@ -49,7 +50,7 @@ export function normalizeChatMessage(
   const source = wrappedData ?? candidate;
   const item = source as ChatMessageCandidate;
 
-  const rawId = item.id ?? item.messageId;
+  const rawId = item.messageId ?? item.id;
   const rawRoomId = item.roomId ?? item.chatRoomId ?? fallbackRoomId;
   const rawSenderId = item.senderId ?? item.memberId;
 
@@ -64,6 +65,12 @@ export function normalizeChatMessage(
         : `${String(rawRoomId)}-${String(rawSenderId ?? "unknown")}-${String(
             item.createdAt ?? item.createdDate ?? Date.now(),
           )}`,
+    messageId: (() => {
+      const numericMessageId = Number(item.messageId ?? rawId);
+      return Number.isFinite(numericMessageId) && numericMessageId > 0
+        ? numericMessageId
+        : null;
+    })(),
     roomId: String(rawRoomId ?? ""),
     senderId: rawSenderId != null ? String(rawSenderId) : null,
     senderNickname:

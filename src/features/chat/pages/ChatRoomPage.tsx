@@ -22,6 +22,7 @@ import {
   normalizeChatMessage,
   type NormalizedChatMessage,
 } from "@/src/features/chat/utils/normalizeChatMessage";
+import { markChatRoomReadOverride } from "@/src/features/chat/utils/chatReadOverride";
 import { processImageFile } from "@/src/features/upload/utils/processImage";
 import {
   requestUploadPresign,
@@ -39,11 +40,18 @@ type ChatRoomPageProps = {
 
 type ChatMessage = {
   id: string;
+  messageId: number | null;
   direction: "left" | "right";
   message: string;
   imageUrl?: string | null;
   createdAt?: string;
   optimistic?: boolean;
+};
+
+type ReadStateParticipant = {
+  memberId: string;
+  lastReadMessageId: number;
+  acknowledgedAt?: string;
 };
 
 function buildChatRoomSubscribeDestination(roomId: string) {
@@ -67,6 +75,7 @@ function toUiMessage(
 
   return {
     id: message.id,
+    messageId: message.messageId,
     direction:
       String(message.senderId ?? "") === String(currentMemberId ?? "")
         ? "right"
@@ -139,13 +148,114 @@ function getLastReadableMessageId(messages: ChatMessage[]) {
     const current = messages[index];
     if (current?.optimistic) continue;
 
-    const numericId = Number(current.id);
+    const numericId =
+      current.messageId ?? (Number.isFinite(Number(current.id)) ? Number(current.id) : null);
     if (Number.isFinite(numericId) && numericId > 0) {
       return numericId;
     }
   }
 
   return null;
+}
+
+function parseNumericMessageId(value: string) {
+  const numericId = Number(value);
+  return Number.isFinite(numericId) && numericId > 0 ? numericId : null;
+}
+
+function normalizeReadStateParticipants(
+  payload: unknown,
+): ReadStateParticipant[] {
+  if (!payload || typeof payload !== "object") return [];
+
+  const record = payload as Record<string, unknown>;
+  const wrappedData =
+    record.data && typeof record.data === "object"
+      ? (record.data as Record<string, unknown>)
+      : null;
+  const source = wrappedData ?? record;
+
+  const participantsSource = Array.isArray(source.participants)
+    ? source.participants
+    : [source];
+
+  return participantsSource
+    .map((participant) => {
+      if (!participant || typeof participant !== "object") return null;
+
+      const item = participant as Record<string, unknown>;
+      const memberId = item.memberId;
+      const lastReadMessageId = item.lastReadMessageId;
+
+      if (memberId == null || lastReadMessageId == null) return null;
+
+      const numericLastReadMessageId = Number(lastReadMessageId);
+      if (
+        !Number.isFinite(numericLastReadMessageId) ||
+        numericLastReadMessageId <= 0
+      ) {
+        return null;
+      }
+
+      return {
+        memberId: String(memberId),
+        lastReadMessageId: numericLastReadMessageId,
+        acknowledgedAt:
+          typeof item.acknowledgedAt === "string" ? item.acknowledgedAt : undefined,
+      };
+    })
+    .filter((participant): participant is ReadStateParticipant => participant !== null);
+}
+
+function mergeReadStateParticipants(
+  prev: Record<string, ReadStateParticipant>,
+  nextParticipants: ReadStateParticipant[],
+) {
+  if (nextParticipants.length === 0) return prev;
+
+  const merged = { ...prev };
+
+  nextParticipants.forEach((participant) => {
+    const previous = merged[participant.memberId];
+    if (
+      !previous ||
+      participant.lastReadMessageId >= previous.lastReadMessageId
+    ) {
+      merged[participant.memberId] = participant;
+    }
+  });
+
+  return merged;
+}
+
+function getUnreadCountForMessage({
+  message,
+  participants,
+  roomMemberCount,
+  currentMemberId,
+}: {
+  message: ChatMessage;
+  participants: Record<string, ReadStateParticipant>;
+  roomMemberCount: number;
+  currentMemberId?: string | number | null;
+}) {
+  if (message.direction !== "right") return null;
+
+  const messageId = message.messageId ?? parseNumericMessageId(message.id);
+  if (!messageId) return null;
+
+  const totalOtherParticipants = Math.max(roomMemberCount - 1, 0);
+  if (totalOtherParticipants === 0) return 0;
+
+  const readCount = Object.values(participants).filter((participant) => {
+    if (String(participant.memberId) === String(currentMemberId ?? "")) {
+      return false;
+    }
+
+    return participant.lastReadMessageId >= messageId;
+  }).length;
+
+  return Math.max(totalOtherParticipants - readCount, 0);
 }
 
 function sortChatMessagesAsc(messages: ChatMessage[]) {
@@ -185,12 +295,14 @@ function ChatBubble({
   message,
   imageUrl,
   createdAt,
+  unreadCount,
   onImageClick,
 }: {
   direction: "left" | "right";
   message: string;
   imageUrl?: string | null;
   createdAt?: string;
+  unreadCount?: number | null;
   onImageClick?: (imageUrl: string) => void;
 }) {
   const isRight = direction === "right";
@@ -201,10 +313,15 @@ function ChatBubble({
       <div
         className={`flex items-end gap-2 ${
           isRight
-            ? "max-w-[88%] flex-nowrap"
-            : "max-w-[78%] flex-col items-start"
+            ? "max-w-[min(78%,280px)] flex-nowrap"
+            : "max-w-[min(78%,280px)] flex-nowrap"
         }`}
       >
+        {typeof unreadCount === "number" && unreadCount > 0 && isRight && (
+          <span className="shrink-0 whitespace-nowrap px-1 text-[11px] font-medium text-[#9a9a9a]">
+            {unreadCount}
+          </span>
+        )}
         {formattedTime && isRight && (
           <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
             {formattedTime}
@@ -213,13 +330,13 @@ function ChatBubble({
         <div
           className={`text-[14px] leading-6 text-[#111111] ${
             isRight
-              ? "min-w-0 rounded-bl-[22px] rounded-br-[22px] rounded-tl-[22px] rounded-tr-none bg-[#d3d3d3]"
-              : "rounded-[22px] bg-[#f1f1f1]"
+              ? "min-w-0 max-w-[280px] rounded-bl-[22px] rounded-br-[22px] rounded-tl-[22px] rounded-tr-none bg-[#d3d3d3]"
+              : "max-w-[280px] rounded-[22px] bg-[#f1f1f1]"
           }`}
         >
           {imageUrl ? (
             <div className="overflow-hidden rounded-[18px]">
-              <div className="max-w-[min(72vw,280px)] bg-[#e7e7e7]">
+              <div className="w-[min(62vw,240px)] bg-[#e7e7e7]">
                 <button
                   type="button"
                   onClick={() => onImageClick?.(imageUrl)}
@@ -229,7 +346,7 @@ function ChatBubble({
                   <img
                     src={imageUrl}
                     alt=""
-                    className="block h-auto max-h-[360px] w-full object-contain"
+                    className="block h-auto max-h-[300px] w-full object-contain"
                   />
                 </button>
               </div>
@@ -240,9 +357,14 @@ function ChatBubble({
               ) : null}
             </div>
           ) : (
-            <p className="px-5 py-4">{message}</p>
+            <p className="break-words px-4 py-3.5">{message}</p>
           )}
         </div>
+        {formattedTime && !isRight && (
+          <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
+            {formattedTime}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -296,7 +418,14 @@ export default function ChatRoomPage({
   const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
   const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [readStateParticipants, setReadStateParticipants] = useState<
+    Record<string, ReadStateParticipant>
+  >({});
   const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
+  const [nextMessagesCursor, setNextMessagesCursor] = useState<string | null>(
+    null,
+  );
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const menuAreaRef = useRef<HTMLDivElement>(null);
@@ -304,7 +433,8 @@ export default function ChatRoomPage({
   const editImageInputRef = useRef<HTMLInputElement>(null);
   const messageImageInputRef = useRef<HTMLInputElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
-  const lastPublishedReadMessageIdRef = useRef<number | null>(null);
+  const prependScrollHeightRef = useRef<number | null>(null);
+  const isPrependingMessagesRef = useRef(false);
   const hasEditedTitle = editTitle.trim() !== roomTitle.trim();
   const hasEditedThumbnail =
     Boolean(editThumbnailFile) ||
@@ -406,6 +536,7 @@ export default function ChatRoomPage({
               .filter(isChatMessage),
           ),
         );
+        setNextMessagesCursor(response.nextCursor);
       } catch (error) {
         if (cancelled) return;
         setMessagesError(
@@ -480,6 +611,23 @@ export default function ChatRoomPage({
           headers: frame.headers,
         });
       }
+
+      const rawBody = frame.body?.trim();
+      if (!rawBody) return;
+
+      let parsedBody: unknown;
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        return;
+      }
+
+      const nextParticipants = normalizeReadStateParticipants(parsedBody);
+      if (nextParticipants.length === 0) return;
+
+      setReadStateParticipants((prev) =>
+        mergeReadStateParticipants(prev, nextParticipants),
+      );
     };
 
     messageSubscription = subscribe(messageDestination, handleMessage, {
@@ -544,6 +692,28 @@ export default function ChatRoomPage({
   }, [currentMember?.id, roomId, socketStatus, subscribe]);
 
   useEffect(() => {
+    if (prependScrollHeightRef.current == null) return;
+
+    const previousScrollHeight = prependScrollHeightRef.current;
+    prependScrollHeightRef.current = null;
+
+    const frameId = window.requestAnimationFrame(() => {
+      const nextScrollHeight = document.documentElement.scrollHeight;
+      const heightDiff = nextScrollHeight - previousScrollHeight;
+      if (heightDiff > 0) {
+        window.scrollBy({ top: heightDiff, behavior: "auto" });
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [messages]);
+
+  useEffect(() => {
+    if (isPrependingMessagesRef.current) {
+      isPrependingMessagesRef.current = false;
+      return;
+    }
+
     const frameId = window.requestAnimationFrame(() => {
       messageEndRef.current?.scrollIntoView({
         block: "end",
@@ -556,46 +726,120 @@ export default function ChatRoomPage({
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [messages]);
+  }, [messages.length]);
+
+  useEffect(() => {
+    if (!nextMessagesCursor || isLoadingMessages || isLoadingMoreMessages) {
+      return;
+    }
+
+    const handleScroll = () => {
+      if (window.scrollY > 120) return;
+      if (isLoadingMoreMessages) return;
+
+      const currentCursor = nextMessagesCursor;
+      if (!currentCursor) return;
+
+      isPrependingMessagesRef.current = true;
+      prependScrollHeightRef.current = document.documentElement.scrollHeight;
+      setIsLoadingMoreMessages(true);
+
+      void getChatMessages(roomId, 20, currentCursor)
+        .then((response) => {
+          setMessages((prev) =>
+            sortChatMessagesAsc(
+              [
+                ...response.messages
+                  .map((item) => toUiMessage(item, currentMember?.id))
+                  .filter(isChatMessage),
+                ...prev,
+              ].filter(
+                (message, index, array) =>
+                  array.findIndex((item) => item.id === message.id) === index,
+              ),
+            ),
+          );
+          setNextMessagesCursor(response.nextCursor);
+        })
+        .catch((error) => {
+          isPrependingMessagesRef.current = false;
+          prependScrollHeightRef.current = null;
+          window.alert(
+            error instanceof Error
+              ? error.message
+              : "이전 메시지를 불러오지 못했습니다.",
+          );
+        })
+        .finally(() => {
+          setIsLoadingMoreMessages(false);
+        });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [
+    currentMember?.id,
+    isLoadingMessages,
+    isLoadingMoreMessages,
+    nextMessagesCursor,
+    roomId,
+  ]);
 
   useEffect(() => {
     if (socketStatus !== "connected") return;
 
-    const lastReadMessageId = getLastReadableMessageId(messages);
-    if (!lastReadMessageId) return;
-    if (lastPublishedReadMessageIdRef.current === lastReadMessageId) return;
-
-    lastPublishedReadMessageIdRef.current = lastReadMessageId;
-
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[chat:read-state] publish", {
-        destination: CHAT_READ_STATE_SEND_DESTINATION,
-        body: {
-          roomId,
-          lastReadMessageId,
-        },
-      });
-    }
-
-    try {
-      publish({
-        destination: CHAT_READ_STATE_SEND_DESTINATION,
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          roomId,
-          lastReadMessageId,
-        }),
-      });
-    } catch (error) {
-      lastPublishedReadMessageIdRef.current = null;
+    const intervalId = window.setInterval(() => {
+      const lastReadMessageId = getLastReadableMessageId(messages);
+      if (!lastReadMessageId) return;
 
       if (process.env.NODE_ENV !== "production") {
-        console.error("[chat:read-state] publish failed", error);
+        console.log("[chat:read-state] heartbeat publish", {
+          destination: CHAT_READ_STATE_SEND_DESTINATION,
+          body: {
+            roomId,
+            lastReadMessageId,
+          },
+          messagesCount: messages.length,
+        });
       }
-    }
+
+      try {
+        publish({
+          destination: CHAT_READ_STATE_SEND_DESTINATION,
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            roomId,
+            lastReadMessageId,
+          }),
+        });
+        markChatRoomReadOverride(roomId);
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("[chat:read-state] heartbeat publish failed", error);
+        }
+      }
+    }, 1000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [messages, publish, roomId, socketStatus]);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[chat:room] messages snapshot", {
+        roomId,
+        totalMessages: messages.length,
+        latestMessageId: getLastReadableMessageId(messages),
+        messageIds: messages.map((message) => message.id),
+      });
+    }
+  }, [messages, roomId]);
 
   const handleSendMessage = async () => {
     const trimmedMessage = messageInput.trim();
@@ -618,6 +862,7 @@ export default function ChatRoomPage({
       ...prev,
       {
         id: optimisticId,
+        messageId: null,
         direction: "right",
         message: trimmedMessage,
         imageUrl: currentImagePreview,
@@ -784,6 +1029,11 @@ export default function ChatRoomPage({
 
       <main className="px-6 pb-[calc(env(safe-area-inset-bottom)+132px)] pt-[126px]">
         <div className="space-y-4">
+          {isLoadingMoreMessages && (
+            <div className="rounded-[20px] bg-[#f7f7f7] px-5 py-3 text-center text-[13px] text-[#888888]">
+              이전 메시지를 불러오는 중입니다.
+            </div>
+          )}
           {isLoadingMessages && (
             <div className="rounded-[20px] bg-[#f7f7f7] px-5 py-4 text-[14px] text-[#888888]">
               메시지를 불러오는 중입니다.
@@ -801,6 +1051,12 @@ export default function ChatRoomPage({
               message={message.message}
               imageUrl={message.imageUrl}
               createdAt={message.createdAt}
+              unreadCount={getUnreadCountForMessage({
+                message,
+                participants: readStateParticipants,
+                roomMemberCount,
+                currentMemberId: currentMember?.id,
+              })}
               onImageClick={setExpandedImageUrl}
             />
           ))}

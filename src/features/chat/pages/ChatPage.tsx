@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
 import { createChatRoom } from "@/src/features/chat/api/createChatRoom";
 import { getMyChatRooms } from "@/src/features/chat/api/getMyChatRooms";
@@ -17,6 +17,10 @@ import {
   DEFAULT_CHAT_ROOM_THUMBNAIL_OBJECT_KEY,
 } from "@/src/features/chat/constants";
 import type { ChatRoom, ChatTab } from "@/src/features/chat/types";
+import {
+  clearChatRoomReadOverride,
+  getChatRoomReadOverride,
+} from "@/src/features/chat/utils/chatReadOverride";
 import { buildChatRoomHref } from "@/src/features/chat/utils/buildChatRoomHref";
 import {
   requestUploadPresign,
@@ -50,6 +54,53 @@ export default function ChatPage() {
   const [openRoomsError, setOpenRoomsError] = useState<string | null>(null);
   const [pendingJoinRoom, setPendingJoinRoom] = useState<ChatRoom | null>(null);
 
+  const loadMineRooms = useEffectEvent(async (signal?: { cancelled: boolean }) => {
+    try {
+      setIsLoadingMineRooms(true);
+      setMineRoomsError(null);
+      const response = await getMyChatRooms();
+      if (signal?.cancelled) return;
+
+      setRooms((prev) => {
+        const openRooms = prev.filter((room) => room.category === "open");
+        const mineRooms = response.rooms.map((room) => {
+          const hasReadOverride = getChatRoomReadOverride(room.id);
+          const unreadCount =
+            room.unreadCount === 0
+              ? (clearChatRoomReadOverride(room.id), 0)
+              : hasReadOverride
+                ? 0
+                : room.unreadCount;
+
+          return {
+            id: room.id,
+            title: room.title,
+            memberCount: room.memberCount,
+            thumbnailImageUrl: room.thumbnailImageUrl,
+            thumbnailImageObjectKey: room.thumbnailImageObjectKey ?? undefined,
+            unreadCount,
+            isOwner: room.isOwner,
+            joined: room.joined,
+            category: "mine" as const,
+          };
+        });
+
+        return [...mineRooms, ...openRooms];
+      });
+    } catch (error) {
+      if (signal?.cancelled) return;
+      setMineRoomsError(
+        error instanceof Error
+          ? error.message
+          : "내 채팅방 목록을 불러오지 못했습니다.",
+      );
+    } finally {
+      if (!signal?.cancelled) {
+        setIsLoadingMineRooms(false);
+      }
+    }
+  });
+
   useEffect(() => {
     return () => {
       if (
@@ -63,48 +114,27 @@ export default function ChatPage() {
 
   useEffect(() => {
     let cancelled = false;
-
-    const loadMineRooms = async () => {
-      try {
-        setIsLoadingMineRooms(true);
-        setMineRoomsError(null);
-        const response = await getMyChatRooms();
-        if (cancelled) return;
-
-        setRooms((prev) => {
-          const openRooms = prev.filter((room) => room.category === "open");
-          const mineRooms = response.rooms.map((room) => ({
-            id: room.id,
-            title: room.title,
-            memberCount: room.memberCount,
-            thumbnailImageUrl: room.thumbnailImageUrl,
-            thumbnailImageObjectKey: room.thumbnailImageObjectKey ?? undefined,
-            unreadCount: room.unreadCount,
-            isOwner: room.isOwner,
-            joined: room.joined,
-            category: "mine" as const,
-          }));
-
-          return [...mineRooms, ...openRooms];
-        });
-      } catch (error) {
-        if (cancelled) return;
-        setMineRoomsError(
-          error instanceof Error
-            ? error.message
-            : "내 채팅방 목록을 불러오지 못했습니다.",
-        );
-      } finally {
-        if (!cancelled) {
-          setIsLoadingMineRooms(false);
-        }
-      }
-    };
-
-    void loadMineRooms();
+    void loadMineRooms({ cancelled });
 
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === "hidden") return;
+      void loadMineRooms();
+    };
+
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    window.addEventListener("pageshow", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      window.removeEventListener("pageshow", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
     };
   }, []);
 
@@ -379,6 +409,13 @@ export default function ChatPage() {
                     return;
                   }
 
+                  setRooms((prev) =>
+                    prev.map((item) =>
+                      item.category === "mine" && item.id === room.id
+                        ? { ...item, unreadCount: 0 }
+                        : item,
+                    ),
+                  );
                   router.push(buildChatRoomHref(room));
                 }}
               />
