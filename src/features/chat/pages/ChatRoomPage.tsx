@@ -988,12 +988,12 @@ export default function ChatRoomPage({
             <Image src="/icons/back.svg" alt="" width={22} height={22} />
           </button>
 
-          <div className="relative h-[66px] w-[72px] shrink-0 overflow-hidden bg-[#dddddd]">
+          <div className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-full bg-[#dddddd]">
             <Image
               src={roomThumbnailSrc}
               alt=""
               fill
-              sizes="72px"
+              sizes="64px"
               className="object-cover"
             />
           </div>
