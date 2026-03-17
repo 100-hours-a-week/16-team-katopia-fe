@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import type { DragEvent } from "react";
 
 import { createChatRoom } from "@/src/features/chat/api/createChatRoom";
 import { getMyChatRooms } from "@/src/features/chat/api/getMyChatRooms";
@@ -28,6 +29,71 @@ import {
 } from "@/src/features/upload/api/presignUpload";
 
 const INITIAL_CHAT_ROOMS: ChatRoom[] = [];
+const MINE_CHAT_ROOM_ORDER_STORAGE_KEY = "chat:mine-room-order";
+
+function readMineRoomOrder() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const stored = window.localStorage.getItem(MINE_CHAT_ROOM_ORDER_STORAGE_KEY);
+    if (!stored) return [];
+
+    const parsed = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed.map((value) => String(value)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeMineRoomOrder(roomIds: string[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(
+      MINE_CHAT_ROOM_ORDER_STORAGE_KEY,
+      JSON.stringify(roomIds),
+    );
+  } catch {
+    // ignore
+  }
+}
+
+function applyMineRoomOrder(mineRooms: ChatRoom[]) {
+  const order = readMineRoomOrder();
+  if (order.length === 0) return mineRooms;
+
+  const roomMap = new Map(mineRooms.map((room) => [String(room.id), room]));
+  const orderedRooms = order
+    .map((roomId) => roomMap.get(roomId))
+    .filter((room): room is ChatRoom => Boolean(room));
+  const remainingRooms = mineRooms.filter(
+    (room) => !order.includes(String(room.id)),
+  );
+
+  return [...orderedRooms, ...remainingRooms];
+}
+
+function reorderMineRooms(
+  mineRooms: ChatRoom[],
+  sourceRoomId: string,
+  targetRoomId: string,
+) {
+  if (sourceRoomId === targetRoomId) return mineRooms;
+
+  const sourceIndex = mineRooms.findIndex(
+    (room) => String(room.id) === String(sourceRoomId),
+  );
+  const targetIndex = mineRooms.findIndex(
+    (room) => String(room.id) === String(targetRoomId),
+  );
+
+  if (sourceIndex < 0 || targetIndex < 0) return mineRooms;
+
+  const nextRooms = [...mineRooms];
+  const [movedRoom] = nextRooms.splice(sourceIndex, 1);
+  nextRooms.splice(targetIndex, 0, movedRoom);
+  return nextRooms;
+}
 
 export default function ChatPage() {
   const router = useRouter();
@@ -53,6 +119,12 @@ export default function ChatPage() {
   const [isLoadingOpenRooms, setIsLoadingOpenRooms] = useState(true);
   const [openRoomsError, setOpenRoomsError] = useState<string | null>(null);
   const [pendingJoinRoom, setPendingJoinRoom] = useState<ChatRoom | null>(null);
+  const [draggingMineRoomId, setDraggingMineRoomId] = useState<string | null>(
+    null,
+  );
+  const [dragOverMineRoomId, setDragOverMineRoomId] = useState<string | null>(
+    null,
+  );
 
   const loadMineRooms = useEffectEvent(async (signal?: { cancelled: boolean }) => {
     try {
@@ -85,7 +157,10 @@ export default function ChatPage() {
           };
         });
 
-        return [...mineRooms, ...openRooms];
+        const orderedMineRooms = applyMineRoomOrder(mineRooms);
+        writeMineRoomOrder(orderedMineRooms.map((room) => String(room.id)));
+
+        return [...orderedMineRooms, ...openRooms];
       });
     } catch (error) {
       if (signal?.cancelled) return;
@@ -209,6 +284,38 @@ export default function ChatPage() {
     });
   }, [activeTab, joinedRoomIds, rooms, searchQuery]);
 
+  const mineRoomDragOffsetById = useMemo(() => {
+    if (!draggingMineRoomId || !dragOverMineRoomId) {
+      return {} as Record<string, string>;
+    }
+
+    const mineRooms = rooms.filter((room) => room.category === "mine");
+    const sourceIndex = mineRooms.findIndex(
+      (room) => String(room.id) === draggingMineRoomId,
+    );
+    const targetIndex = mineRooms.findIndex(
+      (room) => String(room.id) === dragOverMineRoomId,
+    );
+
+    if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+      return {} as Record<string, string>;
+    }
+
+    const offsets: Record<string, string> = {};
+
+    if (sourceIndex < targetIndex) {
+      for (let index = sourceIndex + 1; index <= targetIndex; index += 1) {
+        offsets[String(mineRooms[index].id)] = "-translate-y-3";
+      }
+    } else {
+      for (let index = targetIndex; index < sourceIndex; index += 1) {
+        offsets[String(mineRooms[index].id)] = "translate-y-3";
+      }
+    }
+
+    return offsets;
+  }, [dragOverMineRoomId, draggingMineRoomId, rooms]);
+
   const resetCreateRoomDraft = () => {
     if (newRoomThumbnailPreview?.startsWith("blob:")) {
       URL.revokeObjectURL(newRoomThumbnailPreview);
@@ -260,20 +367,23 @@ export default function ChatPage() {
         thumbnailImageObjectKey,
       });
 
-      setRooms((prev) => [
-        {
-          id: String(createdRoom.id ?? `mine-${Date.now()}`),
-          title: createdRoom.title,
-          memberCount: createdRoom.memberCount,
-          thumbnailImageUrl:
-            createdRoom.thumbnailImageUrl ?? newRoomThumbnailPreview,
-          thumbnailImageObjectKey:
-            createdRoom.thumbnailImageObjectKey ?? thumbnailImageObjectKey,
-          isOwner: createdRoom.isOwner ?? true,
-          category: "mine",
-        },
-        ...prev,
-      ]);
+      const nextCreatedRoom: ChatRoom = {
+        id: String(createdRoom.id ?? `mine-${Date.now()}`),
+        title: createdRoom.title,
+        memberCount: createdRoom.memberCount,
+        thumbnailImageUrl:
+          createdRoom.thumbnailImageUrl ?? newRoomThumbnailPreview,
+        thumbnailImageObjectKey:
+          createdRoom.thumbnailImageObjectKey ?? thumbnailImageObjectKey,
+        isOwner: createdRoom.isOwner ?? true,
+        category: "mine",
+      };
+
+      setRooms((prev) => {
+        const mineRooms = [nextCreatedRoom, ...prev.filter((room) => room.category === "mine")];
+        writeMineRoomOrder(mineRooms.map((room) => String(room.id)));
+        return [...mineRooms, ...prev.filter((room) => room.category !== "mine")];
+      });
       resetCreateRoomDraft();
       setCreateOpen(false);
       setActiveTab("mine");
@@ -336,7 +446,12 @@ export default function ChatPage() {
         );
         if (alreadyJoined) return prev;
 
-        return [joinedRoom, ...prev];
+        const mineRooms = applyMineRoomOrder([
+          joinedRoom,
+          ...prev.filter((room) => room.category === "mine"),
+        ]);
+        writeMineRoomOrder(mineRooms.map((room) => String(room.id)));
+        return [...mineRooms, ...prev.filter((room) => room.category !== "mine")];
       });
       setPendingJoinRoom(null);
       setActiveTab("mine");
@@ -350,6 +465,22 @@ export default function ChatPage() {
     } finally {
       setIsJoiningRoom(false);
     }
+  };
+
+  const handleMineRoomDrop = (sourceRoomId: string, targetRoomId: string) => {
+    setRooms((prev) => {
+      const mineRooms = prev.filter((room) => room.category === "mine");
+      const reorderedMineRooms = reorderMineRooms(
+        mineRooms,
+        sourceRoomId,
+        targetRoomId,
+      );
+
+      writeMineRoomOrder(reorderedMineRooms.map((room) => String(room.id)));
+      return [...reorderedMineRooms, ...prev.filter((room) => room.category !== "mine")];
+    });
+    setDraggingMineRoomId(null);
+    setDragOverMineRoomId(null);
   };
 
   return (
@@ -403,6 +534,42 @@ export default function ChatPage() {
               <ChatRoomCard
                 key={room.id}
                 room={room}
+                draggable={activeTab === "mine"}
+                isDragging={draggingMineRoomId === String(room.id)}
+                isDropTarget={
+                  activeTab === "mine" &&
+                  dragOverMineRoomId === String(room.id) &&
+                  draggingMineRoomId !== String(room.id)
+                }
+                dragOffsetClassName={
+                  room.category === "mine"
+                    ? mineRoomDragOffsetById[String(room.id)]
+                    : undefined
+                }
+                onDragStart={(event: DragEvent<HTMLButtonElement>) => {
+                  if (room.category !== "mine") return;
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", String(room.id));
+                  setDraggingMineRoomId(String(room.id));
+                  setDragOverMineRoomId(String(room.id));
+                }}
+                onDragOver={(event: DragEvent<HTMLButtonElement>) => {
+                  if (room.category !== "mine" || !draggingMineRoomId) return;
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  if (dragOverMineRoomId !== String(room.id)) {
+                    setDragOverMineRoomId(String(room.id));
+                  }
+                }}
+                onDrop={(event: DragEvent<HTMLButtonElement>) => {
+                  if (room.category !== "mine" || !draggingMineRoomId) return;
+                  event.preventDefault();
+                  handleMineRoomDrop(draggingMineRoomId, String(room.id));
+                }}
+                onDragEnd={() => {
+                  setDraggingMineRoomId(null);
+                  setDragOverMineRoomId(null);
+                }}
                 onClick={() => {
                   if (room.category === "open") {
                     setPendingJoinRoom(room);

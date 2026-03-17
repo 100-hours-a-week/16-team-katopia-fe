@@ -1,15 +1,35 @@
 "use client";
 
 import Image from "next/image";
+import type { DragEventHandler } from "react";
 
 import type { ChatRoom } from "@/src/features/chat/types";
 
 type ChatRoomCardProps = {
   room: ChatRoom;
   onClick?: () => void;
+  draggable?: boolean;
+  onDragStart?: DragEventHandler<HTMLButtonElement>;
+  onDragOver?: DragEventHandler<HTMLButtonElement>;
+  onDrop?: DragEventHandler<HTMLButtonElement>;
+  onDragEnd?: DragEventHandler<HTMLButtonElement>;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  dragOffsetClassName?: string;
 };
 
-export default function ChatRoomCard({ room, onClick }: ChatRoomCardProps) {
+export default function ChatRoomCard({
+  room,
+  onClick,
+  draggable,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  isDragging,
+  isDropTarget,
+  dragOffsetClassName,
+}: ChatRoomCardProps) {
   const isMine = room.category === "mine";
   const isOpen = room.category === "open";
 
@@ -17,9 +37,20 @@ export default function ChatRoomCard({ room, onClick }: ChatRoomCardProps) {
     <button
       type="button"
       onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
       className={
         isMine
-          ? "relative w-full rounded-[30px] bg-[#f6f6f6] px-6 py-5 text-left transition-colors hover:bg-[#f0f0f0]"
+          ? `relative w-full rounded-[30px] px-6 py-5 text-left transition-[transform,box-shadow,background-color,opacity] duration-200 ${dragOffsetClassName ?? ""} ${
+              isDragging
+                ? "scale-[0.985] bg-[#ececec] opacity-70"
+                : isDropTarget
+                  ? "bg-[#efefef] shadow-[0_0_0_2px_rgba(17,17,17,0.08)]"
+                  : "bg-[#f6f6f6] hover:bg-[#f0f0f0]"
+            }`
           : isOpen
             ? "w-full bg-[#f3f3f3] px-6 pb-5 pt-5 text-center transition-colors hover:bg-[#ededed]"
             : "relative w-full transform-gpu rounded-[22px] border border-[#1a1a1a] bg-white px-5 py-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[transform,box-shadow,background-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[2px] hover:scale-[1.003] hover:bg-[#fcfcfc] hover:shadow-[0_10px_24px_rgba(0,0,0,0.08)] active:translate-y-0 active:scale-[0.998]"
