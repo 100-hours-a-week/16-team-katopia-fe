@@ -42,6 +42,8 @@ type ChatMessage = {
   id: string;
   messageId: number | null;
   direction: "left" | "right";
+  senderNickname?: string | null;
+  senderProfileImageUrl?: string | null;
   message: string;
   imageUrl?: string | null;
   createdAt?: string;
@@ -80,6 +82,10 @@ function toUiMessage(
       String(message.senderId ?? "") === String(currentMemberId ?? "")
         ? "right"
         : "left",
+    senderNickname: message.senderNickname,
+    senderProfileImageUrl: resolveMediaUrl(
+      message.senderProfileImageObjectKey,
+    ),
     message: message.imageObjectKey ? "" : message.message,
     imageUrl: message.imageObjectKey
       ? resolveMediaUrl(message.imageObjectKey)
@@ -150,7 +156,7 @@ function getLastReadableMessageId(messages: ChatMessage[]) {
 
     const numericId =
       current.messageId ?? (Number.isFinite(Number(current.id)) ? Number(current.id) : null);
-    if (Number.isFinite(numericId) && numericId > 0) {
+    if (numericId !== null && Number.isFinite(numericId) && numericId > 0) {
       return numericId;
     }
   }
@@ -179,32 +185,32 @@ function normalizeReadStateParticipants(
     ? source.participants
     : [source];
 
-  return participantsSource
-    .map((participant) => {
-      if (!participant || typeof participant !== "object") return null;
+  return participantsSource.reduce<ReadStateParticipant[]>((acc, participant) => {
+    if (!participant || typeof participant !== "object") return acc;
 
-      const item = participant as Record<string, unknown>;
-      const memberId = item.memberId;
-      const lastReadMessageId = item.lastReadMessageId;
+    const item = participant as Record<string, unknown>;
+    const memberId = item.memberId;
+    const lastReadMessageId = item.lastReadMessageId;
 
-      if (memberId == null || lastReadMessageId == null) return null;
+    if (memberId == null || lastReadMessageId == null) return acc;
 
-      const numericLastReadMessageId = Number(lastReadMessageId);
-      if (
-        !Number.isFinite(numericLastReadMessageId) ||
-        numericLastReadMessageId <= 0
-      ) {
-        return null;
-      }
+    const numericLastReadMessageId = Number(lastReadMessageId);
+    if (
+      !Number.isFinite(numericLastReadMessageId) ||
+      numericLastReadMessageId <= 0
+    ) {
+      return acc;
+    }
 
-      return {
-        memberId: String(memberId),
-        lastReadMessageId: numericLastReadMessageId,
-        acknowledgedAt:
-          typeof item.acknowledgedAt === "string" ? item.acknowledgedAt : undefined,
-      };
-    })
-    .filter((participant): participant is ReadStateParticipant => participant !== null);
+    acc.push({
+      memberId: String(memberId),
+      lastReadMessageId: numericLastReadMessageId,
+      acknowledgedAt:
+        typeof item.acknowledgedAt === "string" ? item.acknowledgedAt : undefined,
+    });
+
+    return acc;
+  }, []);
 }
 
 function mergeReadStateParticipants(
@@ -292,6 +298,8 @@ function formatMessageTime(value?: string) {
 
 function ChatBubble({
   direction,
+  senderNickname,
+  senderProfileImageUrl,
   message,
   imageUrl,
   createdAt,
@@ -299,6 +307,8 @@ function ChatBubble({
   onImageClick,
 }: {
   direction: "left" | "right";
+  senderNickname?: string | null;
+  senderProfileImageUrl?: string | null;
   message: string;
   imageUrl?: string | null;
   createdAt?: string;
@@ -308,63 +318,90 @@ function ChatBubble({
   const isRight = direction === "right";
   const formattedTime = formatMessageTime(createdAt);
 
+  const bubbleContent = imageUrl ? (
+    <div className="overflow-hidden rounded-[18px]">
+      <div className="w-[min(62vw,240px)] bg-[#e7e7e7]">
+        <button
+          type="button"
+          onClick={() => onImageClick?.(imageUrl)}
+          className="block w-full"
+          aria-label="이미지 크게 보기"
+        >
+          <img
+            src={imageUrl}
+            alt=""
+            className="block h-auto max-h-[300px] w-full object-contain"
+          />
+        </button>
+      </div>
+      {message ? (
+        <p className="px-4 pb-4 pt-3 text-[14px] leading-6 text-[#111111]">
+          {message}
+        </p>
+      ) : null}
+    </div>
+  ) : (
+    <p className="break-words px-4 py-3.5">{message}</p>
+  );
+
   return (
     <div className={`flex ${isRight ? "justify-end" : "justify-start"}`}>
       <div
         className={`flex items-end gap-2 ${
           isRight
             ? "max-w-[min(78%,280px)] flex-nowrap"
-            : "max-w-[min(78%,280px)] flex-nowrap"
+            : "max-w-[min(88%,320px)] items-start gap-3"
         }`}
       >
-        {typeof unreadCount === "number" && unreadCount > 0 && isRight && (
-          <span className="shrink-0 whitespace-nowrap px-1 text-[11px] font-medium text-[#9a9a9a]">
-            {unreadCount}
-          </span>
-        )}
-        {formattedTime && isRight && (
-          <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
-            {formattedTime}
-          </span>
-        )}
-        <div
-          className={`text-[14px] leading-6 text-[#111111] ${
-            isRight
-              ? "min-w-0 max-w-[280px] rounded-bl-[22px] rounded-br-[22px] rounded-tl-[22px] rounded-tr-none bg-[#d3d3d3]"
-              : "max-w-[280px] rounded-[22px] bg-[#f1f1f1]"
-          }`}
-        >
-          {imageUrl ? (
-            <div className="overflow-hidden rounded-[18px]">
-              <div className="w-[min(62vw,240px)] bg-[#e7e7e7]">
-                <button
-                  type="button"
-                  onClick={() => onImageClick?.(imageUrl)}
-                  className="block w-full"
-                  aria-label="이미지 크게 보기"
-                >
-                  <img
-                    src={imageUrl}
-                    alt=""
-                    className="block h-auto max-h-[300px] w-full object-contain"
-                  />
-                </button>
-              </div>
-              {message ? (
-                <p className="px-4 pb-4 pt-3 text-[14px] leading-6 text-[#111111]">
-                  {message}
-                </p>
-              ) : null}
+        {!isRight ? (
+          <div className="flex shrink-0 flex-col items-center">
+            <div className="relative h-8 w-8 overflow-hidden rounded-full bg-[#dddddd]">
+              <Image
+                src={senderProfileImageUrl || "/images/chat_default.png"}
+                alt=""
+                fill
+                sizes="32px"
+                className="object-cover"
+              />
             </div>
-          ) : (
-            <p className="break-words px-4 py-3.5">{message}</p>
-          )}
-        </div>
-        {formattedTime && !isRight && (
-          <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
-            {formattedTime}
-          </span>
-        )}
+          </div>
+        ) : null}
+        {!isRight ? (
+          <div className="min-w-0">
+            {senderNickname ? (
+              <p className="mb-1 px-1 text-[12px] font-medium text-[#666666]">
+                {senderNickname}
+              </p>
+            ) : null}
+            <div className="flex items-end gap-2">
+              <div className="max-w-[280px] rounded-[22px] bg-[#f1f1f1] text-[14px] leading-6 text-[#111111]">
+                {bubbleContent}
+              </div>
+              {formattedTime && (
+                <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
+                  {formattedTime}
+                </span>
+              )}
+            </div>
+          </div>
+        ) : null}
+        {isRight ? (
+          <>
+            {typeof unreadCount === "number" && unreadCount > 0 ? (
+              <span className="shrink-0 whitespace-nowrap px-1 text-[11px] font-medium text-[#9a9a9a]">
+                {unreadCount}
+              </span>
+            ) : null}
+            {formattedTime ? (
+              <span className="shrink-0 whitespace-nowrap px-1 text-[11px] text-[#9a9a9a]">
+                {formattedTime}
+              </span>
+            ) : null}
+            <div className="min-w-0 max-w-[280px] rounded-bl-[22px] rounded-br-[22px] rounded-tl-[22px] rounded-tr-none bg-[#d3d3d3] text-[14px] leading-6 text-[#111111]">
+              {bubbleContent}
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -1048,6 +1085,8 @@ export default function ChatRoomPage({
             <ChatBubble
               key={`${roomId}-${message.id}`}
               direction={message.direction}
+              senderNickname={message.senderNickname}
+              senderProfileImageUrl={message.senderProfileImageUrl}
               message={message.message}
               imageUrl={message.imageUrl}
               createdAt={message.createdAt}
