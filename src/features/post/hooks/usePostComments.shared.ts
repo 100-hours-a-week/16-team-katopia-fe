@@ -88,7 +88,9 @@ export function mapComments(items: CommentItemResponse[]): CommentItem[] {
     createdAt: comment.createdAt,
     nickname: comment.author.nickname,
     profileImageUrl:
-      comment.author.profileImageObjectKey ?? comment.author.profileImageUrl ?? null,
+      comment.author.profileImageObjectKey ??
+      comment.author.profileImageUrl ??
+      null,
     authorId: comment.author.id,
   }));
 }

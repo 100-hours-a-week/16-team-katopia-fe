@@ -134,10 +134,7 @@ function SearchGrid({
   }
 
   return (
-    <div
-      className="w-full overflow-hidden"
-      style={{ height: gridHeight }}
-    >
+    <div className="w-full overflow-hidden" style={{ height: gridHeight }}>
       <AutoSizer
         style={{ height: "100%", width: "100%" }}
         renderProp={({

@@ -25,8 +25,7 @@ type Props = {
 export default function LayoutShell({ children }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const isChatRoomPath =
-    pathname?.startsWith("/chat/") && pathname !== "/chat";
+  const isChatRoomPath = pathname?.startsWith("/chat/") && pathname !== "/chat";
   const hideBottomNav =
     HIDE_BOTTOM_NAV_PATHS.includes(pathname ?? "") || Boolean(isChatRoomPath);
   const { ready, isAuthenticated, authInvalidated } = useAuth();
@@ -130,13 +129,18 @@ export default function LayoutShell({ children }: Props) {
 
     let idleId: number | null = null;
     if (win.requestIdleCallback) {
-      idleId = win.requestIdleCallback(() => setEnableNotificationRuntime(true));
+      idleId = win.requestIdleCallback(() =>
+        setEnableNotificationRuntime(true),
+      );
       return () => {
         if (idleId !== null) win.cancelIdleCallback?.(idleId);
       };
     }
 
-    const timeoutId = win.setTimeout(() => setEnableNotificationRuntime(true), 1200);
+    const timeoutId = win.setTimeout(
+      () => setEnableNotificationRuntime(true),
+      1200,
+    );
     return () => win.clearTimeout(timeoutId);
   }, []);
 

@@ -86,7 +86,8 @@ export function markPendingVoteAddedToast() {
 
 export function consumePendingVoteAddedToast() {
   if (typeof window === "undefined") return false;
-  const shouldShow = window.sessionStorage.getItem(PENDING_VOTE_TOAST_KEY) === "1";
+  const shouldShow =
+    window.sessionStorage.getItem(PENDING_VOTE_TOAST_KEY) === "1";
   if (shouldShow) {
     window.sessionStorage.removeItem(PENDING_VOTE_TOAST_KEY);
   }

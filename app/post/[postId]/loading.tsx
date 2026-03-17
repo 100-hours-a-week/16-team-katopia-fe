@@ -1,9 +1,7 @@
-function SkeletonBlock({
-  className,
-}: {
-  className: string;
-}) {
-  return <div className={`animate-pulse rounded-md bg-neutral-200 ${className}`} />;
+function SkeletonBlock({ className }: { className: string }) {
+  return (
+    <div className={`animate-pulse rounded-md bg-neutral-200 ${className}`} />
+  );
 }
 
 export default function PostDetailLoading() {

@@ -44,9 +44,9 @@ async function waitForDetailReadiness(options: {
         return { ok: true, attempts: attempt };
       }
 
-      const payload = (await res.json().catch(() => null)) as
-        | { data?: { content?: string | null } }
-        | null;
+      const payload = (await res.json().catch(() => null)) as {
+        data?: { content?: string | null };
+      } | null;
       if (payload?.data?.content === expectedContent) {
         return { ok: true, attempts: attempt };
       }
@@ -100,7 +100,10 @@ export async function PATCH(request: Request, { params }: Props) {
       error,
     });
     return NextResponse.json(
-      { code: "UPSTREAM_FETCH_FAILED", message: "게시글 수정 요청에 실패했습니다." },
+      {
+        code: "UPSTREAM_FETCH_FAILED",
+        message: "게시글 수정 요청에 실패했습니다.",
+      },
       { status: 502 },
     );
   }

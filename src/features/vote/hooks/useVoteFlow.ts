@@ -151,11 +151,14 @@ export function useVoteFlow() {
     [paginate, x],
   );
 
-  const handleAnimationComplete = useCallback((completedCardId?: string) => {
-    const pendingIndex = pendingAnimatedIndexRef.current;
-    if (pendingIndex == null) return;
-    commitTransition(pendingIndex, completedCardId ?? null);
-  }, [commitTransition]);
+  const handleAnimationComplete = useCallback(
+    (completedCardId?: string) => {
+      const pendingIndex = pendingAnimatedIndexRef.current;
+      if (pendingIndex == null) return;
+      commitTransition(pendingIndex, completedCardId ?? null);
+    },
+    [commitTransition],
+  );
 
   const refreshCandidates = useCallback(async () => {
     try {

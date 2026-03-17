@@ -39,11 +39,14 @@ export async function createChatMessage(
   roomId: string,
   payload: CreateChatMessagePayload,
 ) {
-  const res = await authFetch(`${API_BASE_URL}/api/chat/rooms/${roomId}/messages`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+  const res = await authFetch(
+    `${API_BASE_URL}/api/chat/rooms/${roomId}/messages`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
 
   const raw = await res.text();
   const parsed = parseChatApiResponse<CreateChatMessageResponse>(raw);
@@ -51,7 +54,10 @@ export async function createChatMessage(
   if (!res.ok) {
     const fallbackMessage = raw.trim() || "채팅 메시지 생성에 실패했습니다.";
     const message =
-      parsed?.error ?? parsed?.messageText ?? parsed?.message ?? fallbackMessage;
+      parsed?.error ??
+      parsed?.messageText ??
+      parsed?.message ??
+      fallbackMessage;
     console.error("[createChatMessage] request failed", {
       status: res.status,
       body: raw.slice(0, 500),

@@ -1,8 +1,5 @@
 import { useCallback, useMemo } from "react";
-import {
-  useInfiniteQuery,
-  type InfiniteData,
-} from "@tanstack/react-query"; // 무한 스크롤용 React Query 훅입니다.
+import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query"; // 무한 스크롤용 React Query 훅입니다.
 import { getHomePosts, type GetHomePostsResponse } from "../api/getHomePosts";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 

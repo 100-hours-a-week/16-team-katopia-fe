@@ -73,12 +73,8 @@ export default function PostContent({
   const router = useRouter();
   const queryClient = useQueryClient();
   const { count: commentCount, set: setCommentCount } = useCommentCount();
-  const {
-    toggleLikeAsync,
-    liking,
-    toggleBookmarkAsync,
-    bookmarking,
-  } = useHomeFeedPostActions();
+  const { toggleLikeAsync, liking, toggleBookmarkAsync, bookmarking } =
+    useHomeFeedPostActions();
 
   const numericPostId = Number(postId);
   const initialHomeFeedPost = useMemo(() => {

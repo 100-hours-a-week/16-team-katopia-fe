@@ -6,7 +6,11 @@ type Params = {
   notifications: NotificationItem[];
   markAsRead: (id: number) => void;
 };
-const POST_DETAIL_TYPES = new Set(["POST_CREATED", "POST_LIKE", "POST_COMMENT"]);
+const POST_DETAIL_TYPES = new Set([
+  "POST_CREATED",
+  "POST_LIKE",
+  "POST_COMMENT",
+]);
 
 const toNumberOrNull = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) return value;

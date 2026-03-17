@@ -26,7 +26,11 @@ type GetChatMessagesResponse = {
   message?: string;
 };
 
-export async function getChatMessages(roomId: string, size = 20, after?: string) {
+export async function getChatMessages(
+  roomId: string,
+  size = 20,
+  after?: string,
+) {
   const params = new URLSearchParams({ size: String(size) });
   if (after) params.set("after", after);
 
@@ -39,7 +43,8 @@ export async function getChatMessages(roomId: string, size = 20, after?: string)
   const parsed = parseChatApiResponse<GetChatMessagesResponse>(raw);
 
   if (!res.ok) {
-    const fallbackMessage = raw.trim() || "채팅 메시지 목록을 불러오지 못했습니다.";
+    const fallbackMessage =
+      raw.trim() || "채팅 메시지 목록을 불러오지 못했습니다.";
     const message = parsed?.message ?? fallbackMessage;
     console.error("[getChatMessages] request failed", {
       status: res.status,

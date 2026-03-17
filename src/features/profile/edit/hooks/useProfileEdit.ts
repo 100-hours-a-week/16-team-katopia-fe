@@ -231,52 +231,47 @@ export function useProfileEdit() {
     }, durationMs);
   }, []);
 
-  const handleImageChange = useCallback(
-    (file: File) => {
-      if (file.size > 30 * 1024 * 1024) {
-        setImageError("사진 크기가 너무 큽니다. (최대 30MB)");
-        return;
-      }
+  const handleImageChange = useCallback((file: File) => {
+    if (file.size > 30 * 1024 * 1024) {
+      setImageError("사진 크기가 너무 큽니다. (최대 30MB)");
+      return;
+    }
 
-      setImageError(null);
-      setRemoveImage(false);
-      setImageBlob(null);
+    setImageError(null);
+    setRemoveImage(false);
+    setImageBlob(null);
 
-      const localUrl = URL.createObjectURL(file);
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-      previewUrlRef.current = localUrl;
-      setPreview(localUrl);
+    const localUrl = URL.createObjectURL(file);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = localUrl;
+    setPreview(localUrl);
 
-      processImageFile(file, {
-        maxWidth: 1080,
-        quality: 0.8,
-        outputType: "image/webp",
-        heicToJpegQuality: 0.9,
+    processImageFile(file, {
+      maxWidth: 1080,
+      quality: 0.8,
+      outputType: "image/webp",
+      heicToJpegQuality: 0.9,
+    })
+      .then(({ blob }) => {
+        setImageBlob(blob);
+        const processedUrl = URL.createObjectURL(blob);
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+        }
+        previewUrlRef.current = processedUrl;
+        setPreview(processedUrl);
       })
-        .then(({ blob }) => {
-          setImageBlob(blob);
-          const processedUrl = URL.createObjectURL(blob);
-          if (previewUrlRef.current) {
-            URL.revokeObjectURL(previewUrlRef.current);
-          }
-          previewUrlRef.current = processedUrl;
-          setPreview(processedUrl);
-        })
-        .catch((err) => {
-          if (previewUrlRef.current) {
-            URL.revokeObjectURL(previewUrlRef.current);
-            previewUrlRef.current = null;
-          }
-          setPreview(null);
-          setImageError(
-            err instanceof Error ? err.message : "이미지 처리 실패",
-          );
-        });
-    },
-    [],
-  );
+      .catch((err) => {
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
+        }
+        setPreview(null);
+        setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
+      });
+  }, []);
 
   const handleRemoveImage = useCallback(() => {
     if (previewUrlRef.current) {

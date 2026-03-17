@@ -120,9 +120,7 @@ export default function VoteCreatePage() {
           onValidityChange={setIsTitleValid}
           onDirtyChange={setIsTitleDirty}
         />
-        <VoteImagePicker
-          onPreviewsChange={setPreviews}
-        />
+        <VoteImagePicker onPreviewsChange={setPreviews} />
       </section>
 
       <div className="mt-10">

@@ -67,7 +67,10 @@ export function normalizeChatMessage(
     roomId: String(rawRoomId ?? ""),
     senderId: rawSenderId != null ? String(rawSenderId) : null,
     senderNickname:
-      item.senderNicknameSnapshot ?? item.senderNickname ?? item.nickname ?? null,
+      item.senderNicknameSnapshot ??
+      item.senderNickname ??
+      item.nickname ??
+      null,
     senderProfileImageObjectKey:
       item.senderProfileImageObjectKeySnapshot ??
       item.senderProfileImageObjectKey ??

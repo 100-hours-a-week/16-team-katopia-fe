@@ -107,21 +107,30 @@ export default function SearchPage() {
   const { setNode: setPostGridHostRef, height: postGridHeight } =
     useGridViewportHeight();
 
-  const handleDefaultGridHost = useCallback((node: HTMLDivElement | null) => {
-    setDefaultGridHostNode(node);
-    setDefaultGridHostRef(node);
-  }, [setDefaultGridHostRef]);
+  const handleDefaultGridHost = useCallback(
+    (node: HTMLDivElement | null) => {
+      setDefaultGridHostNode(node);
+      setDefaultGridHostRef(node);
+    },
+    [setDefaultGridHostRef],
+  );
 
-  const handlePostGridHost = useCallback((node: HTMLDivElement | null) => {
-    setPostGridHostNode(node);
-    setPostGridHostRef(node);
-  }, [setPostGridHostRef]);
+  const handlePostGridHost = useCallback(
+    (node: HTMLDivElement | null) => {
+      setPostGridHostNode(node);
+      setPostGridHostRef(node);
+    },
+    [setPostGridHostRef],
+  );
 
   useEffect(() => {
     if (!ready || !isAuthenticated || isSearching) return;
     if (gridLoading || !gridHasMore) return;
 
-    const minimumItems = getPrefillItemCount(defaultGridHostNode, defaultGridHeight);
+    const minimumItems = getPrefillItemCount(
+      defaultGridHostNode,
+      defaultGridHeight,
+    );
 
     if (minimumItems === 0) return;
     if (gridPosts.length >= minimumItems) return;

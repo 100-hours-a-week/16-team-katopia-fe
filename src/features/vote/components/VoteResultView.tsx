@@ -84,8 +84,7 @@ export default function VoteResultView({
                 : relative > 0
                   ? cardWidth * 0.45
                   : 0;
-            const rotateZ =
-              relative < 0 ? -4 : relative > 0 ? 4 : 0;
+            const rotateZ = relative < 0 ? -4 : relative > 0 ? 4 : 0;
             const rotateY = 0;
             const scale = isCenter ? 1 : 0.88;
             const zIndex = isCenter ? 20 : 10;

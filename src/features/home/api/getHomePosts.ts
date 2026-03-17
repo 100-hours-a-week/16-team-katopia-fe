@@ -91,7 +91,10 @@ function normalizeHomePostsResponse(result: unknown): GetHomePostsResponse {
   };
 }
 
-function buildHomePostsQuery(params?: { size?: number; after?: string | null }) {
+function buildHomePostsQuery(params?: {
+  size?: number;
+  after?: string | null;
+}) {
   const searchParams = new URLSearchParams();
 
   if (params?.size) searchParams.set("size", String(params.size));

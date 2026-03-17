@@ -7,9 +7,12 @@ type LeaveChatRoomResponse = {
 };
 
 export async function leaveChatRoom(roomId: string) {
-  const res = await authFetch(`${API_BASE_URL}/api/chat/rooms/${roomId}/leave`, {
-    method: "DELETE",
-  });
+  const res = await authFetch(
+    `${API_BASE_URL}/api/chat/rooms/${roomId}/leave`,
+    {
+      method: "DELETE",
+    },
+  );
 
   const raw = await res.text();
   const parsed = parseChatApiResponse<LeaveChatRoomResponse>(raw);

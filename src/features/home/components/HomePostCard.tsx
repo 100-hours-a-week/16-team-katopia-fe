@@ -52,5 +52,7 @@ function HomePostCard({ post, prioritizeMedia = false }: HomePostCardProps) {
 }
 
 export default memo(HomePostCard, (prev, next) => {
-  return prev.post === next.post && prev.prioritizeMedia === next.prioritizeMedia;
+  return (
+    prev.post === next.post && prev.prioritizeMedia === next.prioritizeMedia
+  );
 });

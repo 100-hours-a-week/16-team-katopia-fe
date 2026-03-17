@@ -16,13 +16,8 @@ export function usePostComments(
     [postId],
   );
 
-  const {
-    comments,
-    loading,
-    hasMore,
-    isFetchingNextPage,
-    fetchNextPage,
-  } = usePostCommentsQuery(postId, commentsQueryKey);
+  const { comments, loading, hasMore, isFetchingNextPage, fetchNextPage } =
+    usePostCommentsQuery(postId, commentsQueryKey);
 
   const { handleCreateComment, handleUpdateComment, handleDeleteComment } =
     usePostCommentMutations(

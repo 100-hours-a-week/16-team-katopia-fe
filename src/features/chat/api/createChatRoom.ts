@@ -60,7 +60,10 @@ export async function createChatRoom(payload: CreateChatRoomPayload) {
     isOwner: data?.isOwner,
     title: data?.title ?? payload.title,
     memberCount:
-      data?.participantCount ?? data?.memberCount ?? data?.currentMemberCount ?? 1,
+      data?.participantCount ??
+      data?.memberCount ??
+      data?.currentMemberCount ??
+      1,
     thumbnailImageObjectKey:
       data?.thumbnailImageObjectKey ?? payload.thumbnailImageObjectKey,
     thumbnailImageUrl: data?.thumbnailImageUrl ?? data?.thumbnailUrl,

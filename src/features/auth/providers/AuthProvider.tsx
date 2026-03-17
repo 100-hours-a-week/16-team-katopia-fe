@@ -88,20 +88,18 @@ export default function AuthProvider({
 
         setAuthenticated(meRes.ok);
         if (meRes.ok) {
-          const meJson = (await meRes.json().catch(() => null)) as
-            | {
-                data?: {
-                  id?: number | string;
-                  profile?: {
-                    memberId?: number | string;
-                    id?: number | string;
-                    nickname?: string;
-                    profileImageObjectKey?: string | null;
-                    profileImageUrl?: string | null;
-                  };
-                };
-              }
-            | null;
+          const meJson = (await meRes.json().catch(() => null)) as {
+            data?: {
+              id?: number | string;
+              profile?: {
+                memberId?: number | string;
+                id?: number | string;
+                nickname?: string;
+                profileImageObjectKey?: string | null;
+                profileImageUrl?: string | null;
+              };
+            };
+          } | null;
           const profile = meJson?.data?.profile ?? {};
           const memberId =
             meJson?.data?.id ?? profile.memberId ?? profile.id ?? undefined;

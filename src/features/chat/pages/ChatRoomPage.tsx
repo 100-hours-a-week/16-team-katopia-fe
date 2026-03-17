@@ -306,16 +306,21 @@ export default function ChatRoomPage({
   const messageInputRef = useRef<HTMLInputElement>(null);
   const lastPublishedReadMessageIdRef = useRef<number | null>(null);
   const hasEditedTitle = editTitle.trim() !== roomTitle.trim();
-  const hasEditedThumbnail = Boolean(editThumbnailFile) ||
+  const hasEditedThumbnail =
+    Boolean(editThumbnailFile) ||
     (editSelectedDefaultThumbnail !== null &&
       editSelectedDefaultThumbnail !== roomThumbnailSrc);
   const canSubmitEdit = Boolean(
     editTitle.trim() &&
-      editThumbnailPreview &&
-      !isUpdatingRoom &&
-      (hasEditedTitle || hasEditedThumbnail),
+    editThumbnailPreview &&
+    !isUpdatingRoom &&
+    (hasEditedTitle || hasEditedThumbnail),
   );
-  const { status: socketStatus, subscribe, publish } = useChatSocketConnection({
+  const {
+    status: socketStatus,
+    subscribe,
+    publish,
+  } = useChatSocketConnection({
     enabled: ready && isAuthenticated,
   });
 
@@ -397,8 +402,8 @@ export default function ChatRoomPage({
         setMessages(
           sortChatMessagesAsc(
             response.messages
-            .map((item) => toUiMessage(item, currentMember?.id))
-            .filter(isChatMessage),
+              .map((item) => toUiMessage(item, currentMember?.id))
+              .filter(isChatMessage),
           ),
         );
       } catch (error) {
@@ -428,9 +433,8 @@ export default function ChatRoomPage({
     let messageSubscription: StompSubscription | null = null;
     let readStateSubscription: StompSubscription | null = null;
     const messageDestination = buildChatRoomSubscribeDestination(roomId);
-    const readStateDestination = buildChatRoomReadStateSubscribeDestination(
-      roomId,
-    );
+    const readStateDestination =
+      buildChatRoomReadStateSubscribeDestination(roomId);
 
     const handleMessage = (frame: IMessage) => {
       if (process.env.NODE_ENV !== "production") {
@@ -597,7 +601,9 @@ export default function ChatRoomPage({
     const trimmedMessage = messageInput.trim();
     if ((!trimmedMessage && !pendingImageFile) || isSendingMessage) return;
     if (socketStatus !== "connected") {
-      window.alert("채팅 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.");
+      window.alert(
+        "채팅 연결이 아직 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.",
+      );
       return;
     }
 
@@ -881,14 +887,18 @@ export default function ChatRoomPage({
             disabled={isSendingMessage}
             readOnly={Boolean(pendingImageFile)}
             placeholder={
-              pendingImageFile ? "사진을 전송하려면 Enter를 눌러주세요." : "메세지 보내기.."
+              pendingImageFile
+                ? "사진을 전송하려면 Enter를 눌러주세요."
+                : "메세지 보내기.."
             }
             className="w-full bg-transparent text-[14px] text-[#111111] outline-none placeholder:text-[#bdbdbd]"
           />
           <button
             type="button"
             onClick={() => void handleSendMessage()}
-            disabled={(!messageInput.trim() && !pendingImageFile) || isSendingMessage}
+            disabled={
+              (!messageInput.trim() && !pendingImageFile) || isSendingMessage
+            }
             aria-label="메시지 전송"
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#111111] text-white disabled:bg-[#d2d2d2]"
           >

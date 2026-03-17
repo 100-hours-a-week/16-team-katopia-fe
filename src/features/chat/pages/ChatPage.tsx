@@ -293,7 +293,8 @@ export default function ChatPage() {
       const joinedRoom = {
         ...pendingJoinRoom,
         memberCount:
-          joined.participantCount ?? Math.max(pendingJoinRoom.memberCount + 1, 1),
+          joined.participantCount ??
+          Math.max(pendingJoinRoom.memberCount + 1, 1),
         joined: joined.joined ?? true,
         category: "mine" as const,
         unreadCount: undefined,

@@ -37,8 +37,8 @@ export async function getPostDetailViewerState(
     const res = await authFetch(
       `${API_BASE_URL}/api/posts/${postId}/viewer-state`,
       {
-      method: "GET",
-      cache: "no-store",
+        method: "GET",
+        cache: "no-store",
       },
     );
 
