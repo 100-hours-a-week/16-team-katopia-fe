@@ -55,6 +55,7 @@ export default function AppHeader({
           href="/chat"
           prefetch={false}
           aria-label="메시지"
+          data-testid="home-chat-link"
           className="flex h-9 w-9 items-center justify-center"
         >
           <Image src="/icons/home_send.svg" alt="" width={23} height={23} />

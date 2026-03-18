@@ -8,8 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep1/hooks/useNicknameHandlers";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
@@ -18,6 +16,10 @@ import {
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
 import { processImageFile } from "@/src/features/upload/utils/processImage";
+import {
+  profileQueryKeys,
+  useMyProfileQuery,
+} from "@/src/features/profile/hooks/useProfileQueries";
 
 const STYLE_TO_ENUM: Record<string, string> = {
   미니멀: "MINIMAL",
@@ -97,6 +99,7 @@ export function useProfileEdit() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { ready, isAuthenticated } = useAuth();
+  const myProfileQuery = useMyProfileQuery(ready && isAuthenticated);
 
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -150,50 +153,29 @@ export function useProfileEdit() {
   }, []);
 
   useEffect(() => {
-    if (!ready || !isAuthenticated) return;
+    const profile = myProfileQuery.data?.profile;
+    if (!profile) return;
 
-    const fetchProfile = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
-          credentials: "include",
-        });
+    const nextStyles =
+      profile.style?.map((style: string) => ENUM_TO_STYLE[style] ?? style) ??
+      [];
 
-        if (!res.ok) return;
+    form.reset({
+      nickname: profile.nickname ?? "",
+      gender: profile.gender === "female" ? "FEMALE" : "MALE",
+      height: profile.height ? String(profile.height) : "",
+      weight: profile.weight ? String(profile.weight) : "",
+      enableRealtimeNotification: profile.enableRealtimeNotification ?? true,
+    });
 
-        const json = await res.json();
-        const profile = json.data.profile;
-
-        const nextStyles =
-          profile.style?.map(
-            (style: string) => ENUM_TO_STYLE[style] ?? style,
-          ) ?? [];
-
-        form.reset({
-          nickname: profile.nickname ?? "",
-          gender: profile.gender === "F" ? "FEMALE" : "MALE",
-          height: profile.height ? String(profile.height) : "",
-          weight: profile.weight ? String(profile.weight) : "",
-          enableRealtimeNotification:
-            profile.enableRealtimeNotification ?? true,
-        });
-
-        setInitialNickname(profile.nickname ?? null);
-        setInitialStyles(nextStyles);
-        setStylesRef(nextStyles);
-
-        const profileImageKey =
-          profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
-        setCurrentProfileImageObjectKey(profileImageKey);
-        setPreview(resolveMediaUrl(profileImageKey ?? undefined));
-        setRemoveImage(false);
-        setImageBlob(null);
-      } catch {
-        // ignore (handled by auth guard)
-      }
-    };
-
-    fetchProfile();
-  }, [ready, isAuthenticated, form, setStylesRef]);
+    setInitialNickname(profile.nickname ?? null);
+    setInitialStyles(nextStyles);
+    setStylesRef(nextStyles);
+    setCurrentProfileImageObjectKey(profile.profileImageUrl ?? null);
+    setPreview(resolveMediaUrl(profile.profileImageUrl ?? undefined));
+    setRemoveImage(false);
+    setImageBlob(null);
+  }, [form, myProfileQuery.data?.profile, setStylesRef]);
 
   useEffect(() => {
     if (!ready) return;
@@ -338,7 +320,7 @@ export function useProfileEdit() {
           ),
         });
 
-        queryClient.invalidateQueries({ queryKey: ["me"] });
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.me() });
 
         showToast("수정이 완료되었습니다.");
         redirectTimerRef.current = setTimeout(

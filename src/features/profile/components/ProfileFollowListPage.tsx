@@ -12,6 +12,7 @@ import {
   getFollowers,
   type FollowerMember,
 } from "@/src/features/profile/api/getFollowers";
+import { formatProfileStat } from "@/src/features/profile/utils/formatProfileStat";
 
 type FollowTab = "follower" | "following";
 
@@ -148,7 +149,7 @@ export default function ProfileFollowListPage() {
           className="flex flex-col items-center"
         >
           <p className="text-[12px] font-semibold text-[#121212]">
-            {followerCount}
+            {formatProfileStat(followerCount)}
           </p>
           <p
             className={`mt-1 text-[12px] ${
@@ -166,7 +167,7 @@ export default function ProfileFollowListPage() {
           className="flex flex-col items-center"
         >
           <p className="text-[13px] font-semibold text-[#121212]">
-            {followingCount}
+            {formatProfileStat(followingCount)}
           </p>
           <p
             className={`mt-1 text-[12px] ${
