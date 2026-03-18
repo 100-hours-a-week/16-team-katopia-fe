@@ -35,9 +35,7 @@ export function toUiMessage(
         ? "right"
         : "left",
     senderNickname: message.senderNickname,
-    senderProfileImageUrl: resolveMediaUrl(
-      message.senderProfileImageObjectKey,
-    ),
+    senderProfileImageUrl: resolveMediaUrl(message.senderProfileImageObjectKey),
     message: message.imageObjectKey ? "" : message.message,
     imageUrl: message.imageObjectKey
       ? resolveMediaUrl(message.imageObjectKey)
