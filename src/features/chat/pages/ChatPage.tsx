@@ -95,6 +95,52 @@ function reorderMineRooms(
   return nextRooms;
 }
 
+function MineRoomSkeletonList() {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={`mine-skeleton-${index}`}
+          className="rounded-[30px] bg-[#f6f6f6] px-6 py-5"
+        >
+          <div className="flex items-center gap-4">
+            <div className="h-[52px] w-[52px] shrink-0 animate-pulse rounded-full bg-[#e8e8e8]" />
+            <div className="min-w-0 flex-1">
+              <div className="h-4 w-32 animate-pulse rounded-full bg-[#ececec]" />
+              <div className="mt-3 h-3 w-14 animate-pulse rounded-full bg-[#f0f0f0]" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function OpenRoomSkeletonGrid() {
+  return (
+    <>
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={`open-skeleton-${index}`}
+          className="bg-[#f3f3f3] px-6 pb-5 pt-5"
+          style={{
+            borderTopLeftRadius: "45px",
+            borderBottomLeftRadius: "40px",
+            borderTopRightRadius: "0px",
+            borderBottomRightRadius: "45px",
+          }}
+        >
+          <div className="mx-auto flex w-fit items-center justify-center gap-3">
+            <div className="h-[50px] w-[50px] animate-pulse rounded-full bg-[#e5e5e5]" />
+            <div className="h-3 w-8 animate-pulse rounded-full bg-[#ebebeb]" />
+          </div>
+          <div className="mx-auto mt-6 h-4 w-24 animate-pulse rounded-full bg-[#ececec]" />
+        </div>
+      ))}
+    </>
+  );
+}
+
 export default function ChatPage() {
   const router = useRouter();
   const createImageInputRef = useRef<HTMLInputElement>(null);
@@ -502,11 +548,7 @@ export default function ChatPage() {
               : "mt-11 space-y-5"
           }
         >
-          {activeTab === "mine" && isLoadingMineRooms && (
-            <div className="rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
-              내 채팅방을 불러오는 중입니다.
-            </div>
-          )}
+          {activeTab === "mine" && isLoadingMineRooms && <MineRoomSkeletonList />}
 
           {activeTab === "mine" && mineRoomsError && !isLoadingMineRooms && (
             <div className="rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
@@ -514,11 +556,7 @@ export default function ChatPage() {
             </div>
           )}
 
-          {activeTab === "open" && isLoadingOpenRooms && (
-            <div className="col-span-2 rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
-              오픈 채팅방을 불러오는 중입니다.
-            </div>
-          )}
+          {activeTab === "open" && isLoadingOpenRooms && <OpenRoomSkeletonGrid />}
 
           {activeTab === "open" && openRoomsError && !isLoadingOpenRooms && (
             <div className="col-span-2 rounded-[24px] border border-dashed border-[#cfcfcf] px-5 py-12 text-center text-[15px] text-[#8c8c8c]">
