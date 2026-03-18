@@ -37,6 +37,8 @@ export default function ChatRoomCard({
     <button
       type="button"
       onClick={onClick}
+      data-testid={`chat-room-card-${room.category}`}
+      data-room-id={String(room.id)}
       draggable={draggable}
       onDragStart={onDragStart}
       onDragOver={onDragOver}

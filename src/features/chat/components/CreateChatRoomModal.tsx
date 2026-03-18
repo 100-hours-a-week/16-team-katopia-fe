@@ -97,6 +97,7 @@ export default function CreateChatRoomModal({
           <input
             value={title}
             onChange={(event) => onTitleChange(event.target.value)}
+            data-testid="chat-room-title-input"
             placeholder="채팅방 제목을 입력하세요"
             disabled={isSubmitting}
             className="mt-4 h-[60px] w-full rounded-[24px] bg-[#f8f8fb] px-6 text-[14px] text-[#111111] outline-none placeholder:text-[#8b8fa1] disabled:opacity-70"
@@ -139,7 +140,7 @@ export default function CreateChatRoomModal({
           </p>
 
           <div className="mt-6 grid grid-cols-3 gap-4">
-            {defaultImages.map((image) => {
+            {defaultImages.map((image, index) => {
               const isSelected = thumbnailPreview === image;
 
               return (
@@ -147,6 +148,7 @@ export default function CreateChatRoomModal({
                   key={image}
                   type="button"
                   onClick={() => onSelectDefaultImage(image)}
+                  data-testid={`chat-default-image-${index}`}
                   className={`relative aspect-square overflow-hidden rounded-[26px] ${
                     isSelected
                       ? "ring-4 ring-black ring-offset-2 ring-offset-white"
@@ -178,6 +180,7 @@ export default function CreateChatRoomModal({
             type="button"
             onClick={onConfirm}
             disabled={!canSubmit}
+            data-testid="chat-room-confirm-button"
             className={`h-[54px] rounded-[24px] text-[15px] font-semibold transition-colors ${
               canSubmit
                 ? "bg-[#111111] text-white"

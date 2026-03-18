@@ -88,6 +88,7 @@ export default function ChatInput({
         <input
           ref={messageInputRef}
           type="text"
+          data-testid="chat-message-input"
           value={messageInput}
           onChange={(event) => {
             if (pendingImageFile) return;
@@ -110,6 +111,7 @@ export default function ChatInput({
           onClick={onSend}
           disabled={(!messageInput.trim() && !pendingImageFile) || isSendingMessage}
           aria-label="메시지 전송"
+          data-testid="chat-send-button"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#111111] text-white disabled:bg-[#d2d2d2]"
         >
           <svg

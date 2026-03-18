@@ -71,6 +71,7 @@ export default function ChatPageToolbar({
         <button
           type="button"
           aria-label="그룹 채팅방 만들기"
+          data-testid="chat-create-button"
           onClick={onCreate}
           className="flex h-11 w-11 items-center justify-center rounded-full text-[#111111]"
         >
@@ -94,6 +95,7 @@ export default function ChatPageToolbar({
         <button
           type="button"
           onClick={() => onTabChange("mine")}
+          data-testid="chat-tab-mine"
           className={`rounded-full border px-4 py-2 text-[15px] font-medium leading-none transition-colors ${
             activeTab === "mine"
               ? "border-black bg-black text-white"
@@ -105,6 +107,7 @@ export default function ChatPageToolbar({
         <button
           type="button"
           onClick={() => onTabChange("open")}
+          data-testid="chat-tab-open"
           className={`rounded-full border px-4 py-2 text-[15px] font-medium leading-none transition-colors ${
             activeTab === "open"
               ? "border-black bg-black text-white"

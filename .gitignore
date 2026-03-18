@@ -59,3 +59,4 @@ node_modules/
 /playwright.config.ts
 /.github/workflows/playwright.yml
 *.e2e.spec.ts
+/docs/chat-e2e-scenarios.md
