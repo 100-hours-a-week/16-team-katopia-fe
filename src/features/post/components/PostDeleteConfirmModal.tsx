@@ -29,10 +29,7 @@ export default function PostDeleteConfirmModal({
   if (!open || typeof window === "undefined") return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-60 bg-black/40"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-60 bg-black/40" onClick={onClose}>
       <div className="mx-auto h-dvh w-full max-w-107.5 px-5">
         <div className="flex h-full items-center justify-center">
           <div

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { memo } from "react";
 import Avatar from "@/src/shared/components/Avatar";
+import { formatProfileStat } from "@/src/features/profile/utils/formatProfileStat";
 
 type Profile = {
   nickname: string;
@@ -42,7 +43,6 @@ function ProfileSummary({
   const followerCount = stats?.followerCount ?? null;
   const followingCount = stats?.followingCount ?? null;
   const friendCount = stats?.friendCount ?? null;
-
   const statsItems = [
     postCount !== null && { label: "게시물", value: postCount },
     followerCount !== null && {
@@ -121,7 +121,7 @@ function ProfileSummary({
                     className="flex flex-col items-center"
                   >
                     <p className="text-[14px] font-semibold text-[#121212]">
-                      {item.value}
+                      {formatProfileStat(item.value)}
                     </p>
                     <p className="mt-1 text-[12px] text-gray-600 whitespace-nowrap">
                       {item.label}
@@ -130,7 +130,7 @@ function ProfileSummary({
                 ) : (
                   <>
                     <p className="text-[14px] font-semibold text-[#121212]">
-                      {item.value}
+                      {formatProfileStat(item.value)}
                     </p>
                     <p className="mt-1 text-[12px] text-gray-600 whitespace-nowrap">
                       {item.label}

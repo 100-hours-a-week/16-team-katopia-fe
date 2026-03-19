@@ -9,6 +9,26 @@ import { useMarkNotificationsRead } from "@/src/features/notifications/hooks/use
 import { EmptyNotification } from "@/src/features/notifications/components/EmptyNotification";
 import { NotificationItem as NotificationListItem } from "@/src/features/notifications/components/NotificationItem";
 
+function NotificationsSkeleton() {
+  return (
+    <div className="mt-7 space-y-6" aria-hidden>
+      <div className="h-8 w-16 rounded-full bg-[#f2f2f2]" />
+      <div className="space-y-5">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="rounded-[20px] border border-[#f3f3f3] px-5 py-5"
+          >
+            <div className="h-4 w-24 rounded-full bg-[#f3f3f3]" />
+            <div className="mt-3 h-4 w-full rounded-full bg-[#f5f5f5]" />
+            <div className="mt-2 h-4 w-4/5 rounded-full bg-[#f5f5f5]" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
   const {
@@ -16,7 +36,7 @@ export default function NotificationsPage() {
     setItems,
     hasMore,
     observe,
-    loading,
+    initialized,
   } = useInfiniteNotifications({ size: 20, enabled: true });
   const [initialUnreadIdSet] = useState<Set<number>>(
     () =>
@@ -73,6 +93,9 @@ export default function NotificationsPage() {
     };
   }, [commitMarkedAsRead]);
 
+  const showInitialLoading = !initialized && notifications.length === 0;
+  const showEmptyState = initialized && notifications.length === 0;
+
   return (
     <div className="min-h-screen bg-white">
       <header className="flex h-14 items-center px-4">
@@ -88,7 +111,9 @@ export default function NotificationsPage() {
       </header>
 
       <main className="px-6 pb-16">
-        {notifications.length === 0 && !loading ? (
+        {showInitialLoading ? (
+          <NotificationsSkeleton />
+        ) : showEmptyState ? (
           <EmptyNotification />
         ) : (
           <>

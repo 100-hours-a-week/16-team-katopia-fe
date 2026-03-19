@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { revalidatePostDetail } from "./revalidatePostDetail";
 
 export type UnbookmarkPostResponse = {
   postId: number;
@@ -25,5 +26,6 @@ export async function unbookmarkPost(
   }
 
   const data = (result as { data?: UnbookmarkPostResponse } | null)?.data;
+  await revalidatePostDetail(postId, "update");
   return data ?? { postId: Number(postId), isBookmarked: false };
 }

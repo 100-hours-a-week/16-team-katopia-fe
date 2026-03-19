@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 
 import { useCommentCount } from "../hooks/useCommentCountStore";
 import { getPostDetailViewerState } from "../api/getPostDetailViewerState";
 import { useHomeFeedPostActions } from "@/src/features/home/hooks/useHomeFeedPostActions";
 import type { GetHomePostsResponse } from "@/src/features/home/api/getHomePosts";
+import {
+  dismissBookmarkAddedToast,
+  showBookmarkAddedToast,
+} from "@/src/shared/lib/showBookmarkAddedToast";
+import { useRouter } from "next/navigation";
 
 type PostContentProps = {
   postId: string;
@@ -15,6 +24,7 @@ type PostContentProps = {
   likeCount: number;
   isLiked?: boolean;
   isBookmarked?: boolean;
+  onLikeBurst?: () => void;
 };
 
 type HomeFeedInfiniteData = InfiniteData<GetHomePostsResponse, string | null>;
@@ -58,65 +68,91 @@ export default function PostContent({
   likeCount,
   isLiked = false,
   isBookmarked = false,
+  onLikeBurst,
 }: PostContentProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
-  const { count: commentCount } = useCommentCount();
-  const {
-    toggleLikeAsync,
-    liking,
-    toggleBookmarkAsync,
-    bookmarking,
-  } = useHomeFeedPostActions();
+  const { count: commentCount, set: setCommentCount } = useCommentCount();
+  const { toggleLikeAsync, liking, toggleBookmarkAsync, bookmarking } =
+    useHomeFeedPostActions();
 
-  const [viewerLiked, setViewerLiked] = useState(isLiked);
-  const [viewerBookmarked, setViewerBookmarked] = useState(isBookmarked);
-  const [viewerLikeCount, setViewerLikeCount] = useState(likeCount);
-  const interactedRef = useRef(false);
   const numericPostId = Number(postId);
-
-  let homeFeedPost: GetHomePostsResponse["posts"][number] | null = null;
-  if (Number.isFinite(numericPostId)) {
+  const initialHomeFeedPost = useMemo(() => {
+    if (!Number.isFinite(numericPostId)) return null;
     const snapshots = queryClient.getQueriesData<HomeFeedInfiniteData>({
       queryKey: ["home-feed"],
     });
 
     for (const [, data] of snapshots) {
       const found = pickHomeFeedPost(data, numericPostId);
-      if (found) {
-        homeFeedPost = found;
-        break;
-      }
+      if (found) return found;
     }
-  }
+    return null;
+  }, [numericPostId, queryClient]);
+
+  const [viewerLiked, setViewerLiked] = useState(
+    initialHomeFeedPost?.isLiked ?? isLiked,
+  );
+  const [viewerBookmarked, setViewerBookmarked] = useState(
+    initialHomeFeedPost?.isBookmarked ?? isBookmarked,
+  );
+  const [viewerLikeCount, setViewerLikeCount] = useState(
+    Number(initialHomeFeedPost?.aggregate?.likeCount ?? likeCount),
+  );
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  const initialViewerState = useMemo(
+    () => ({
+      isLiked: initialHomeFeedPost?.isLiked ?? isLiked,
+      isBookmarked: initialHomeFeedPost?.isBookmarked ?? isBookmarked,
+      likeCount:
+        typeof initialHomeFeedPost?.aggregate?.likeCount === "number"
+          ? initialHomeFeedPost.aggregate.likeCount
+          : likeCount,
+      commentCount:
+        typeof initialHomeFeedPost?.aggregate?.commentCount === "number"
+          ? initialHomeFeedPost.aggregate.commentCount
+          : commentCount,
+    }),
+    [
+      commentCount,
+      initialHomeFeedPost?.aggregate?.commentCount,
+      initialHomeFeedPost?.aggregate?.likeCount,
+      initialHomeFeedPost?.isBookmarked,
+      initialHomeFeedPost?.isLiked,
+      isBookmarked,
+      isLiked,
+      likeCount,
+    ],
+  );
+
+  const { data: viewerState } = useQuery({
+    queryKey: ["post-viewer-state", postId],
+    queryFn: () => getPostDetailViewerState(postId),
+    initialData: initialViewerState,
+    // seed는 첫 paint에만 사용하고, 진입 시점마다 최신 viewer 상태를 재검증합니다.
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: false,
+    enabled: Boolean(postId),
+  });
 
   useEffect(() => {
-    if (
-      typeof homeFeedPost?.isLiked === "boolean" &&
-      typeof homeFeedPost?.isBookmarked === "boolean"
-    ) {
-      return;
+    if (typeof viewerState?.commentCount === "number") {
+      setCommentCount(viewerState.commentCount);
     }
+  }, [setCommentCount, viewerState?.commentCount]);
 
-    let cancelled = false;
-
-    getPostDetailViewerState(postId)
-      .then((res) => {
-        if (cancelled || !res || interactedRef.current) return;
-        if (typeof res.isLiked === "boolean") setViewerLiked(res.isLiked);
-        if (typeof res.isBookmarked === "boolean") {
-          setViewerBookmarked(res.isBookmarked);
-        }
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelled = true;
-    };
-  }, [homeFeedPost?.isBookmarked, homeFeedPost?.isLiked, postId]);
-
-  const liked = homeFeedPost?.isLiked ?? viewerLiked;
-  const likes = Number(homeFeedPost?.aggregate?.likeCount ?? viewerLikeCount);
-  const bookmarked = homeFeedPost?.isBookmarked ?? viewerBookmarked;
+  const liked = hasInteracted
+    ? viewerLiked
+    : (viewerState?.isLiked ?? viewerLiked);
+  const likes = hasInteracted
+    ? Number(viewerLikeCount)
+    : Number(viewerState?.likeCount ?? viewerLikeCount);
+  const bookmarked = hasInteracted
+    ? viewerBookmarked
+    : (viewerState?.isBookmarked ?? viewerBookmarked);
 
   const formatCount = (value: number) => {
     if (value < 1000) return String(value);
@@ -129,11 +165,12 @@ export default function PostContent({
 
     if (!Number.isFinite(numericPostId)) return;
 
-    interactedRef.current = true;
+    setHasInteracted(true);
     const prevLiked = liked;
     const prevLikes = likes;
     const nextLiked = !prevLiked;
 
+    if (nextLiked) onLikeBurst?.();
     setViewerLiked(nextLiked);
     setViewerLikeCount(Math.max(0, prevLikes + (nextLiked ? 1 : -1)));
 
@@ -156,11 +193,18 @@ export default function PostContent({
     if (bookmarking) return;
     if (!Number.isFinite(numericPostId)) return;
 
-    interactedRef.current = true;
+    setHasInteracted(true);
     const prevBookmarked = bookmarked;
     const nextBookmarked = !prevBookmarked;
 
     setViewerBookmarked(nextBookmarked);
+    if (nextBookmarked) {
+      showBookmarkAddedToast({
+        onView: () => router.push("/profile?tab=bookmarks"),
+      });
+    } else {
+      dismissBookmarkAddedToast();
+    }
 
     try {
       const result = await toggleBookmarkAsync({
@@ -168,7 +212,11 @@ export default function PostContent({
         nextBookmarked,
       });
       setViewerBookmarked(result.nextBookmarked);
+      if (!result.nextBookmarked) {
+        dismissBookmarkAddedToast();
+      }
     } catch {
+      dismissBookmarkAddedToast();
       setViewerBookmarked(prevBookmarked);
     }
   };

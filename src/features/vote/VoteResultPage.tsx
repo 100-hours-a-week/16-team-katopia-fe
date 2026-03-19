@@ -110,8 +110,6 @@ export default function VoteResultPage({ voteId }: Props) {
     <div
       className="min-h-svh bg-black px-6 pb-[calc(env(safe-area-inset-bottom)+24px)] pt-6 text-white"
       style={{
-        fontFamily:
-          '"NanumSquare", "Pretendard", "Apple SD Gothic Neo", sans-serif',
         background: "#000000",
       }}
     >
@@ -147,8 +145,8 @@ export default function VoteResultPage({ voteId }: Props) {
             }))}
             onRefresh={handleRefresh}
             showRefresh={false}
-            cardWidth={320}
-            cardHeight={460}
+            cardWidth={360}
+            cardHeight={540}
           />
           {loading && (
             <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-6">

@@ -12,8 +12,6 @@ export async function getPostDetail(postId: string) {
 
     const result = await res.json();
 
-    console.log(result);
-
     if (!res.ok) {
       throw result;
     }

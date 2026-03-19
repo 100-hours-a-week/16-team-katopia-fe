@@ -45,7 +45,8 @@ export async function getVoteCandidates(): Promise<{
       parsed = {};
     }
   }
-  const data = (parsed as VoteCandidatesApiResponse).data ??
+  const data =
+    (parsed as VoteCandidatesApiResponse).data ??
     (parsed as VoteCandidatesResponse);
 
   const items = (data.items ?? [])

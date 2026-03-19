@@ -2,42 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { useInfiniteMyVotes } from "@/src/features/vote/hooks/useInfiniteMyVotes";
 import { deleteVote } from "@/src/features/vote/api/deleteVote";
-
-export type Profile = {
-  userId: number;
-  nickname: string;
-  profileImageUrl: string | null;
-  gender: "male" | "female" | null;
-  height: number | null;
-  weight: number | null;
-  style: string[];
-};
-
-type ApiAggregate = {
-  postCount?: number | null;
-  followerCount?: number | null;
-  followingCount?: number | null;
-};
+import { useOptimisticPostCount } from "./useOptimisticPostCount";
+import { useMyProfileQuery } from "@/src/features/profile/hooks/useProfileQueries";
 
 export function useMyProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { ready, isAuthenticated } = useAuth();
 
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"posts" | "bookmarks" | "votes">(
     "posts",
   );
   const [postCount, setPostCount] = useState(0);
-  const [followerCount, setFollowerCount] = useState(0);
-  const [followingCount, setFollowingCount] = useState(0);
   const [voteMenuOpenId, setVoteMenuOpenId] = useState<string | number | null>(
     null,
   );
@@ -47,6 +27,10 @@ export function useMyProfilePage() {
   >(null);
   const [pendingDeleteTitle, setPendingDeleteTitle] = useState("");
   const [voteDeleting, setVoteDeleting] = useState(false);
+  const profileQuery = useMyProfileQuery(ready && isAuthenticated);
+  const profile = profileQuery.data?.profile ?? null;
+  const counts = profileQuery.data?.counts;
+  const optimisticPostCount = useOptimisticPostCount(postCount);
   const profileNickname = profile?.nickname ?? "";
   const profileMemberId = profile?.userId ?? "";
 
@@ -59,7 +43,7 @@ export function useMyProfilePage() {
     memberId: profile?.userId,
     size: 30,
     mode: "member",
-    enabled: activeTab === "posts",
+    enabled: activeTab === "posts" && typeof profile?.userId === "number",
   });
 
   const {
@@ -85,59 +69,6 @@ export function useMyProfilePage() {
   });
 
   useEffect(() => {
-    if (!ready || !isAuthenticated) return;
-
-    const fetchMe = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          throw new Error("내 정보 조회 실패");
-        }
-
-        const json = await res.json();
-        const rawProfile = json.data.profile;
-        const apiAggregate: ApiAggregate | undefined =
-          json.data?.aggregate ?? json.aggregate;
-        const userId = json.data.id;
-        const normalizedGender =
-          rawProfile.gender === "M" || rawProfile.gender === "MALE"
-            ? "male"
-            : rawProfile.gender === "F" || rawProfile.gender === "FEMALE"
-              ? "female"
-              : null;
-
-        const profileImageKey =
-          rawProfile.profileImageObjectKey ?? rawProfile.profileImageUrl;
-        setProfile({
-          userId,
-          ...rawProfile,
-          gender: normalizedGender,
-          profileImageUrl: profileImageKey ?? null,
-          height: rawProfile.height,
-          weight: rawProfile.weight,
-        });
-        setPostCount((prev) => {
-          const next = Number(apiAggregate?.postCount ?? 0) || 0;
-          return Math.max(prev, next);
-        });
-        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
-        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMe();
-  }, [ready, isAuthenticated]);
-
-  useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab === "bookmarks") {
       setActiveTab("bookmarks");
@@ -151,6 +82,12 @@ export function useMyProfilePage() {
       setActiveTab("posts");
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    const nextPostCount = counts?.postCount;
+    if (nextPostCount == null) return;
+    setPostCount((prev) => Math.max(prev, nextPostCount));
+  }, [counts?.postCount]);
 
   useEffect(() => {
     if (posts.length === 0) return;
@@ -167,11 +104,11 @@ export function useMyProfilePage() {
 
   const stats = useMemo(
     () => ({
-      postCount,
-      followerCount,
-      followingCount,
+      postCount: optimisticPostCount,
+      followerCount: counts?.followerCount ?? null,
+      followingCount: counts?.followingCount ?? null,
     }),
-    [postCount, followerCount, followingCount],
+    [counts?.followerCount, counts?.followingCount, optimisticPostCount],
   );
 
   const handleFollowerClick = useCallback(() => {
@@ -180,9 +117,15 @@ export function useMyProfilePage() {
     router.push(
       `/profile/follows?tab=follower&nickname=${encodeURIComponent(
         nickname,
-      )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
+      )}&followers=${counts?.followerCount ?? 0}&following=${counts?.followingCount ?? 0}&memberId=${memberId}`,
     );
-  }, [followerCount, followingCount, profileMemberId, profileNickname, router]);
+  }, [
+    counts?.followerCount,
+    counts?.followingCount,
+    profileMemberId,
+    profileNickname,
+    router,
+  ]);
 
   const handleFollowingClick = useCallback(() => {
     const nickname = profileNickname;
@@ -190,9 +133,15 @@ export function useMyProfilePage() {
     router.push(
       `/profile/follows?tab=following&nickname=${encodeURIComponent(
         nickname,
-      )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
+      )}&followers=${counts?.followerCount ?? 0}&following=${counts?.followingCount ?? 0}&memberId=${memberId}`,
     );
-  }, [followerCount, followingCount, profileMemberId, profileNickname, router]);
+  }, [
+    counts?.followerCount,
+    counts?.followingCount,
+    profileMemberId,
+    profileNickname,
+    router,
+  ]);
 
   const openDeleteModal = (voteId: string | number, title: string) => {
     setVoteMenuOpenId(null);
@@ -228,7 +177,7 @@ export function useMyProfilePage() {
     ready,
     isAuthenticated,
     profile,
-    loading,
+    loading: profileQuery.isPending,
     activeTab,
     handleTabChange,
     stats,

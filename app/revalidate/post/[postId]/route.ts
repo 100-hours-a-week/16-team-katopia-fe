@@ -57,7 +57,6 @@ export async function POST(request: Request, { params }: Props) {
         headers: {
           Authorization: authorization,
         },
-        cache: "no-store",
       });
       authorizedByMember = meRes.ok;
     } catch {
@@ -85,16 +84,20 @@ export async function POST(request: Request, { params }: Props) {
   }
 
   try {
-    revalidateTag(getPostDetailTag(postId), "max");
+    console.info("[revalidate-post] start", { postId, scope });
+    // 상세는 데이터 캐시(tag) + 경로 캐시(path)를 함께 무효화해
+    // 즉시성(동적 카운트 반영)과 정합성(페이지 HTML 재생성)을 동시에 보장합니다.
+    revalidateTag(getPostDetailTag(postId), { expire: 0 });
     revalidatePath(`/post/${postId}`);
+    revalidatePath("/post/[postId]", "page");
 
     if (scope === "delete") {
-      // 삭제 시 상세 외에도 목록성 화면이 최신 상태를 보도록 함께 무효화합니다.
-      revalidateTag("home-feed", "max");
+      revalidateTag("home-feed", { expire: 0 });
       revalidatePath("/home");
       revalidatePath("/search");
       revalidatePath("/profile");
     }
+    console.info("[revalidate-post] success", { postId, scope });
   } catch (error) {
     console.error("[revalidate-post] failed", { postId, scope, error });
     return errorResponse(

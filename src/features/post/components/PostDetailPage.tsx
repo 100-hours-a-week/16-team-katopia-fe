@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { usePostDetail } from "../hooks/usePostDetail";
 import type { PostDetail } from "../types/postDetail";
 
@@ -22,6 +23,7 @@ export default function PostDetailPage({
   postId,
   initialPost,
 }: PostDetailPageProps) {
+  const [likeBurstTrigger, setLikeBurstTrigger] = useState(0);
   const {
     post,
     loading,
@@ -60,7 +62,10 @@ export default function PostDetailPage({
           onDelete={() => setDeleteOpen(true)}
         />
 
-        <PostImageCarousel images={sortedImageUrls} />
+        <PostImageCarousel
+          images={sortedImageUrls}
+          likeBurstTrigger={likeBurstTrigger}
+        />
 
         <PostContent
           key={postId}
@@ -69,6 +74,7 @@ export default function PostDetailPage({
           likeCount={post.aggregate.likeCount}
           isLiked={post.isLiked}
           isBookmarked={post.isBookmarked}
+          onLikeBurst={() => setLikeBurstTrigger((prev) => prev + 1)}
         />
 
         <PostCommentSection

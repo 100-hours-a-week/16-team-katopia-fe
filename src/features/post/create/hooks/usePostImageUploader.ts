@@ -16,6 +16,7 @@ import {
   requestUploadPresign,
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
+import { processImageFile } from "@/src/features/upload/utils/processImage";
 
 const MAX_FILES = 3;
 const ACCEPT = "image/*";
@@ -37,80 +38,6 @@ type PreviewItem = {
   name: string;
   objectKey: string;
 };
-
-type EncodedImage = {
-  blob: Blob;
-  contentType: string;
-  extension: string;
-};
-
-async function resizeAndCompress(
-  file: File,
-  maxLongSide = 1440,
-): Promise<EncodedImage> {
-  let sourceFile = file;
-  const isHeicLike =
-    file.type === "image/heic" ||
-    file.type === "image/heif" ||
-    file.name.toLowerCase().endsWith(".heic") ||
-    file.name.toLowerCase().endsWith(".heif");
-  if (isHeicLike) {
-    try {
-      const buffer = await file.arrayBuffer();
-      const heicBlob = new Blob([buffer], {
-        type: file.type || "image/heic",
-      });
-      const { default: heic2any } = await import("heic2any");
-      const converted = await heic2any({
-        blob: heicBlob,
-        toType: "image/jpeg",
-        quality: 0.92,
-      });
-
-      const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
-      const safeName = file.name.replace(/\.heic$|\.heif$/i, ".jpg");
-      sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
-    } catch {
-      throw new Error(
-        "HEIC 파일은 업로드할 수 없습니다. JPG/PNG로 변환해주세요.",
-      );
-    }
-  }
-
-  const bitmap = await createImageBitmap(sourceFile, {
-    imageOrientation: "from-image",
-  });
-
-  const scale = Math.min(
-    1,
-    maxLongSide / Math.max(bitmap.width, bitmap.height),
-  );
-  const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width * scale;
-  canvas.height = bitmap.height * scale;
-
-  const ctx = canvas.getContext("2d")!;
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-  const blob = await new Promise<Blob>((resolve) =>
-    canvas.toBlob(
-      (result) => {
-        if (!result) throw new Error("이미지 압축 실패");
-        resolve(result);
-      },
-      "image/webp",
-      0.92,
-    ),
-  );
-
-  return {
-    blob,
-    contentType: "image/webp",
-    extension: "webp",
-  };
-}
 
 const getExtension = (name: string) => {
   const idx = name.lastIndexOf(".");
@@ -237,10 +164,12 @@ export function usePostImageUploader() {
           id,
           url: URL.createObjectURL(file),
           name: file.name,
+          // 업로드 완료 전까지 pending 키를 써서 submit을 막고 순서를 유지합니다.
           objectKey: `pending:${id}`,
         };
       });
 
+      // 처리/업로드가 끝나기 전에도 즉시 미리보기를 보여 체감 응답성을 높입니다.
       setPreviews((prev) => [...prev, ...tempItems]);
 
       setValue(
@@ -251,7 +180,16 @@ export function usePostImageUploader() {
 
       try {
         const encoded = await Promise.all(
-          validSelected.map((f) => resizeAndCompress(f)),
+          validSelected.map((f) =>
+            processImageFile(f, {
+              maxLongSide: 1440,
+              quality: 0.92,
+              outputType: "image/webp",
+              heicToJpegQuality: 0.92,
+              heicErrorMessage:
+                "HEIC 파일은 업로드할 수 없습니다. JPG/PNG로 변환해주세요.",
+            }),
+          ),
         );
 
         const presigned = await requestUploadPresign(

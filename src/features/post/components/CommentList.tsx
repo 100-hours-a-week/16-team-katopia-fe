@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import CommentItem from "./CommentItem";
 
 export type Comment = {
-  id: number;
+  id: number | string;
   nickname: string;
   content: string;
   createdAt?: string;
@@ -16,8 +16,8 @@ interface Props {
   loading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
-  onDelete: (id: number) => void;
-  onUpdate: (id: number, content: string) => void;
+  onDelete: (id: number | string) => void;
+  onUpdate: (id: number | string, content: string) => void;
   currentUserId?: number | string;
   currentUserNickname?: string;
 }

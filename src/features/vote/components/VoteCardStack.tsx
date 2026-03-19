@@ -1,5 +1,7 @@
 import type { MotionValue } from "framer-motion";
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
+import VoteSwipeHint from "./VoteSwipeHint";
 
 type Card = {
   id: string;
@@ -19,6 +21,7 @@ type Props = {
   opacity: MotionValue<number>;
   onDragEnd: (offsetX: number) => void;
   onAnimationComplete: (completedCardId?: string) => void;
+  showSwipeHint?: boolean;
 };
 
 export default function VoteCardStack({
@@ -34,10 +37,12 @@ export default function VoteCardStack({
   opacity,
   onDragEnd,
   onAnimationComplete,
+  showSwipeHint = false,
 }: Props) {
   return (
-    <section className="relative mt-10 flex h-[520px] items-center justify-center overflow-hidden">
-      <div className="relative h-[460px] w-full max-w-[330px] overflow-hidden [perspective:1400px] [transform-style:preserve-3d]">
+    <section className="relative mt-8 flex h-[590px] items-center justify-center overflow-hidden">
+      <div className="relative h-[530px] w-full max-w-[370px] overflow-hidden [perspective:1400px] [transform-style:preserve-3d]">
+        <VoteSwipeHint visible={showSwipeHint} />
         {prev && (
           <div
             className="absolute rounded-[28px]"
@@ -46,8 +51,8 @@ export default function VoteCardStack({
                 "translateX(-22%) translateY(8px) rotateY(22deg) translateZ(-120px) scale(0.86)",
               transformOrigin: "center",
               backfaceVisibility: "hidden",
-              width: "88%",
-              left: "6%",
+              width: "90%",
+              left: "5%",
               top: 0,
               bottom: 0,
             }}
@@ -73,8 +78,8 @@ export default function VoteCardStack({
                 "translateX(22%) translateY(8px) rotateY(-22deg) translateZ(-120px) scale(0.86)",
               transformOrigin: "center",
               backfaceVisibility: "hidden",
-              width: "88%",
-              left: "6%",
+              width: "90%",
+              left: "5%",
               top: 0,
               bottom: 0,
             }}
@@ -105,8 +110,8 @@ export default function VoteCardStack({
                 opacity,
                 touchAction: "pan-y",
                 backfaceVisibility: "hidden",
-                width: "92%",
-                left: "4%",
+                width: "96%",
+                left: "2%",
                 top: 0,
                 bottom: 0,
               }}
@@ -155,48 +160,70 @@ export default function VoteCardStack({
 
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-white">
                 <div className="flex flex-col items-center gap-1">
-                  <span
-                    className="vote-arrow h-10 w-10 text-white"
-                    style={
-                      {
-                        backgroundColor: "currentColor",
-                        maskImage: "url('/icons/left.svg')",
-                        WebkitMaskImage: "url('/icons/left.svg')",
-                        maskRepeat: "no-repeat",
-                        WebkitMaskRepeat: "no-repeat",
-                        maskSize: "contain",
-                        WebkitMaskSize: "contain",
-                        maskPosition: "center",
-                        WebkitMaskPosition: "center",
-                        "--dir": -1,
-                      } as React.CSSProperties
-                    }
+                  <svg
+                    viewBox="0 0 48 20"
+                    className="vote-guide-arc-left h-4 w-10 text-white/75"
                     aria-hidden="true"
+                  >
+                    <path
+                      d="M42 16 C32 4, 16 4, 6 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M10 7 L4 12 L11 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <Image
+                    src="/images/pointer.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={34}
+                    height={34}
+                    className="vote-guide-hand-left h-8 w-8"
                   />
-                  <span className="text-[11px] font-semibold">넘겨요</span>
+                  <span className="text-[11px] font-semibold">넘기기</span>
                 </div>
               </div>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white">
                 <div className="flex flex-col items-center gap-1">
-                  <span
-                    className="vote-arrow h-10 w-10 text-white"
-                    style={
-                      {
-                        backgroundColor: "currentColor",
-                        maskImage: "url('/icons/right.svg')",
-                        WebkitMaskImage: "url('/icons/right.svg')",
-                        maskRepeat: "no-repeat",
-                        WebkitMaskRepeat: "no-repeat",
-                        maskSize: "contain",
-                        WebkitMaskSize: "contain",
-                        maskPosition: "center",
-                        WebkitMaskPosition: "center",
-                        "--dir": 1,
-                      } as React.CSSProperties
-                    }
+                  <svg
+                    viewBox="0 0 48 20"
+                    className="vote-guide-arc-right h-4 w-10 text-white/75"
                     aria-hidden="true"
+                  >
+                    <path
+                      d="M6 16 C16 4, 32 4, 42 12"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                    />
+                    <path
+                      d="M38 7 L44 12 L37 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.8"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <Image
+                    src="/images/pointer.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={34}
+                    height={34}
+                    className="vote-guide-hand-right h-8 w-8"
                   />
-                  <span className="text-[11px] font-semibold">어울려요</span>
+                  <span className="text-[11px] font-semibold">좋아요</span>
                 </div>
               </div>
             </motion.div>

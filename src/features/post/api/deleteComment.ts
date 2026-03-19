@@ -23,7 +23,7 @@ export async function deleteComment({
     throw error;
   }
 
-  void revalidatePostDetail(postId, "update");
+  await revalidatePostDetail(postId, "update");
 
   return true;
 }

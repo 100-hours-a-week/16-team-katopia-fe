@@ -31,6 +31,7 @@ type Params = {
 
 const MAX_RETRY = Number.POSITIVE_INFINITY;
 const INITIAL_BOOTSTRAP_SIZE = 20;
+const TOAST_SEEN_STORAGE_KEY = "notifications:toast-seen-ids";
 
 const isNotificationItem = (value: unknown): value is NotificationItem => {
   // 런타임 타입 가드
@@ -79,10 +80,51 @@ export function useNotificationStream({
   const onNotificationsRef = useRef(onNotifications); // 핸들러 ref
   const bootstrapDoneRef = useRef(false); // 초기 동기화 1회 보장
 
+  const persistSeenIds = () => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        TOAST_SEEN_STORAGE_KEY,
+        JSON.stringify(Array.from(seenIdsRef.current)),
+      );
+    } catch {
+      // 저장소 접근 실패는 토스트 흐름을 막지 않음
+    }
+  };
+
+  const markSeenId = (id: number) => {
+    seenIdsRef.current.add(id);
+    if (seenIdsRef.current.size > seenIdsLimit) {
+      const first = seenIdsRef.current.values().next().value;
+      if (typeof first === "number") {
+        seenIdsRef.current.delete(first);
+      }
+    }
+    persistSeenIds();
+  };
+
   useEffect(() => {
     // 핸들러 ref 동기화
     onNotificationsRef.current = onNotifications; // 최신 핸들러 저장
   }, [onNotifications]); // 핸들러 변경 시 업데이트
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(TOAST_SEEN_STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return;
+
+      seenIdsRef.current = new Set(
+        parsed.filter((value): value is number => typeof value === "number"),
+      );
+    } catch {
+      seenIdsRef.current = new Set();
+    }
+  }, []);
 
   useEffect(() => {
     // SSE 라이프사이클
@@ -95,20 +137,16 @@ export function useNotificationStream({
       if (!toastEnabled) return;
       items.forEach((item) => {
         const id = item?.id;
-        if (typeof id === "number" && seenIdsRef.current.has(id)) return;
 
-        if (typeof id === "number") {
-          seenIdsRef.current.add(id);
-          if (seenIdsRef.current.size > seenIdsLimit) {
-            const first = seenIdsRef.current.values().next().value;
-            if (typeof first === "number") {
-              seenIdsRef.current.delete(first);
-            }
-          }
-        }
+        //이미 본 알림 ID면 토스트 스킵
+        if (typeof id === "number" && seenIdsRef.current.has(id)) return;
 
         const message = item?.message?.trim();
         if (!message) return;
+
+        if (typeof id === "number") {
+          markSeenId(id);
+        }
 
         toast(message, {
           position: "top-center",
@@ -148,7 +186,9 @@ export function useNotificationStream({
       if (reconnectAttemptRef.current >= MAX_RETRY) {
         // 최대 재시도 초과
         if (!isProd) {
-          console.warn("[notifications:sse] max retry reached. stop reconnect."); // 로그
+          console.warn(
+            "[notifications:sse] max retry reached. stop reconnect.",
+          ); // 로그
         }
         return; // 종료
       }
@@ -338,11 +378,14 @@ export function useNotificationStream({
             Math.max(30_000, reconnectIntervalMs * 4), // 최소 30초 또는 4배
           ); // 계산 끝
           if (!isProd) {
-            console.warn("[notifications:sse] server error, backoff reconnect", {
-              // 로그
-              status, // 상태 코드
-              retryDelay, // 지연 시간
-            }); // 로그 끝
+            console.warn(
+              "[notifications:sse] server error, backoff reconnect",
+              {
+                // 로그
+                status, // 상태 코드
+                retryDelay, // 지연 시간
+              },
+            ); // 로그 끝
           }
           scheduleReconnect(retryDelay); // 재연결 예약
           return; // 종료

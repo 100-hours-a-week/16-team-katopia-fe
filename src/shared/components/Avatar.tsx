@@ -42,8 +42,8 @@ export default function Avatar({
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-          src={resolvedSrc}
-          alt={alt}
+            src={resolvedSrc}
+            alt={alt}
             className={`absolute inset-0 h-full w-full object-cover ${imageClassName}`}
             loading="lazy"
           />
@@ -52,11 +52,11 @@ export default function Avatar({
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-          src={fallbackSrc}
-          alt={alt}
-          width={resolvedFallbackSize}
-          height={resolvedFallbackSize}
-          className={`${fallbackClassName} ${imageClassName}`}
+            src={fallbackSrc}
+            alt={alt}
+            width={resolvedFallbackSize}
+            height={resolvedFallbackSize}
+            className={`${fallbackClassName} ${imageClassName}`}
             loading="lazy"
           />
         </>

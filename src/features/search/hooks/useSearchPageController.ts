@@ -39,7 +39,7 @@ export function useSearchPageController() {
     items: gridPosts,
     loading: gridLoading,
     hasMore: gridHasMore,
-    observe: observeGrid,
+    loadMore: loadMoreGrid,
   } = useInfinitePostGrid({
     enabled: ready && isAuthenticated,
   });
@@ -54,7 +54,7 @@ export function useSearchPageController() {
     items: postResults,
     loading: postLoading,
     hasMore: postHasMore,
-    observe: observePosts,
+    loadMore: loadMorePosts,
   } = useInfinitePostGrid({
     mode: "search",
     query,
@@ -196,7 +196,7 @@ export function useSearchPageController() {
     gridPosts,
     gridLoading,
     gridHasMore,
-    observeGrid,
+    loadMoreGrid,
     accountResults,
     accountLoading,
     accountHasMore,
@@ -205,7 +205,7 @@ export function useSearchPageController() {
     postResults,
     postLoading,
     postHasMore,
-    observePosts,
+    loadMorePosts,
     trimmedQuery,
     shouldShowAccounts,
     shouldShowAccountEmpty,

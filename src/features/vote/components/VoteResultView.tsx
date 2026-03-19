@@ -25,8 +25,8 @@ export default function VoteResultView({
   items = [],
   onRefresh,
   showRefresh = true,
-  cardWidth = 290,
-  cardHeight = 420,
+  cardWidth = 340,
+  cardHeight = 500,
 }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -42,13 +42,18 @@ export default function VoteResultView({
 
   const visibleItems = useMemo(() => {
     if (items.length === 0) return [];
-    const prevIndex = (currentIndex - 1 + items.length) % items.length;
-    const nextIndex = (currentIndex + 1) % items.length;
-    return [
-      { item: items[prevIndex], position: "left" as const },
-      { item: items[currentIndex], position: "center" as const },
-      { item: items[nextIndex], position: "right" as const },
-    ];
+    return items
+      .map((item, itemIndex) => {
+        let relative = itemIndex - currentIndex;
+        const half = items.length / 2;
+
+        if (relative > half) relative -= items.length;
+        if (relative < -half) relative += items.length;
+
+        return { item, itemIndex, relative };
+      })
+      .filter(({ relative }) => Math.abs(relative) <= 1)
+      .sort((a, b) => a.relative - b.relative);
   }, [currentIndex, items]);
 
   return (
@@ -70,27 +75,26 @@ export default function VoteResultView({
           className="relative mx-auto w-full overflow-hidden perspective-distant"
           style={{ height: cardHeight + 40, maxWidth: cardWidth + 80 }}
         >
-          {visibleItems.map(({ item, position }) => {
+          {visibleItems.map(({ item, itemIndex, relative }) => {
             const safeSrc = item.imageUrl || "/images/logo.png";
-            const isCenter = position === "center";
+            const isCenter = relative === 0;
             const translateX =
-              position === "left"
+              relative < 0
                 ? -cardWidth * 0.45
-                : position === "right"
+                : relative > 0
                   ? cardWidth * 0.45
                   : 0;
-            const rotateZ =
-              position === "left" ? -4 : position === "right" ? 4 : 0;
+            const rotateZ = relative < 0 ? -4 : relative > 0 ? 4 : 0;
             const rotateY = 0;
             const scale = isCenter ? 1 : 0.88;
             const zIndex = isCenter ? 20 : 10;
-            const translateY = isCenter ? 0 : 12; // 👈 살짝 깊이감
+            const translateY = isCenter ? 0 : 12;
             const translateZ = isCenter ? 0 : -100;
             const opacity = isCenter ? 1 : 0.85;
 
             return (
               <div
-                key={position}
+                key={itemIndex}
                 className="absolute left-1/2 top-0 will-change-transform transform-3d"
                 style={{
                   transform: `translateX(calc(-50% + ${translateX}px)) translateY(${translateY}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg) scale(${scale})`,
@@ -102,10 +106,10 @@ export default function VoteResultView({
                   backfaceVisibility: "hidden",
                 }}
               >
-                {position === "left" && (
+                {relative < 0 && (
                   <div className="pointer-events-none absolute -right-7 top-[28%] z-0 h-2 w-15 -translate-y-1/2 rotate-[-20deg] rounded-full bg-white/90" />
                 )}
-                {position === "right" && (
+                {relative > 0 && (
                   <div className="pointer-events-none absolute -left-7 top-[28%] z-0 h-2 w-15 -translate-y-1/2 rotate-20 rounded-full bg-white/90" />
                 )}
                 <div
@@ -185,7 +189,7 @@ export default function VoteResultView({
           <button
             type="button"
             onClick={onRefresh}
-            className="flex h-14 w-full max-w-55 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-black"
+            className="flex h-14 w-full max-w-72 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-black"
           >
             <Image
               src="/icons/refresh.svg"

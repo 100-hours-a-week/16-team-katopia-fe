@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query"; // 무한 스크롤용 React Query 훅입니다.
+import { useCallback, useMemo } from "react";
+import { useInfiniteQuery, type InfiniteData } from "@tanstack/react-query"; // 무한 스크롤용 React Query 훅입니다.
 import { getHomePosts, type GetHomePostsResponse } from "../api/getHomePosts";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
@@ -26,10 +26,16 @@ export type HomePost = {
   createdAt?: string | null;
 };
 
+type ApiHomePost = NonNullable<GetHomePostsResponse["posts"]>[number];
+const mappedPostCache = new WeakMap<ApiHomePost, HomePost>();
+
 function mapHomePosts(data: GetHomePostsResponse) {
   const posts = data.posts ?? [];
 
   return posts.map<HomePost>((post) => {
+    const cached = mappedPostCache.get(post);
+    if (cached) return cached;
+
     const author = post.author ?? {
       id: 0,
       nickname: "",
@@ -38,7 +44,7 @@ function mapHomePosts(data: GetHomePostsResponse) {
     const imageUrl = imageUrls[0] ?? null;
     const avatarKey = author.profileImageObjectKey ?? null;
 
-    return {
+    const mapped: HomePost = {
       id: post.id,
       author: {
         id: author.id,
@@ -60,23 +66,56 @@ function mapHomePosts(data: GetHomePostsResponse) {
       isBookmarked: Boolean(post.isBookmarked),
       createdAt: post.createdAt ?? null,
     };
+
+    mappedPostCache.set(post, mapped);
+    return mapped;
   });
 }
+
+type HomeFeedQueryData = InfiniteData<GetHomePostsResponse, string | null> & {
+  items: HomePost[];
+};
 
 export function useInfiniteHomeFeed(params?: {
   size?: number;
   enabled?: boolean;
+  initialData?: GetHomePostsResponse | null;
 }) {
   const size = params?.size ?? 10;
   const enabled = params?.enabled ?? true;
-
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const initialData = params?.initialData;
+  const hasSeededPosts = (initialData?.posts?.length ?? 0) > 0;
 
   const { data, hasNextPage, isLoading, isFetchingNextPage, fetchNextPage } =
-    useInfiniteQuery({
-      queryKey: ["home-feed", size],
+    useInfiniteQuery<
+      GetHomePostsResponse,
+      Error,
+      HomeFeedQueryData,
+      ["home-feed", { size: number }, "infinite"],
+      string | null
+    >({
+      queryKey: ["home-feed", { size }, "infinite"],
       enabled,
       initialPageParam: null as string | null,
+      initialData: initialData
+        ? {
+            pages: [initialData],
+            pageParams: [null],
+          }
+        : undefined,
+      select: (infiniteData) => {
+        const deduped = new Map<number, HomePost>();
+        infiniteData.pages.forEach((page) => {
+          mapHomePosts(page).forEach((item) => deduped.set(item.id, item));
+        });
+        return {
+          ...infiniteData,
+          items: Array.from(deduped.values()),
+        };
+      },
+      refetchOnMount: hasSeededPosts ? false : true,
+      refetchOnWindowFocus: false,
+      // 짧은 staleTime으로 과도한 재요청은 줄이고 최신성은 유지합니다.
       staleTime: 30_000,
       gcTime: 10 * 60_000,
       queryFn: async ({ pageParam }) =>
@@ -88,67 +127,28 @@ export function useInfiniteHomeFeed(params?: {
         const rawNextCursor =
           lastPage.nextCursor === "" ? null : (lastPage.nextCursor ?? null);
         if (rawNextCursor == null) return undefined;
+        // 같은 커서 반복 응답 시 무한 재호출을 방지합니다.
         if (rawNextCursor === lastPageParam) return undefined;
         return rawNextCursor;
       },
     });
 
-  const items = useMemo(() => {
-    // 페이지별 데이터를 하나의 리스트로 합치고 ID 기준 중복을 제거
-    const map = new Map<number, HomePost>();
-    (data?.pages ?? []).forEach((page) => {
-      mapHomePosts(page).forEach((item) => map.set(item.id, item));
-    });
-    return Array.from(map.values());
-  }, [data?.pages]);
+  const items = useMemo(() => data?.items ?? [], [data?.items]);
 
   const hasMore = enabled ? Boolean(hasNextPage) : false;
   const loading = isLoading || isFetchingNextPage;
-
-  const observe = useCallback(
-    (node: HTMLDivElement | null) => {
-      // 감시 대상 노드가 바뀔 때마다 기존 옵저버를 정리.
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-        observerRef.current = null;
-      }
-
-      if (!node) return;
-
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          const entry = entries[0];
-          if (!entry?.isIntersecting) return;
-          if (!enabled) return;
-          if (!hasNextPage) return;
-          if (isFetchingNextPage) return;
-          fetchNextPage();
-        },
-        {
-          root: null,
-          rootMargin: "600px 0px", // 하단 600px 이전부터 미리 로딩을 시작
-          threshold: 0.01, // 1%만 보여도 콜백이 실행되도록 설정합니다.
-        },
-      );
-
-      observerRef.current.observe(node); // 전달받은 노드를 관찰 시작.
-    },
-    [enabled, fetchNextPage, hasNextPage, isFetchingNextPage],
-  );
-
-  useEffect(() => {
-    // 훅이 언마운트될 때 옵저버를 정리.
-    return () => {
-      observerRef.current?.disconnect();
-      observerRef.current = null;
-    };
-  }, []);
+  const loadMore = useCallback(() => {
+    if (!enabled) return;
+    if (!hasNextPage) return;
+    if (isFetchingNextPage) return;
+    void fetchNextPage();
+  }, [enabled, fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   return {
     items: enabled ? items : [],
     hasMore,
-    observe,
     loading,
-    loadMore: fetchNextPage,
+    isFetchingNextPage,
+    loadMore,
   };
 }

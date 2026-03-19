@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "@/src/config/api";
 import { authFetch } from "@/src/lib/auth";
+import { revalidatePostDetail } from "./revalidatePostDetail";
 
 export type BookmarkPostResponse = {
   postId: number;
@@ -25,5 +26,6 @@ export async function bookmarkPost(
   }
 
   const data = (result as { data?: BookmarkPostResponse } | null)?.data;
+  await revalidatePostDetail(postId, "update");
   return data ?? { postId: Number(postId), isBookmarked: true };
 }

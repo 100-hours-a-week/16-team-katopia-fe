@@ -12,7 +12,7 @@ export default function VoteActions({ disabled, onRefresh }: Props) {
         type="button"
         onClick={onRefresh}
         disabled={disabled}
-        className="flex h-14 w-full max-w-55 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-black disabled:opacity-40"
+        className="flex h-14 w-full max-w-72 items-center justify-center gap-2 rounded-full bg-white text-[15px] font-semibold text-black disabled:opacity-40"
       >
         <Image
           src="/icons/refresh.svg"

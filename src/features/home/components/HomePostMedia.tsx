@@ -3,12 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import LikeBurstHeart from "@/src/components/LikeBurstHeart";
+import { saveHomeScrollPosition } from "../utils/homeScrollPosition";
 
 type HomePostMediaProps = {
   postId: number;
   imageUrl?: string | null;
   imageUrls?: string[];
   prioritizeFirstImage?: boolean;
+  likeBurstTrigger?: number;
 };
 
 export default function HomePostMedia({
@@ -16,9 +19,15 @@ export default function HomePostMedia({
   imageUrl,
   imageUrls,
   prioritizeFirstImage = false,
+  likeBurstTrigger = 0,
 }: HomePostMediaProps) {
   const router = useRouter();
   const [index, setIndex] = useState(0);
+
+  const handleOpenPostDetail = () => {
+    saveHomeScrollPosition();
+    router.push(`/post/${postId}?from=home`);
+  };
 
   const images = useMemo(() => {
     const list = imageUrls?.length ? imageUrls : imageUrl ? [imageUrl] : [];
@@ -41,6 +50,7 @@ export default function HomePostMedia({
 
   return (
     <div className="group relative aspect-3/4 overflow-hidden rounded-[6px] bg-[#efefef]">
+      <LikeBurstHeart trigger={likeBurstTrigger} />
       <div
         className="flex h-full w-full transition-transform duration-300 ease-out will-change-transform"
         style={{ transform: `translate3d(-${safeIndex * 100}%, 0, 0)` }}
@@ -49,7 +59,7 @@ export default function HomePostMedia({
           <div key={imageIndex} className="h-full w-full shrink-0">
             <button
               type="button"
-              onClick={() => router.push(`/post/${postId}?from=home`)}
+              onClick={handleOpenPostDetail}
               className="relative block h-full w-full"
               aria-label="게시물 이미지"
             >
@@ -57,8 +67,9 @@ export default function HomePostMedia({
                 src={src}
                 alt={`게시물 이미지 ${imageIndex + 1}`}
                 fill
-                sizes="(max-width: 430px) 100vw, 430px"
+                sizes="(max-width: 768px) 100vw, 420px"
                 className="object-cover"
+                // 상단 피드 카드의 첫 이미지는 우선 로딩해 LCP 지연을 줄입니다.
                 priority={prioritizeFirstImage && imageIndex === 0}
                 fetchPriority={
                   prioritizeFirstImage && imageIndex === 0 ? "high" : "auto"
@@ -66,7 +77,8 @@ export default function HomePostMedia({
                 loading={
                   prioritizeFirstImage && imageIndex === 0 ? "eager" : "lazy"
                 }
-                quality={70}
+                // next.config.ts images.qualities와 맞춘 압축 품질입니다.
+                quality={65}
               />
             </button>
           </div>

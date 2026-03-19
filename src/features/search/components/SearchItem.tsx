@@ -1,3 +1,4 @@
+import { memo } from "react";
 import Link from "next/link";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
 
@@ -6,14 +7,14 @@ type Props = {
   postId: number;
 };
 
-export default function SearchItem({ src, postId }: Props) {
+function SearchItem({ src, postId }: Props) {
   const resolvedSrc = resolveMediaUrl(src);
 
   return (
     <Link
       href={`/post/${postId}`}
       prefetch={false}
-      className="relative aspect-3/4 bg-gray-100 overflow-hidden block"
+      className="relative block aspect-3/4 overflow-hidden bg-gray-100"
     >
       {resolvedSrc && (
         <>
@@ -29,3 +30,5 @@ export default function SearchItem({ src, postId }: Props) {
     </Link>
   );
 }
+
+export default memo(SearchItem);

@@ -3,63 +3,36 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
 import { useInfinitePostGrid } from "@/src/features/search/hooks/useInfinitePostGrid";
 import ProfilePostGrid from "../components/ProfilePostGrid";
 import ProfileSummary from "../components/ProfileSummary";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { followMember } from "@/src/features/profile/api/followMember";
 import { unfollowMember } from "@/src/features/profile/api/unfollowMember";
+import {
+  useMemberProfileQuery,
+  useMyProfileQuery,
+} from "@/src/features/profile/hooks/useProfileQueries";
 
 interface Props {
   userId: string;
 }
-
-/* ================= 타입 ================= */
-
-type ApiProfile = {
-  nickname: string;
-  profileImageUrl: string | null;
-  profileImageObjectKey?: string | null;
-  gender: "M" | "F" | null;
-  heightCm?: number | null;
-  weightKg?: number | null;
-  height?: number | null;
-  weight?: number | null;
-  style?: string[] | null;
-};
-
-type UserProfile = {
-  nickname: string;
-  profileImageUrl: string | null;
-  gender: "male" | "female" | null;
-  height: number | null;
-  weight: number | null;
-  style?: string[] | null;
-};
-
-type ApiAggregate = {
-  postCount?: number | null;
-  followerCount?: number | null;
-  followingCount?: number | null;
-};
-
-/* ================= 페이지 ================= */
 
 export default function UserProfilePage({ userId }: Props) {
   const router = useRouter();
   const memberId = Number(userId);
   const { ready, isAuthenticated } = useAuth();
 
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [postCount, setPostCount] = useState(0);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
-  const [isMe, setIsMe] = useState(false);
+  const profileEnabled = ready && isAuthenticated && Number.isFinite(memberId);
+  const profileQuery = useMemberProfileQuery(memberId, profileEnabled);
+  const myProfileQuery = useMyProfileQuery(ready && isAuthenticated);
+  const profile = profileQuery.data?.profile ?? null;
+  const isMe = myProfileQuery.data?.profile.userId === memberId;
 
   const {
     items: posts,
@@ -70,114 +43,8 @@ export default function UserProfilePage({ userId }: Props) {
     memberId,
     size: 30,
     mode: "member",
-    enabled: ready && isAuthenticated,
+    enabled: profileEnabled,
   });
-
-  /* ================= 프로필 ================= */
-
-  useEffect(() => {
-    if (!ready || !isAuthenticated) return;
-    if (Number.isNaN(memberId)) return;
-
-    const fetchProfile = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/members/${memberId}`, {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        if (!res.ok) throw new Error("프로필 조회 실패");
-
-        const json = await res.json();
-        console.log("[profile] /api/members/{id} response", json);
-        const apiProfile: ApiProfile | undefined = json.data?.profile;
-        const apiIsFollowingRaw =
-          json.data?.isFollowing ??
-          json.data?.followed ??
-          json.data?.isFollow ??
-          json.data?.following ??
-          json.data?.profile?.isFollowing ??
-          json.data?.profile?.followed ??
-          json.data?.profile?.isFollow ??
-          json.data?.profile?.following;
-        const apiAggregate: ApiAggregate | undefined =
-          json.data?.aggregate ?? json.aggregate;
-
-        if (!apiProfile) {
-          setProfile(null);
-          return;
-        }
-
-        const height = apiProfile.heightCm ?? apiProfile.height ?? null;
-        const weight = apiProfile.weightKg ?? apiProfile.weight ?? null;
-
-        setProfile({
-          nickname: apiProfile.nickname,
-          profileImageUrl:
-            apiProfile.profileImageObjectKey ?? apiProfile.profileImageUrl,
-          gender:
-            apiProfile.gender === "M"
-              ? "male"
-              : apiProfile.gender === "F"
-                ? "female"
-                : null,
-          height,
-          weight,
-          style: apiProfile.style ?? [],
-        });
-
-        setPostCount(Number(apiAggregate?.postCount ?? 0) || 0);
-        setFollowerCount(Number(apiAggregate?.followerCount ?? 0) || 0);
-        setFollowingCount(Number(apiAggregate?.followingCount ?? 0) || 0);
-
-        if (typeof apiIsFollowingRaw === "boolean") {
-          setIsFollowing(apiIsFollowingRaw);
-          if (typeof window !== "undefined") {
-            window.localStorage.setItem(
-              `following:${memberId}`,
-              apiIsFollowingRaw ? "1" : "0",
-            );
-          }
-        } else if (typeof window !== "undefined") {
-          const stored = window.localStorage.getItem(`following:${memberId}`);
-          if (stored === "1") setIsFollowing(true);
-          if (stored === "0") setIsFollowing(false);
-        }
-      } catch {
-        setProfile(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchProfile();
-  }, [memberId, ready, isAuthenticated]);
-
-  useEffect(() => {
-    if (!ready || !isAuthenticated) return;
-    if (Number.isNaN(memberId)) return;
-
-    const fetchMe = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-        });
-
-        if (!res.ok) return;
-        const json = await res.json();
-        const myId = Number(json.data?.id ?? NaN);
-        if (!Number.isNaN(myId)) {
-          setIsMe(myId === memberId);
-        }
-      } catch {
-        // ignore
-      }
-    };
-
-    fetchMe();
-  }, [memberId, ready, isAuthenticated]);
 
   useEffect(() => {
     if (!ready) return;
@@ -185,6 +52,39 @@ export default function UserProfilePage({ userId }: Props) {
       router.replace("/home");
     }
   }, [ready, isAuthenticated, router]);
+
+  useEffect(() => {
+    const nextCounts = profileQuery.data?.counts;
+    if (!nextCounts) return;
+    if (nextCounts.postCount !== null) {
+      setPostCount(nextCounts.postCount);
+    }
+    if (nextCounts.followerCount !== null) {
+      setFollowerCount(nextCounts.followerCount);
+    }
+    if (nextCounts.followingCount !== null) {
+      setFollowingCount(nextCounts.followingCount);
+    }
+  }, [profileQuery.data?.counts]);
+
+  useEffect(() => {
+    const serverFollowing = profileQuery.data?.isFollowing;
+    if (typeof serverFollowing === "boolean") {
+      setIsFollowing(serverFollowing);
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(
+          `following:${memberId}`,
+          serverFollowing ? "1" : "0",
+        );
+      }
+      return;
+    }
+
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(`following:${memberId}`);
+    if (stored === "1") setIsFollowing(true);
+    if (stored === "0") setIsFollowing(false);
+  }, [memberId, profileQuery.data?.isFollowing]);
 
   useEffect(() => {
     if (posts.length === 0) return;
@@ -198,6 +98,8 @@ export default function UserProfilePage({ userId }: Props) {
   if (!ready || !isAuthenticated) {
     return null;
   }
+
+  const loading = profileQuery.isPending || myProfileQuery.isPending;
 
   if (loading) {
     return (
@@ -214,6 +116,8 @@ export default function UserProfilePage({ userId }: Props) {
       </div>
     );
   }
+
+  const followListQuery = `followers=${followerCount}&following=${followingCount}&memberId=${memberId}`;
 
   return (
     <div className="min-h-screen px-4 py-4">
@@ -298,7 +202,7 @@ export default function UserProfilePage({ userId }: Props) {
         )}
       </div>
 
-      <div className="mx-auto w-full max-w-[430px]">
+      <div className="mx-auto w-full max-w-107.5">
         <ProfileSummary
           profile={profile}
           loading={false}
@@ -312,7 +216,7 @@ export default function UserProfilePage({ userId }: Props) {
             router.push(
               `/profile/follows?tab=follower&nickname=${encodeURIComponent(
                 nickname,
-              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
+              )}&${followListQuery}`,
             );
           }}
           onFollowingClick={() => {
@@ -320,7 +224,7 @@ export default function UserProfilePage({ userId }: Props) {
             router.push(
               `/profile/follows?tab=following&nickname=${encodeURIComponent(
                 nickname,
-              )}&followers=${followerCount}&following=${followingCount}&memberId=${memberId}`,
+              )}&${followListQuery}`,
             );
           }}
         />

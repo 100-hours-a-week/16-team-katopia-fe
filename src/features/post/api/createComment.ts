@@ -31,7 +31,7 @@ export async function createComment({
     throw result; // COMMENT-E-xxx
   }
 
-  void revalidatePostDetail(postId, "update");
+  await revalidatePostDetail(postId, "update");
 
   return result.data;
 }

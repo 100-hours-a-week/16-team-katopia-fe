@@ -2,8 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
   images: {
-    qualities: [70, 75],
+    qualities: [65, 70, 75],
     remotePatterns: [
       // 기존 테스트용
       {

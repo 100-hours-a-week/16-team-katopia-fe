@@ -6,11 +6,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import heic2any from "heic2any";
 
 import { updateProfile } from "@/src/features/profile/api/updateProfile";
-import { API_BASE_URL } from "@/src/config/api";
-import { authFetch } from "@/src/lib/auth";
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
 import { useNicknameHandlers } from "@/src/features/signup/components/SignupStep1/hooks/useNicknameHandlers";
 import { resolveMediaUrl } from "@/src/features/profile/utils/resolveMediaUrl";
@@ -18,6 +15,11 @@ import {
   requestUploadPresign,
   uploadToPresignedUrl,
 } from "@/src/features/upload/api/presignUpload";
+import { processImageFile } from "@/src/features/upload/utils/processImage";
+import {
+  profileQueryKeys,
+  useMyProfileQuery,
+} from "@/src/features/profile/hooks/useProfileQueries";
 
 const STYLE_TO_ENUM: Record<string, string> = {
   미니멀: "MINIMAL",
@@ -97,6 +99,7 @@ export function useProfileEdit() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { ready, isAuthenticated } = useAuth();
+  const myProfileQuery = useMyProfileQuery(ready && isAuthenticated);
 
   const [preview, setPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -150,50 +153,29 @@ export function useProfileEdit() {
   }, []);
 
   useEffect(() => {
-    if (!ready || !isAuthenticated) return;
+    const profile = myProfileQuery.data?.profile;
+    if (!profile) return;
 
-    const fetchProfile = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/members/me`, {
-          credentials: "include",
-        });
+    const nextStyles =
+      profile.style?.map((style: string) => ENUM_TO_STYLE[style] ?? style) ??
+      [];
 
-        if (!res.ok) return;
+    form.reset({
+      nickname: profile.nickname ?? "",
+      gender: profile.gender === "female" ? "FEMALE" : "MALE",
+      height: profile.height ? String(profile.height) : "",
+      weight: profile.weight ? String(profile.weight) : "",
+      enableRealtimeNotification: profile.enableRealtimeNotification ?? true,
+    });
 
-        const json = await res.json();
-        const profile = json.data.profile;
-
-        const nextStyles =
-          profile.style?.map(
-            (style: string) => ENUM_TO_STYLE[style] ?? style,
-          ) ?? [];
-
-        form.reset({
-          nickname: profile.nickname ?? "",
-          gender: profile.gender === "F" ? "FEMALE" : "MALE",
-          height: profile.height ? String(profile.height) : "",
-          weight: profile.weight ? String(profile.weight) : "",
-          enableRealtimeNotification:
-            profile.enableRealtimeNotification ?? true,
-        });
-
-        setInitialNickname(profile.nickname ?? null);
-        setInitialStyles(nextStyles);
-        setStylesRef(nextStyles);
-
-        const profileImageKey =
-          profile.profileImageObjectKey ?? profile.profileImageUrl ?? null;
-        setCurrentProfileImageObjectKey(profileImageKey);
-        setPreview(resolveMediaUrl(profileImageKey ?? undefined));
-        setRemoveImage(false);
-        setImageBlob(null);
-      } catch {
-        // ignore (handled by auth guard)
-      }
-    };
-
-    fetchProfile();
-  }, [ready, isAuthenticated, form, setStylesRef]);
+    setInitialNickname(profile.nickname ?? null);
+    setInitialStyles(nextStyles);
+    setStylesRef(nextStyles);
+    setCurrentProfileImageObjectKey(profile.profileImageUrl ?? null);
+    setPreview(resolveMediaUrl(profile.profileImageUrl ?? undefined));
+    setRemoveImage(false);
+    setImageBlob(null);
+  }, [form, myProfileQuery.data?.profile, setStylesRef]);
 
   useEffect(() => {
     if (!ready) return;
@@ -231,106 +213,47 @@ export function useProfileEdit() {
     }, durationMs);
   }, []);
 
-  const resizeAndCompress = useCallback(
-    async (target: File, maxWidth = 1080, quality = 0.8): Promise<Blob> => {
-      let sourceFile = target;
+  const handleImageChange = useCallback((file: File) => {
+    if (file.size > 30 * 1024 * 1024) {
+      setImageError("사진 크기가 너무 큽니다. (최대 30MB)");
+      return;
+    }
 
-      const lowerName = target.name.toLowerCase();
-      if (
-        target.type === "image/heic" ||
-        target.type === "image/heif" ||
-        lowerName.endsWith(".heic") ||
-        lowerName.endsWith(".heif")
-      ) {
-        const buffer = await target.arrayBuffer();
-        const heicBlob = new Blob([buffer], {
-          type: target.type || "image/heic",
-        });
-        const converted = await heic2any({
-          blob: heicBlob,
-          toType: "image/jpeg",
-          quality: 0.9,
-        });
+    setImageError(null);
+    setRemoveImage(false);
+    setImageBlob(null);
 
-        const jpegBlob = Array.isArray(converted) ? converted[0] : converted;
+    const localUrl = URL.createObjectURL(file);
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+    previewUrlRef.current = localUrl;
+    setPreview(localUrl);
 
-        const safeName = target.name.replace(/\.heic$|\.heif$/i, ".jpg");
-        sourceFile = new File([jpegBlob], safeName, { type: "image/jpeg" });
-      }
-
-      const bitmap = await createImageBitmap(sourceFile, {
-        imageOrientation: "from-image",
+    processImageFile(file, {
+      maxWidth: 1080,
+      quality: 0.8,
+      outputType: "image/webp",
+      heicToJpegQuality: 0.9,
+    })
+      .then(({ blob }) => {
+        setImageBlob(blob);
+        const processedUrl = URL.createObjectURL(blob);
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+        }
+        previewUrlRef.current = processedUrl;
+        setPreview(processedUrl);
+      })
+      .catch((err) => {
+        if (previewUrlRef.current) {
+          URL.revokeObjectURL(previewUrlRef.current);
+          previewUrlRef.current = null;
+        }
+        setPreview(null);
+        setImageError(err instanceof Error ? err.message : "이미지 처리 실패");
       });
-
-      const scale = Math.min(1, maxWidth / bitmap.width);
-      const canvas = document.createElement("canvas");
-      canvas.width = bitmap.width * scale;
-      canvas.height = bitmap.height * scale;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("이미지 처리 실패");
-      }
-      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-
-      return new Promise((resolve, reject) =>
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error("이미지 변환 실패"));
-              return;
-            }
-            resolve(blob);
-          },
-          "image/webp",
-          quality,
-        ),
-      );
-    },
-    [],
-  );
-
-  const handleImageChange = useCallback(
-    (file: File) => {
-      if (file.size > 30 * 1024 * 1024) {
-        setImageError("사진 크기가 너무 큽니다. (최대 30MB)");
-        return;
-      }
-
-      setImageError(null);
-      setRemoveImage(false);
-      setImageBlob(null);
-
-      const localUrl = URL.createObjectURL(file);
-      if (previewUrlRef.current) {
-        URL.revokeObjectURL(previewUrlRef.current);
-      }
-      previewUrlRef.current = localUrl;
-      setPreview(localUrl);
-
-      resizeAndCompress(file)
-        .then((blob) => {
-          setImageBlob(blob);
-          const processedUrl = URL.createObjectURL(blob);
-          if (previewUrlRef.current) {
-            URL.revokeObjectURL(previewUrlRef.current);
-          }
-          previewUrlRef.current = processedUrl;
-          setPreview(processedUrl);
-        })
-        .catch((err) => {
-          if (previewUrlRef.current) {
-            URL.revokeObjectURL(previewUrlRef.current);
-            previewUrlRef.current = null;
-          }
-          setPreview(null);
-          setImageError(
-            err instanceof Error ? err.message : "이미지 처리 실패",
-          );
-        });
-    },
-    [resizeAndCompress],
-  );
+  }, []);
 
   const handleRemoveImage = useCallback(() => {
     if (previewUrlRef.current) {
@@ -397,7 +320,7 @@ export function useProfileEdit() {
           ),
         });
 
-        queryClient.invalidateQueries({ queryKey: ["me"] });
+        queryClient.invalidateQueries({ queryKey: profileQueryKeys.me() });
 
         showToast("수정이 완료되었습니다.");
         redirectTimerRef.current = setTimeout(

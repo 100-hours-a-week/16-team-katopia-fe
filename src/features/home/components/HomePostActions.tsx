@@ -3,6 +3,11 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useHomeFeedPostActions } from "@/src/features/home/hooks/useHomeFeedPostActions";
+import { saveHomeScrollPosition } from "../utils/homeScrollPosition";
+import {
+  dismissBookmarkAddedToast,
+  showBookmarkAddedToast,
+} from "@/src/shared/lib/showBookmarkAddedToast";
 
 type HomePostActionsProps = {
   postId: number;
@@ -10,6 +15,7 @@ type HomePostActionsProps = {
   commentCount: number;
   isLiked?: boolean;
   isBookmarked?: boolean;
+  onLikeBurst?: () => void;
 };
 
 function BookmarkIcon({ active }: { active: boolean }) {
@@ -37,9 +43,10 @@ export default function HomePostActions({
   commentCount,
   isLiked = false,
   isBookmarked = false,
+  onLikeBurst,
 }: HomePostActionsProps) {
   const router = useRouter();
-  const { toggleLike, liking, toggleBookmark, bookmarking } =
+  const { toggleLike, liking, toggleBookmarkAsync, bookmarking } =
     useHomeFeedPostActions();
 
   const liked = isLiked;
@@ -54,12 +61,38 @@ export default function HomePostActions({
 
   const handleToggleLike = () => {
     if (liking) return;
-    toggleLike({ postId, nextLiked: !liked });
+    const nextLiked = !liked;
+    if (nextLiked) onLikeBurst?.();
+    toggleLike({ postId, nextLiked });
   };
 
-  const handleToggleBookmark = () => {
+  const handleToggleBookmark = async () => {
     if (bookmarking) return;
-    toggleBookmark({ postId, nextBookmarked: !bookmarked });
+    const nextBookmarked = !bookmarked;
+    if (nextBookmarked) {
+      showBookmarkAddedToast({
+        onView: () => router.push("/profile?tab=bookmarks"),
+      });
+    } else {
+      dismissBookmarkAddedToast();
+    }
+    try {
+      const result = await toggleBookmarkAsync({
+        postId,
+        nextBookmarked,
+      });
+      if (!result.nextBookmarked) {
+        dismissBookmarkAddedToast();
+      }
+    } catch {
+      dismissBookmarkAddedToast();
+      // mutation onError handles user-facing failure messaging
+    }
+  };
+
+  const handleOpenPostDetail = () => {
+    saveHomeScrollPosition();
+    router.push(`/post/${postId}?from=home`);
   };
 
   return (
@@ -84,7 +117,7 @@ export default function HomePostActions({
         </button>
         <button
           type="button"
-          onClick={() => router.push(`/post/${postId}?from=home`)}
+          onClick={handleOpenPostDetail}
           className="flex items-center gap-2 text-neutral-900"
           aria-label="댓글"
         >

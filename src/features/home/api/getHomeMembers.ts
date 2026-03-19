@@ -75,8 +75,6 @@ export async function getHomeMembers(): Promise<GetHomeMembersResponse> {
 async function issueServerAccessToken(
   cookieHeader?: string | null,
 ): Promise<string | null> {
-  // 서버 컴포넌트에서는 브라우저 sessionStorage 기반 authFetch를 쓸 수 없어서
-  // refresh token cookie로 access token을 직접 재발급한다.
   if (!cookieHeader) return null;
   const tokenRes = await fetch(`${API_BASE_URL}/api/auth/tokens`, {
     method: "POST",

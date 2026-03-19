@@ -3,12 +3,10 @@ import { useRouter } from "next/navigation";
 import type { Comment } from "./CommentList";
 import Avatar from "@/src/shared/components/Avatar";
 
-// 여기 수정 시 리렌더링 최소화 하기. 입력할 때 마다 그 Item 부분이 계속 렌더링이 되가지구..
-
 interface Props {
   comment: Comment;
-  onDelete: (id: number) => void;
-  onUpdate: (id: number, content: string) => void;
+  onDelete: (id: number | string) => void;
+  onUpdate: (id: number | string, content: string) => void;
   currentUserId?: number | string;
   currentUserNickname?: string;
 }
@@ -23,7 +21,11 @@ export default function CommentItem({
   const MAX_COMMENT_LENGTH = 200;
   const router = useRouter();
   const avatarColors = ["#D9D9D9", "#E3DFFC", "#F8E0E0", "#D9F1FF", "#E8F5E9"];
-  const color = avatarColors[comment.id % avatarColors.length] ?? "#D9D9D9";
+  const colorSeed =
+    typeof comment.id === "number"
+      ? Math.abs(comment.id)
+      : Array.from(comment.id).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  const color = avatarColors[colorSeed % avatarColors.length] ?? "#D9D9D9";
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(comment.content);
   const editRef = useRef<HTMLTextAreaElement | null>(null);
