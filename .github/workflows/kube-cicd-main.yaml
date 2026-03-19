@@ -1,4 +1,4 @@
-name: CI/CD (kube dev) - Frontend
+name: kube-cicd-prod - Nextjs
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: kube-cicd-dev-${{ github.ref }}
+  group: kube-cicd-prod-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -21,6 +21,9 @@ jobs:
     name: Docker Build + Push (ECR)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      image_uri: ${{ steps.meta.outputs.image_uri }}
 
     steps:
       - name: Checkout
@@ -39,10 +42,72 @@ jobs:
         id: login_ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push Docker image
+      - name: Set image metadata
+        id: meta
         env:
           ECR_REGISTRY: ${{ steps.login_ecr.outputs.registry }}
         run: |
           set -euo pipefail
-          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:frontend" .
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:frontend"
+          TAG="prod-${GITHUB_SHA::7}"
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY"
+
+          echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "image_uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker image
+        run: |
+          set -euo pipefail
+          IMAGE_URI="${{ steps.meta.outputs.image_uri }}"
+          TAG="${{ steps.meta.outputs.image_tag }}"
+
+          docker build \
+            -t "$IMAGE_URI:$TAG" \
+            -t "$IMAGE_URI:prod-frontend" \
+            .
+
+          docker push "$IMAGE_URI:$TAG"
+          docker push "$IMAGE_URI:prod-frontend"
+
+  update-deploy-repo:
+    name: Update deploy repo image tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build-and-push
+
+    steps:
+      - name: Checkout deploy repo
+        uses: actions/checkout@v4
+        with:
+          repository: 100-hours-a-week/16-team-katopia-deploy
+          token: ${{ secrets.DEPLOY_REPO_PAT }}
+          path: deploy-repo
+
+      - name: Update frontend image in deployment manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE="deploy-repo/prod/frontend/deployment.yaml"
+          NEW_IMAGE="${{ needs.build-and-push.outputs.image_uri }}:${{ needs.build-and-push.outputs.image_tag }}"
+
+          sed -i "s#^\([[:space:]]*image:[[:space:]]*\).*#\1${NEW_IMAGE}#g" "$FILE"
+
+          echo "Updated file:"
+          grep -n "image:" "$FILE"
+
+      - name: Commit and push changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd deploy-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add prod/frontend/deployment.yaml
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore: update frontend image to ${{ needs.build-and-push.outputs.image_tag }}"
+          git push
