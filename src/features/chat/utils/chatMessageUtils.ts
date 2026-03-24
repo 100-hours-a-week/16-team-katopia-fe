@@ -15,6 +15,8 @@ export type ChatMessage = {
   optimistic?: boolean;
 };
 
+export const MAX_CHAT_MESSAGES = 200;
+
 export function parseNumericMessageId(value: string) {
   const numericId = Number(value);
   return Number.isFinite(numericId) && numericId > 0 ? numericId : null;
@@ -110,6 +112,21 @@ export function reconcileIncomingMessage(
   }
 
   return mergeChatMessages(prev, next);
+}
+
+export function trimRecentChatMessages(
+  messages: ChatMessage[],
+  maxMessages = MAX_CHAT_MESSAGES,
+) {
+  if (messages.length <= maxMessages) {
+    return messages;
+  }
+
+  const optimisticMessages = messages.filter((message) => message.optimistic);
+  const normalMessages = messages.filter((message) => !message.optimistic);
+  const trimmedNormalMessages = normalMessages.slice(-maxMessages);
+
+  return [...trimmedNormalMessages, ...optimisticMessages];
 }
 
 export function getLastReadableMessageId(messages: ChatMessage[]) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Image from "next/image";
 
 import { formatMessageTime } from "@/src/features/chat/utils/chatMessageUtils";
@@ -15,7 +16,7 @@ type ChatBubbleProps = {
   onImageClick?: (imageUrl: string) => void;
 };
 
-export default function ChatBubble({
+function ChatBubble({
   direction,
   senderNickname,
   senderProfileImageUrl,
@@ -125,3 +126,7 @@ export default function ChatBubble({
     </div>
   );
 }
+
+const MemoizedChatBubble = memo(ChatBubble);
+MemoizedChatBubble.displayName = "ChatBubble";
+export default MemoizedChatBubble;

@@ -1,8 +1,9 @@
 "use client";
 
+import { memo, useEffect } from "react";
 import type { RefObject } from "react";
 
-import ChatBubble from "@/src/features/chat/components/ChatBubble";
+import ChatMessageRow from "@/src/features/chat/components/ChatMessageRow";
 import type { ChatMessage } from "@/src/features/chat/utils/chatMessageUtils";
 
 type ChatMessageListProps = {
@@ -12,20 +13,62 @@ type ChatMessageListProps = {
   isLoadingMessages: boolean;
   isLoadingMoreMessages: boolean;
   messagesError: string | null;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
+  topSentinelRef: RefObject<HTMLDivElement | null>;
   messageEndRef: RefObject<HTMLDivElement | null>;
+  onLoadPreviousMessages: () => void;
   onImageClick: (imageUrl: string) => void;
 };
 
-export default function ChatMessageList({
+function ChatMessageList({
   roomId,
   messages,
   unreadCountByMessageId,
   isLoadingMessages,
   isLoadingMoreMessages,
   messagesError,
+  scrollContainerRef,
+  topSentinelRef,
   messageEndRef,
+  onLoadPreviousMessages,
   onImageClick,
 }: ChatMessageListProps) {
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const target = topSentinelRef.current;
+    if (!container || !target || !onLoadPreviousMessages) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return;
+        onLoadPreviousMessages();
+      },
+      {
+        root: container,
+        threshold: 0,
+      },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [onLoadPreviousMessages, scrollContainerRef, topSentinelRef]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (isLoadingMessages || isLoadingMoreMessages) return;
+    if (container.scrollTop > 50) return;
+
+    onLoadPreviousMessages();
+  }, [
+    isLoadingMessages,
+    isLoadingMoreMessages,
+    messages.length,
+    onLoadPreviousMessages,
+    scrollContainerRef,
+  ]);
+
   const loadingSkeleton = (
     <div className="space-y-5 px-1">
       <div className="flex items-start gap-3">
@@ -56,7 +99,8 @@ export default function ChatMessageList({
   );
 
   return (
-    <div className="space-y-4">
+    <section className="space-y-4">
+      <div ref={topSentinelRef} className="h-px w-full" />
       {isLoadingMoreMessages && (
         <div className="rounded-[20px] bg-[#f7f7f7] px-5 py-3 text-center text-[13px] text-[#888888]">
           이전 메시지를 불러오는 중입니다.
@@ -68,22 +112,61 @@ export default function ChatMessageList({
           {messagesError}
         </div>
       )}
-      {messages.map((message) => (
-        <ChatBubble
-          key={`${roomId}-${message.id}`}
-          direction={message.direction}
-          senderNickname={message.senderNickname}
-          senderProfileImageUrl={message.senderProfileImageUrl}
-          message={message.message}
-          imageUrl={message.imageUrl}
-          createdAt={message.createdAt}
-          unreadCount={
-            message.messageId ? unreadCountByMessageId[message.messageId] : null
-          }
-          onImageClick={onImageClick}
+      {!isLoadingMessages && !messagesError ? (
+        <div className="space-y-4">
+          {messages.map((message) => (
+            <ChatMessageRow
+              key={`${roomId}-${message.id}`}
+              message={message}
+              unreadCount={
+                message.messageId
+                  ? unreadCountByMessageId[message.messageId]
+                  : null
+              }
+              onImageClick={onImageClick}
+            />
+          ))}
+          <div
+            ref={messageEndRef}
+            className="h-2.5 w-full"
+            style={{ scrollMarginBottom: "120px" }}
+          />
+        </div>
+      ) : (
+        <div
+          ref={messageEndRef}
+          className="h-2.5 w-full"
+          style={{ scrollMarginBottom: "120px" }}
         />
-      ))}
-      <div ref={messageEndRef} />
-    </div>
+      )}
+    </section>
   );
 }
+
+function areEqualChatMessageListProps(
+  prevProps: ChatMessageListProps,
+  nextProps: ChatMessageListProps,
+) {
+  return (
+    prevProps.roomId === nextProps.roomId &&
+    prevProps.messages === nextProps.messages &&
+    prevProps.unreadCountByMessageId === nextProps.unreadCountByMessageId &&
+    prevProps.isLoadingMessages === nextProps.isLoadingMessages &&
+    prevProps.isLoadingMoreMessages === nextProps.isLoadingMoreMessages &&
+    prevProps.messagesError === nextProps.messagesError &&
+    prevProps.scrollContainerRef === nextProps.scrollContainerRef &&
+    prevProps.topSentinelRef === nextProps.topSentinelRef &&
+    prevProps.messageEndRef === nextProps.messageEndRef &&
+    prevProps.onLoadPreviousMessages === nextProps.onLoadPreviousMessages &&
+    prevProps.onImageClick === nextProps.onImageClick
+  );
+}
+
+const MemoizedChatMessageList = memo(
+  ChatMessageList,
+  areEqualChatMessageListProps,
+);
+
+MemoizedChatMessageList.displayName = "ChatMessageList";
+
+export default MemoizedChatMessageList;

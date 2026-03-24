@@ -1,7 +1,7 @@
 "use client";
 
 import type { IMessage, StompSubscription } from "@stomp/stompjs";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { getChatMessages } from "@/src/features/chat/api/getChatMessages";
 import { normalizeChatMessage } from "@/src/features/chat/utils/normalizeChatMessage";
@@ -12,6 +12,7 @@ import {
   isChatMessage,
   reconcileIncomingMessage,
   sortChatMessagesAsc,
+  trimRecentChatMessages,
   toUiMessage,
 } from "@/src/features/chat/utils/chatMessageUtils";
 import {
@@ -78,8 +79,14 @@ export function useChatMessages({
   );
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
-  const prependScrollHeightRef = useRef<number | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  const prependScrollSnapshotRef = useRef<{
+    prevScrollHeight: number;
+    prevScrollTop: number;
+  } | null>(null);
   const isPrependingMessagesRef = useRef(false);
+  const isLoadingMoreMessagesRef = useRef(false);
 
   const unreadCountByMessageId = useMemo(
     () =>
@@ -102,10 +109,12 @@ export function useChatMessages({
         if (cancelled) return;
 
         setMessages(
-          sortChatMessagesAsc(
-            response.messages
-              .map((item) => toUiMessage(item, currentMemberId))
-              .filter(isChatMessage),
+          trimRecentChatMessages(
+            sortChatMessagesAsc(
+              response.messages
+                .map((item) => toUiMessage(item, currentMemberId))
+                .filter(isChatMessage),
+            ),
           ),
         );
         setNextMessagesCursor(response.nextCursor);
@@ -160,7 +169,9 @@ export function useChatMessages({
         String(normalized.senderId ?? "") === String(currentMemberId ?? "");
 
       setMessages((prev) =>
-        reconcileIncomingMessage(prev, normalized, isOwnMessage),
+        trimRecentChatMessages(
+          reconcileIncomingMessage(prev, normalized, isOwnMessage),
+        ),
       );
     };
 
@@ -196,99 +207,96 @@ export function useChatMessages({
     };
   }, [currentMemberId, roomId, socketStatus, subscribe]);
 
-  useEffect(() => {
-    if (prependScrollHeightRef.current == null) return;
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    const snapshot = prependScrollSnapshotRef.current;
+    if (!container || !snapshot) return;
 
-    const previousScrollHeight = prependScrollHeightRef.current;
-    prependScrollHeightRef.current = null;
-
-    const frameId = window.requestAnimationFrame(() => {
-      const nextScrollHeight = document.documentElement.scrollHeight;
-      const heightDiff = nextScrollHeight - previousScrollHeight;
-      if (heightDiff > 0) {
-        window.scrollBy({ top: heightDiff, behavior: "auto" });
-      }
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
+    const nextScrollHeight = container.scrollHeight;
+    container.scrollTop =
+      snapshot.prevScrollTop + (nextScrollHeight - snapshot.prevScrollHeight);
+    prependScrollSnapshotRef.current = null;
   }, [messages]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
     if (isPrependingMessagesRef.current) {
       isPrependingMessagesRef.current = false;
       return;
     }
 
-    const frameId = window.requestAnimationFrame(() => {
+    if (!container) return;
+
+    const scrollToBottom = () => {
+      container.scrollTop = container.scrollHeight;
       messageEndRef.current?.scrollIntoView({
         block: "end",
         behavior: "auto",
       });
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: "auto",
-      });
+    };
+
+    scrollToBottom();
+    let nestedFrameId = 0;
+    const frameId = window.requestAnimationFrame(scrollToBottom);
+    const nextFrameId = window.requestAnimationFrame(() => {
+      nestedFrameId = window.requestAnimationFrame(scrollToBottom);
     });
 
-    return () => window.cancelAnimationFrame(frameId);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.cancelAnimationFrame(nextFrameId);
+      window.cancelAnimationFrame(nestedFrameId);
+    };
   }, [messages.length]);
 
-  useEffect(() => {
-    if (!nextMessagesCursor || isLoadingMessages || isLoadingMoreMessages) {
+  const loadPreviousMessages = useCallback(async () => {
+    if (!nextMessagesCursor || isLoadingMessages || isLoadingMoreMessagesRef.current) {
       return;
     }
 
-    const handleScroll = () => {
-      if (window.scrollY > 120) return;
-      if (isLoadingMoreMessages) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    if (container.scrollTop > 50) return;
 
-      const currentCursor = nextMessagesCursor;
-      if (!currentCursor) return;
-
-      isPrependingMessagesRef.current = true;
-      prependScrollHeightRef.current = document.documentElement.scrollHeight;
-      setIsLoadingMoreMessages(true);
-
-      void getChatMessages(roomId, 20, currentCursor)
-        .then((response) => {
-          setMessages((prev) =>
-            sortChatMessagesAsc(
-              [
-                ...response.messages
-                  .map((item) => toUiMessage(item, currentMemberId))
-                  .filter(isChatMessage),
-                ...prev,
-              ].filter(
-                (message, index, array) =>
-                  array.findIndex((item) => item.id === message.id) === index,
-              ),
-            ),
-          );
-          setNextMessagesCursor(response.nextCursor);
-        })
-        .catch((error) => {
-          isPrependingMessagesRef.current = false;
-          prependScrollHeightRef.current = null;
-          window.alert(
-            error instanceof Error
-              ? error.message
-              : "이전 메시지를 불러오지 못했습니다.",
-          );
-        })
-        .finally(() => {
-          setIsLoadingMoreMessages(false);
-        });
+    isLoadingMoreMessagesRef.current = true;
+    isPrependingMessagesRef.current = true;
+    prependScrollSnapshotRef.current = {
+      prevScrollHeight: container.scrollHeight,
+      prevScrollTop: container.scrollTop,
     };
+    setIsLoadingMoreMessages(true);
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    try {
+      const response = await getChatMessages(roomId, 20, nextMessagesCursor);
+      setMessages((prev) =>
+        sortChatMessagesAsc(
+          [
+            ...response.messages
+              .map((item) => toUiMessage(item, currentMemberId))
+              .filter(isChatMessage),
+            ...prev,
+          ].filter(
+            (message, index, array) =>
+              array.findIndex((item) => item.id === message.id) === index,
+          ),
+        ),
+      );
+      setNextMessagesCursor(response.nextCursor);
+    } catch (error) {
+      isPrependingMessagesRef.current = false;
+      prependScrollSnapshotRef.current = null;
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "이전 메시지를 불러오지 못했습니다.",
+      );
+    } finally {
+      isLoadingMoreMessagesRef.current = false;
+      setIsLoadingMoreMessages(false);
+    }
   }, [
     currentMemberId,
     isLoadingMessages,
-    isLoadingMoreMessages,
     nextMessagesCursor,
     roomId,
   ]);
@@ -424,6 +432,9 @@ export function useChatMessages({
     isLoadingMoreMessages,
     messagesError,
     messageEndRef,
+    scrollContainerRef,
+    topSentinelRef,
+    loadPreviousMessages,
     sendMessage,
   };
 }

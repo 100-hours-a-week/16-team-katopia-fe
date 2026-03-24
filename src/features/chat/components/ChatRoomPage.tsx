@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 
 import { useAuth } from "@/src/features/auth/providers/AuthProvider";
@@ -11,6 +10,7 @@ import { leaveChatRoom } from "@/src/features/chat/api/leaveChatRoom";
 import { updateChatRoom } from "@/src/features/chat/api/updateChatRoom";
 import ChatInput from "@/src/features/chat/components/ChatInput";
 import ChatMessageList from "@/src/features/chat/components/ChatMessageList";
+import ChatRoomHeader from "@/src/features/chat/components/ChatRoomHeader";
 import CreateChatRoomModal from "@/src/features/chat/components/CreateChatRoomModal";
 import {
   DEFAULT_CHAT_ROOM_IMAGES,
@@ -45,9 +45,11 @@ export default function ChatRoomPage({
 }: ChatRoomPageProps) {
   const router = useRouter();
   const { currentMember, isAuthenticated, ready } = useAuth();
-  const { status: socketStatus, subscribe, publish } = useChatSocket(
-    ready && isAuthenticated,
-  );
+  const {
+    status: socketStatus,
+    subscribe,
+    publish,
+  } = useChatSocket(ready && isAuthenticated);
   const {
     roomTitle,
     setRoomTitle,
@@ -71,7 +73,10 @@ export default function ChatRoomPage({
     isLoadingMessages,
     isLoadingMoreMessages,
     messagesError,
+    scrollContainerRef,
+    topSentinelRef,
     messageEndRef,
+    loadPreviousMessages,
     sendMessage,
   } = useChatMessages({
     roomId,
@@ -89,9 +94,9 @@ export default function ChatRoomPage({
   const [editTitle, setEditTitle] = useState(
     initialTitle?.trim() || "패션에 고민있는 사람 모여라!!!!!",
   );
-  const [editThumbnailPreview, setEditThumbnailPreview] = useState<string | null>(
-    initialThumbnail?.trim() || null,
-  );
+  const [editThumbnailPreview, setEditThumbnailPreview] = useState<
+    string | null
+  >(initialThumbnail?.trim() || null);
   const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
   const [editSelectedDefaultThumbnail, setEditSelectedDefaultThumbnail] =
     useState<string | null>(null);
@@ -117,9 +122,9 @@ export default function ChatRoomPage({
       editSelectedDefaultThumbnail !== roomThumbnailSrc);
   const canSubmitEdit = Boolean(
     editTitle.trim() &&
-      editThumbnailPreview &&
-      !isUpdatingRoom &&
-      (hasEditedTitle || hasEditedThumbnail),
+    editThumbnailPreview &&
+    !isUpdatingRoom &&
+    (hasEditedTitle || hasEditedThumbnail),
   );
 
   useEffect(() => {
@@ -215,93 +220,63 @@ export default function ChatRoomPage({
     });
   };
 
-  return (
-    <div className="mx-auto min-h-screen w-full max-w-[430px] bg-white">
-      <header className="fixed left-1/2 top-0 z-20 w-full max-w-[430px] -translate-x-1/2 bg-white shadow-[0_10px_14px_-12px_rgba(17,17,17,0.28)]">
-        <div className="flex items-center gap-4 px-5 pb-4 pt-6">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="뒤로 가기"
-            className="flex h-10 w-10 shrink-0 items-center justify-center"
-          >
-            <Image src="/icons/back.svg" alt="" width={22} height={22} />
-          </button>
-          <div className="relative h-[64px] w-[64px] shrink-0 overflow-hidden rounded-full bg-[#dddddd]">
-            <Image
-              src={roomThumbnailSrc}
-              alt=""
-              fill
-              sizes="64px"
-              className="object-cover"
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-semibold tracking-[-0.03em] text-[#111111]">
-              {roomTitle}
-            </p>
-            <div className="mt-2 flex items-center gap-1 text-[13px] font-medium text-[#111111]">
-              <Image src="/icons/user.svg" alt="" width={14} height={14} />
-              <span className="leading-none">{roomMemberCount}</span>
-            </div>
-          </div>
-          <div ref={menuAreaRef} className="relative shrink-0">
-            <button
-              type="button"
-              aria-label="채팅방 메뉴"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className="flex h-10 w-10 items-center justify-center"
-            >
-              <Image src="/icons/more.svg" alt="" width={18} height={18} />
-            </button>
-            {menuOpen ? (
-              <div className="absolute right-0 top-[42px] z-30 min-w-[82px] overflow-hidden rounded-[14px] border border-[#1f1f1f] bg-white shadow-[0_10px_22px_rgba(0,0,0,0.08)]">
-                {resolvedIsOwner ? (
-                  <div className="flex flex-col">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setEditTitle(roomTitle);
-                        setEditThumbnailPreview(roomThumbnailSrc);
-                        setEditThumbnailFile(null);
-                        setEditSelectedDefaultThumbnail(null);
-                        setEditOpen(true);
-                      }}
-                      className="flex h-9 w-full items-center justify-center bg-white text-[13px] font-medium text-[#111111] transition-colors hover:bg-[#f4f4f4]"
-                    >
-                      수정
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setDeleteConfirmOpen(true);
-                      }}
-                      className="flex h-9 w-full items-center justify-center border-t border-[#1f1f1f] bg-[#fff1f1] text-[13px] font-medium text-[#ff4d4f] transition-colors hover:bg-[#ffe7e7]"
-                    >
-                      삭제
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setLeaveConfirmOpen(true);
-                    }}
-                    className="flex w-full items-center justify-center rounded-[10px] border border-[#ff4d4f] bg-[#fff1f1] px-3 py-2 text-[12px] font-medium text-[#ff4d4f]"
-                  >
-                    나가기
-                  </button>
-                )}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </header>
+  const handleBack = useCallback(() => {
+    router.back();
+  }, [router]);
 
-      <main className="px-6 pb-[calc(env(safe-area-inset-bottom)+132px)] pt-[126px]">
+  const handleToggleMenu = useCallback(() => {
+    setMenuOpen((prev) => !prev);
+  }, []);
+
+  const handleOpenEdit = useCallback(() => {
+    setMenuOpen(false);
+    setEditTitle(roomTitle);
+    setEditThumbnailPreview(roomThumbnailSrc);
+    setEditThumbnailFile(null);
+    setEditSelectedDefaultThumbnail(null);
+    setEditOpen(true);
+  }, [roomThumbnailSrc, roomTitle]);
+
+  const handleOpenDelete = useCallback(() => {
+    setMenuOpen(false);
+    setDeleteConfirmOpen(true);
+  }, []);
+
+  const handleOpenLeave = useCallback(() => {
+    setMenuOpen(false);
+    setLeaveConfirmOpen(true);
+  }, []);
+
+  const handleChatScroll = useCallback(() => {
+    void loadPreviousMessages();
+  }, [loadPreviousMessages]);
+
+  return (
+    <div className="mx-auto flex h-dvh min-h-0 w-full max-w-107.5 flex-col overflow-hidden bg-white">
+      <div ref={menuAreaRef}>
+        <ChatRoomHeader
+          roomTitle={roomTitle}
+          roomThumbnailSrc={roomThumbnailSrc}
+          roomMemberCount={roomMemberCount}
+          resolvedIsOwner={resolvedIsOwner}
+          menuOpen={menuOpen}
+          onBack={handleBack}
+          onToggleMenu={handleToggleMenu}
+          onOpenEdit={handleOpenEdit}
+          onOpenDelete={handleOpenDelete}
+          onOpenLeave={handleOpenLeave}
+        />
+      </div>
+
+      <main
+        ref={scrollContainerRef}
+        onScroll={handleChatScroll}
+        className={`min-h-0 flex-1 overflow-y-auto px-6 pb-[calc(env(safe-area-inset-bottom)+80px)] pt-31.5 ${
+          isSendingMessage
+            ? "[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            : ""
+        }`}
+      >
         <ChatMessageList
           roomId={roomId}
           messages={messages}
@@ -309,7 +284,10 @@ export default function ChatRoomPage({
           isLoadingMessages={isLoadingMessages}
           isLoadingMoreMessages={isLoadingMoreMessages}
           messagesError={messagesError}
+          scrollContainerRef={scrollContainerRef}
+          topSentinelRef={topSentinelRef}
           messageEndRef={messageEndRef}
+          onLoadPreviousMessages={loadPreviousMessages}
           onImageClick={setExpandedImageUrl}
         />
       </main>
@@ -351,7 +329,7 @@ export default function ChatRoomPage({
                   if (isLeavingRoom) return;
                   setLeaveConfirmOpen(false);
                 }}
-                className="h-12 rounded-[16px] border border-[#d5d5d5] text-[15px] font-medium text-[#111111]"
+                className="h-12 rounded-3xl border border-[#d5d5d5] text-[15px] font-medium text-[#111111]"
               >
                 취소
               </button>
@@ -374,7 +352,7 @@ export default function ChatRoomPage({
                     setLeaveConfirmOpen(false);
                   }
                 }}
-                className="h-12 rounded-[16px] bg-[#ff4d4f] text-[15px] font-medium text-white disabled:bg-[#ffb3b4]"
+                className="h-12 rounded-3xl bg-[#ff4d4f] text-[15px] font-medium text-white disabled:bg-[#ffb3b4]"
               >
                 {isLeavingRoom ? "나가는 중..." : "나가기"}
               </button>
@@ -424,7 +402,9 @@ export default function ChatRoomPage({
             if (editThumbnailFile) {
               const extension =
                 editThumbnailFile.name.split(".").pop()?.toLowerCase() || "png";
-              const [presigned] = await requestUploadPresign("POST", [extension]);
+              const [presigned] = await requestUploadPresign("POST", [
+                extension,
+              ]);
               await uploadToPresignedUrl(
                 presigned.uploadUrl,
                 editThumbnailFile,
@@ -443,7 +423,9 @@ export default function ChatRoomPage({
               const extension =
                 editSelectedDefaultThumbnail.split(".").pop()?.toLowerCase() ||
                 "png";
-              const [presigned] = await requestUploadPresign("POST", [extension]);
+              const [presigned] = await requestUploadPresign("POST", [
+                extension,
+              ]);
               await uploadToPresignedUrl(
                 presigned.uploadUrl,
                 imageBlob,
@@ -512,7 +494,7 @@ export default function ChatRoomPage({
               <button
                 type="button"
                 onClick={() => setDeleteConfirmOpen(false)}
-                className="h-12 rounded-[16px] border border-[#d5d5d5] text-[15px] font-medium text-[#111111]"
+                className="h-12 rounded-3xl border border-[#d5d5d5] text-[15px] font-medium text-[#111111]"
               >
                 취소
               </button>
@@ -534,7 +516,7 @@ export default function ChatRoomPage({
                     setIsDeletingRoom(false);
                   }
                 }}
-                className="h-12 rounded-[16px] bg-[#ff4d4f] text-[15px] font-medium text-white disabled:bg-[#ffb3b4]"
+                className="h-12 rounded-3xl bg-[#ff4d4f] text-[15px] font-medium text-white disabled:bg-[#ffb3b4]"
               >
                 {isDeletingRoom ? "삭제 중..." : "삭제"}
               </button>
@@ -579,13 +561,14 @@ export default function ChatRoomPage({
             </button>
           </div>
           <div
-            className="relative max-h-[72vh] w-full max-w-[560px]"
+            className="relative max-h-[72vh] w-full max-w-140"
             onClick={(event) => event.stopPropagation()}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={expandedImageUrl}
               alt=""
-              className="mx-auto max-h-[72vh] w-auto max-w-full rounded-[20px] object-contain"
+              className="mx-auto max-h-[72vh] w-auto max-w-full rounded-4xl object-contain"
             />
           </div>
         </div>

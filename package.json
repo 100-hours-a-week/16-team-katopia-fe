@@ -13,7 +13,11 @@
     "e2e:auth:record": "playwright codegen https://dev.fitcheck.kr --save-storage=playwright/.auth/user.json",
     "e2e:smoke": "playwright test tests/main-pages-smoke.spec.ts --project=chromium",
     "e2e:post-create": "playwright test tests/post-create.e2e.spec.ts --project=chromium-auth",
-    "e2e:chat-smoke": "playwright test tests/chat-smoke.e2e.spec.ts --project=chromium-auth"
+    "e2e:chat-smoke": "playwright test tests/chat-smoke.e2e.spec.ts --project=chromium-auth-direct",
+    "e2e:chat-burst": "playwright test tests/chat-text-burst.e2e.spec.ts --project=chromium-auth-direct",
+    "e2e:chat-image": "playwright test tests/chat-image-send.e2e.spec.ts --project=chromium-auth-direct",
+    "e2e:chat-image-burst": "playwright test tests/chat-image-burst.e2e.spec.ts --project=chromium-auth-direct",
+    "e2e:chat-open-flow": "playwright test tests/chat-open-flow.e2e.spec.ts --project=chromium-auth-direct"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
