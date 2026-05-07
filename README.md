@@ -245,46 +245,7 @@ npm run build
 npm run start
 ```
 
-## 9. 환경 변수
-
-프로젝트에서 확인되는 주요 환경 변수는 아래와 같습니다.
-
-```bash
-NEXT_PUBLIC_API_BASE_URL=
-NEXT_PUBLIC_CHAT_SOCKET_URL=
-NEXT_PUBLIC_IMAGE_BASE_URL=
-NEXT_PUBLIC_KAKAO_OAUTH_URL=
-NEXT_PUBLIC_GA_ID=
-NEXT_PUBLIC_GA_MEASUREMENT_ID=
-NEXT_PUBLIC_GTM_ID=
-API_BASE_URL=
-REVALIDATE_SECRET=
-BASE_URL=
-STORAGE_STATE=
-```
-
-### 환경 변수 설명
-
-- `NEXT_PUBLIC_API_BASE_URL`: 백엔드 API 기본 주소
-- `NEXT_PUBLIC_CHAT_SOCKET_URL`: 채팅 WebSocket 서버 주소
-- `NEXT_PUBLIC_IMAGE_BASE_URL`: 이미지 CDN 기본 주소
-- `NEXT_PUBLIC_KAKAO_OAUTH_URL`: 카카오 로그인 연동 주소
-- `NEXT_PUBLIC_GA_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_GTM_ID`: 분석 도구 연동용 값
-- `API_BASE_URL`: 서버 사이드 route handler에서 사용할 업스트림 API 주소
-- `REVALIDATE_SECRET`: 캐시 재검증 보호용 시크릿
-- `BASE_URL`: Playwright 테스트 기준 URL
-- `STORAGE_STATE`: Playwright 로그인 상태 파일 경로
-
-## 10. 사용 가능한 스크립트
-
-```bash
-npm run dev
-npm run build
-npm run start
-npm run lint
-```
-
-## 11. 테스트
+## 10. 테스트
 
 이 프로젝트는 `Playwright` 기반 E2E 테스트를 사용합니다.
 
@@ -308,12 +269,8 @@ npm run e2e:chat-smoke
 - 실시간 기능과 성능 최적화를 통해 서비스 체류 시간 및 재방문 가능성 향상
 - 확장 가능한 프론트엔드 구조를 바탕으로 기능 추가와 운영 대응 용이
 
-## 13. 문서 참고
 
-- `docs/chat-e2e-scenarios.md`
-- `docs/post-detail-on-demand-isr.md`
-
-## 14. 한계 및 참고 사항
+## 13. 한계 및 참고 사항
 
 - 이 저장소는 프론트엔드 중심 저장소이며, 실제 서비스 동작에는 별도의 백엔드/API 서버가 필요합니다.
 - 일부 기능은 외부 API, OAuth, 이미지 CDN, 실시간 소켓 서버 연결이 전제됩니다.
